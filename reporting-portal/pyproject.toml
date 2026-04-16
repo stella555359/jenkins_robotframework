@@ -1,0 +1,5 @@
+[project]
+name = "reporting-portal"
+version = "0.1.0"
+description = "Reporting portal service scaffold"
+requires-python = ">=3.10"

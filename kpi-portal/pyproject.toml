@@ -1,5 +1,0 @@
-[project]
-name = "kpi-portal"
-version = "0.1.0"
-description = "KPI portal service scaffold"
-requires-python = ">=3.10"

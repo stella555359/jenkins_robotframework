@@ -19,3 +19,6 @@ uploads/
 reports/
 *.swp
 *.swo
+# Internal-only captures (contain testline names, internal IPs, hardcoded CSRF tokens)
+issue/jenkins_capture/
+

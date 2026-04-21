@@ -1,0 +1,14 @@
+---
+description: Prevent unapproved deletion of existing files and directories
+alwaysApply: true
+---
+
+# No Unapproved File Deletion
+
+- Never delete an existing file or directory unless the user explicitly asked for that deletion in the current conversation.
+- Do not treat "rewrite", "replace", "regenerate", or "clean up" as permission to delete files.
+- Before any destructive file operation, confirm the exact target paths and the reason.
+- Prefer in-place edits over delete-and-recreate, especially for `docs/`, `issue/`, `.cursor/`, config files, and user-authored notes.
+- If unexpected missing files or directories are noticed, stop immediately, report the paths, and ask the user how to proceed.
+- If a file seems obsolete but the user did not ask to remove it, leave it in place and mention it as a follow-up option instead.
+- When recovering from accidental deletion, restore files first and do not commit the recovery unless the user asks.

@@ -432,7 +432,7 @@ sudo apt install -y \
     python3-venv \
     python3-dev \
     build-essential \
-    openjdk-21-jdk \
+    openjdk-17-jdk \
     nginx
 ```
 
@@ -440,6 +440,7 @@ sudo apt install -y \
 
 - 这一步是操作系统层运行依赖准备
 - 还不涉及业务源码
+- 对当前 Debian / Ubuntu 通用落地，`openjdk-17-jdk` 比 `openjdk-21-jdk` 更稳；Jenkins 运行这一阶段用 Java 17 即可
 
 如果你计划在 Jenkins Master 本机直接执行前端构建，则额外准备 Node.js 20 LTS。
 
@@ -460,6 +461,22 @@ sudo apt update
 sudo apt install -y ca-certificates curl gnupg
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 ```
+
+如果这台机器访问外网需要走代理，可以改成：
+
+```bash
+export http_proxy=http://10.144.1.10:8080
+export https_proxy=http://10.144.1.10:8080
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+```
+
+或者写成单行：
+
+```bash
+http_proxy=http://10.144.1.10:8080 https_proxy=http://10.144.1.10:8080 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+```
+
+这里保留 `sudo -E` 的原因是：需要把当前 shell 里的代理环境变量继续传给 `bash -` 执行出来的安装脚本。
 
 再安装 Node.js：
 
@@ -524,7 +541,7 @@ sudo apt install -y \
     python3 \
     python3-pip \
     python3-venv \
-    openjdk-21-jre \
+    openjdk-17-jre \
     git \
     openssh-server \
     curl \
@@ -536,6 +553,28 @@ echo "jenkins ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/jenkins
 sudo mkdir -p /automation/{workspace,venv,logs,downloads}
 sudo chown -R jenkins:jenkins /automation
 ```
+
+补充说明：
+
+- 如果 `apt install` 报 `Unable to locate package openjdk-21-jre`，不要继续卡在 21；直接改用 `openjdk-17-jre`
+- Jenkins SSH Agent 这一阶段只要求 Agent 上能正常执行 `java -version`
+- 安装完成后建议立刻验证：
+
+```bash
+java -version
+readlink -f "$(which java)"
+id jenkins
+ls -ld /automation /automation/workspace
+systemctl status ssh --no-pager || systemctl status sshd --no-pager
+```
+
+验证时请特别注意：
+
+- `java -version` 需要看到 `17`
+- 不能是 `1.8` / `8`
+- `readlink -f "$(which java)"` 最好指向 `java-17-openjdk`
+
+如果已经安装过多个 Java 版本，`apt install openjdk-17-jre` 不代表当前默认 `java` 一定就是 17，还需要继续确认默认命令实际指向哪一个版本。
 
 ### 8.4 SSH 免密配置
 
@@ -550,6 +589,13 @@ ssh-keygen -t rsa -b 4096 -C "jenkins-master" -f ~/.ssh/jenkins_agent_rsa -N ""
 ```bash
 ssh -i ~/.ssh/jenkins_agent_rsa jenkins@10.57.159.149 "echo 'SSH OK'"
 ```
+
+如果上面这条命令还没有成功，就先不要去 Jenkins Web 点 `Set up an agent`。正确顺序是：
+
+1. Agent 机器先装好 Java、SSH 服务、`jenkins` 用户
+2. Master 到 Agent 先实现免密 SSH
+3. `/automation/workspace` 对 `jenkins` 用户可写
+4. 最后再在 Jenkins Web 里新增节点
 
 ---
 
@@ -890,7 +936,24 @@ npm run build
 
 ### 12.3 建议数据模型
 
-第一版可直接使用 `SQLite`，后续再切 `PostgreSQL`。
+第一版默认使用 `SQLite`，后续数据量变大或并发需求更高时，再切 `PostgreSQL`。
+
+也就是说，当前轻量化方案里，`reporting-portal` 的数据库基线就是：
+
+- 数据库类型：`SQLite`
+- 目标：先把 run、artifact、KPI 结果这些核心元数据稳稳存下来
+
+建议第一轮数据库文件先放在：
+
+- 本地开发：`reporting-portal/data/results/reporting_portal.db`
+- 服务器：`/opt/jenkins_robotframework/reporting-portal/data/results/reporting_portal.db`
+
+为什么第一轮先用 `SQLite`：
+
+1. 不需要额外安装数据库服务
+2. 一份 `.db` 文件就能跑起来
+3. 很适合当前练手和最小闭环阶段
+4. 后面如果切 PostgreSQL，业务分层还能继续复用
 
 建议至少保存这些字段：
 
@@ -909,6 +972,69 @@ npm run build
 - `kpi_report_url`
 - `kpi_anomaly_url`
 - `result_summary`
+
+### 12.3.1 第一轮 SQLite 里建议先存什么
+
+第一轮不用把数据库设计得很重，先存最核心的两类信息就够：
+
+#### 表 1：`runs`
+
+建议至少包含：
+
+- `run_id`
+- `job_name`
+- `branch`
+- `testline`
+- `case_name`
+- `trigger_user`
+- `status`
+- `build_number`
+- `build_url`
+- `start_time`
+- `end_time`
+- `result_summary`
+
+#### 表 2：`run_artifacts`
+
+建议至少包含：
+
+- `artifact_id`
+- `run_id`
+- `artifact_type`
+- `artifact_name`
+- `artifact_path`
+- `artifact_url`
+- `created_at`
+
+如果第一轮就要接 KPI，再增加一张轻量表：
+
+#### 表 3：`run_kpi_results`
+
+建议至少包含：
+
+- `kpi_result_id`
+- `run_id`
+- `kpi_generation_status`
+- `kpi_detection_status`
+- `kpi_excel_url`
+- `kpi_html_report_url`
+- `kpi_excel_report_url`
+- `kpi_summary_json`
+
+### 12.3.2 SQLite 在当前架构里的位置
+
+当前主线里，SQLite 负责保存“平台元数据”，而不是保存大文件本体。
+
+换句话说：
+
+- `SQLite` 负责存：run、状态、链接、摘要、路径
+- 文件系统或 Jenkins artifact 负责存：`output.xml`、`log.html`、KPI `.xlsx`、HTML 报告
+
+这样做更合理，因为：
+
+1. 数据库适合存结构化信息
+2. 大文件不适合直接塞进 SQLite
+3. 前端真正需要的是“状态 + 链接 + 摘要”
 
 ### 12.4 本地开发
 
@@ -971,6 +1097,15 @@ Agent 不负责：
 
 ### 13.2 在 Jenkins 中添加 Agent
 
+这一节对应的就是 Jenkins Web 界面里的 **`Set up an agent`**。
+
+不同 Jenkins 版本入口名字可能略有差异，但本质是同一个动作，常见入口有两种：
+
+1. 首页或节点页上直接看到 `Set up an agent`
+2. `Manage Jenkins` -> `Nodes` -> `New Node`
+
+如果你现在界面上已经出现 `Set up an agent`，直接点进去即可。
+
 建议配置：
 
 - Name: `t813-agent`
@@ -979,6 +1114,354 @@ Agent 不负责：
 - Launch method: `Launch agents via SSH`
 - Host: `10.57.159.149`
 - Credentials: Jenkins 中配置的 SSH 凭据
+
+更完整的填写建议如下。
+
+#### 13.2.1 新增节点时具体怎么点
+
+1. 进入 Jenkins Web
+2. 点击 `Set up an agent` 或 `Manage Jenkins` -> `Nodes`
+3. 点击 `New Node`
+4. `Node name` 填：`t813-agent`
+5. 节点类型选：`Permanent Agent`
+6. 点击 `Create`
+
+#### 13.2.2 节点配置页逐项填写建议
+
+创建后进入节点配置页，建议按下面填写：
+
+| Jenkins 页面字段 | 推荐填写值 | 说明 |
+|---|---|---|
+| `Name` | `t813-agent` | 节点名，后续 Pipeline 里也会用到 |
+| `Description` | `T813 Robot execution agent` | 可选，但建议写清用途 |
+| `Number of executors` | `1` | 第一轮先用 1，避免并发把测试线打乱 |
+| `Remote root directory` | `/automation/workspace` | Jenkins 在 Agent 上的工作根目录 |
+| `Labels` | `t813 robot` | 后续 Pipeline 可用 `label 't813'` 或 `label 't813 && robot'` |
+| `Usage` | `Only build jobs with label expressions matching this node` | 避免无关任务跑到这台 Agent |
+| `Launch method` | `Launch agents via SSH` | 这是当前方案的标准方式 |
+| `Host` | `10.57.159.149` | Agent IP |
+| `Credentials` | Jenkins 中为 `jenkins@10.57.159.149` 配好的 SSH 凭据 | 必须和实际 SSH 用户对应 |
+| `Host Key Verification Strategy` | 第一轮可用 `Non verifying Verification Strategy` | 联调通过后再改成更严格方式 |
+| `Availability` | `Keep this agent online as much as possible` | 让 Jenkins 尽量保持节点在线 |
+
+如果你的界面里还看到下面这些可选项，可先保持默认：
+
+- `Node Properties`
+- `Environment variables`
+- `Tool Locations`
+
+第一轮不需要额外配置这些项，先以“能连上并执行 shell step”为目标。
+
+#### 13.2.3 Credentials 应该怎么加
+
+如果 `Credentials` 下拉框里还没有可用 SSH 凭据，先在 Jenkins 里新增：
+
+如果你现在 Jenkins 里一条 Credentials 都没有，不用先回头找历史配置，直接按下面步骤新建第一条即可。当前这一步需要新增的是：**给 `jenkins@10.57.159.149` 使用的 SSH 私钥凭据**。
+
+1. `Manage Jenkins`
+2. `Credentials`
+3. 如果页面里有 `System`，先点 `System`
+4. 进入 `Global credentials (unrestricted)`
+5. 点击 `Add Credentials`
+
+建议填写：
+
+| 字段 | 推荐值 |
+|---|---|
+| `Kind` | `SSH Username with private key` |
+| `Scope` | `Global` |
+| `Username` | `jenkins` |
+| `Private Key` | `Enter directly`，粘贴 Master 上 `~/.ssh/jenkins_agent_rsa` 私钥内容 |
+| `ID` | `t813-agent-ssh` |
+| `Description` | `SSH key for t813-agent` |
+
+保存后回到节点配置页，在 `Credentials` 里选择这个 `t813-agent-ssh`。
+
+如果你不知道 `Private Key` 里要填什么，就按下面顺序准备。
+
+##### 13.2.3.1 先在 Master 上确认或生成这把 key
+
+在 Jenkins Master 上执行：
+
+```bash
+ls -l ~/.ssh/jenkins_agent_rsa ~/.ssh/jenkins_agent_rsa.pub
+```
+
+如果文件已经存在，就继续下一步。
+
+如果不存在，就直接生成：
+
+```bash
+ssh-keygen -t rsa -b 4096 -C "jenkins-master" -f ~/.ssh/jenkins_agent_rsa -N ""
+```
+
+然后查看公钥内容：
+
+```bash
+cat ~/.ssh/jenkins_agent_rsa.pub
+```
+
+把这段公钥追加到 Agent 机器 `jenkins` 用户的 `authorized_keys` 中。
+
+##### 13.2.3.2 把公钥放到 Agent 上
+
+如果 Agent 机上 `jenkins` 用户已存在，可执行：
+
+```bash
+ssh-copy-id -i ~/.ssh/jenkins_agent_rsa.pub jenkins@10.57.159.149
+```
+
+如果没有 `ssh-copy-id`，也可以手工追加：
+
+```bash
+cat ~/.ssh/jenkins_agent_rsa.pub
+```
+
+把输出内容复制到 Agent 机器：
+
+```bash
+mkdir -p ~/.ssh
+chmod 700 ~/.ssh
+echo '这里粘贴上面那一整行公钥' >> ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+```
+
+这里的 `~` 指的是 Agent 机器上 `jenkins` 用户的 home 目录。
+
+##### 13.2.3.3 把私钥内容填进 Jenkins Credentials
+
+回到 Jenkins `Add Credentials` 页面后：
+
+1. `Kind` 选 `SSH Username with private key`
+2. `Username` 填 `jenkins`
+3. `Private Key` 选 `Enter directly`
+4. **继续点击右侧的 `Add` 按钮**，这一步不能省；很多人卡在这里，就是因为只选了 `Enter directly`，但没有继续点 `Add`
+5. 把 Master 上这把私钥的内容完整粘贴进去：
+
+```bash
+cat ~/.ssh/jenkins_agent_rsa
+```
+
+6. `ID` 填 `t813-agent-ssh`
+7. `Description` 填 `SSH key for t813-agent`
+8. 点击 `Create`
+
+如果你点完 `Enter directly` 之后发现“还是没有地方可粘贴”，通常按下面顺序排查：
+
+1. 先确认是不是漏点了右侧的 `Add`
+2. 如果已经点了 `Add`，看页面下方是否出现：
+    - `Key` 文本框
+    - 或 `-----BEGIN ... PRIVATE KEY-----` 这种内容输入区域
+3. 如果输入框被页面样式挡住，先往下滚动一点再看
+4. 如果浏览器插件拦截了 Jenkins 页面脚本，先换一个无插件窗口或 InPrivate / Incognito 窗口再试
+
+如果当前 Jenkins 版本页面行为确实异常，或者你在远程桌面里复制粘贴不稳定，可以直接改用另一种方式：`From a file on Jenkins controller`。
+
+##### 13.2.3.3.1 如果 `Enter directly` 不能粘贴，可改用 `From a file on Jenkins controller`
+
+前提是这把私钥文件已经实际存在于 Jenkins Master 本机上，例如：
+
+```bash
+~/.ssh/jenkins_agent_rsa
+```
+
+此时在 Jenkins `Add Credentials` 页面可改填：
+
+1. `Kind` 选 `SSH Username with private key`
+2. `Username` 填 `jenkins`
+3. `Private Key` 选 `From a file on Jenkins controller`
+4. 文件路径填写：
+
+```text
+/var/lib/jenkins/.ssh/jenkins_agent_rsa
+```
+
+或如果 Jenkins 进程实际运行用户能访问的是当前用户 home，也可以是：
+
+```text
+/home/ute/.ssh/jenkins_agent_rsa
+```
+
+但这里必须注意：**这个路径必须是 Jenkins Controller 本机上的真实路径，而且 Jenkins 运行用户必须有读取权限**。
+
+最稳的做法通常是把 key 放到 Jenkins 自己的 home 下，例如：
+
+```bash
+sudo mkdir -p /var/lib/jenkins/.ssh
+sudo cp ~/.ssh/jenkins_agent_rsa /var/lib/jenkins/.ssh/jenkins_agent_rsa
+sudo chown -R jenkins:jenkins /var/lib/jenkins/.ssh
+sudo chmod 700 /var/lib/jenkins/.ssh
+sudo chmod 600 /var/lib/jenkins/.ssh/jenkins_agent_rsa
+```
+
+然后在 Jenkins 页面里填：
+
+```text
+/var/lib/jenkins/.ssh/jenkins_agent_rsa
+```
+
+如果这条方式能保存成功，效果和手工粘贴私钥是一样的。
+
+注意：
+
+- 粘贴到 Jenkins 的是 **私钥** `~/.ssh/jenkins_agent_rsa`
+- 放到 Agent `authorized_keys` 里的必须是 **公钥** `~/.ssh/jenkins_agent_rsa.pub`
+- 两个文件不要混用
+
+##### 13.2.3.4 新建完后先不要急着配节点，先验证这条凭据对应的 key 是通的
+
+在 Master 上执行：
+
+```bash
+ssh -i ~/.ssh/jenkins_agent_rsa jenkins@10.57.159.149 "echo SSH OK"
+```
+
+只有这条命令能返回 `SSH OK`，才说明：
+
+- Jenkins 里即将选择的这条 SSH 凭据是对的
+- Agent 上的 `authorized_keys` 配置是对的
+- 后续节点配置页里的 `Credentials` 才应该选 `t813-agent-ssh`
+
+#### 13.2.4 保存后怎么验证是否配置成功
+
+保存节点后，进入该节点页面，点击：
+
+- `Launch agent`
+
+理想情况下日志里会看到类似信息：
+
+- SSH connected
+- Java version detected
+- `agent.jar` copied
+- Agent successfully connected and online
+
+最终目标是：
+
+1. `Nodes` 页面中 `t813-agent` 显示 `online`
+2. 节点日志里没有权限错误、Java 缺失错误、SSH 认证错误
+3. Jenkins 能在这台节点上执行一个最小 shell step
+
+#### 13.2.5 最小验证任务
+
+节点在线后，建议立刻用一个最小 Pipeline 验证：
+
+```groovy
+pipeline {
+    agent { label 't813 && robot' }
+
+    stages {
+        stage('Agent Smoke Test') {
+            steps {
+                sh 'hostname'
+                sh 'whoami'
+                sh 'pwd'
+                sh 'java -version'
+                sh 'touch workspace_write_test.txt'
+                sh 'ls -l workspace_write_test.txt'
+                sh 'rm -f workspace_write_test.txt'
+            }
+        }
+    }
+}
+```
+
+只要这段能成功跑完，就说明：
+
+- Jenkins 能正确挑中这台 Agent
+- SSH 启动正常
+- Java 运行时正常
+- `/automation/workspace` 工作目录正常
+- 当前 Job 对应的 workspace 目录可写
+
+如果你在日志里看到类似下面这种路径，也属于正常现象：
+
+```text
+/automation/workspace/workspace/agent-smoke-test
+```
+
+原因是：
+
+- 节点配置里的 `Remote root directory` 是 `/automation/workspace`
+- Jenkins 会在这个根目录下面，再为具体 Job 创建自己的 workspace 子目录
+
+因此看到 `/automation/workspace/workspace/...` 不代表配置错了。
+
+#### 13.2.6 如果连接失败，优先检查什么
+
+按这个顺序查，通常最快：
+
+1. Master 上先手工验证：
+
+```bash
+ssh -i ~/.ssh/jenkins_agent_rsa jenkins@10.57.159.149 "echo SSH OK"
+```
+
+2. Agent 上确认 Java：
+
+```bash
+java -version
+readlink -f "$(which java)"
+```
+
+3. Agent 上确认目录权限：
+
+```bash
+ls -ld /automation /automation/workspace
+```
+
+4. Agent 上确认 SSH 服务在线：
+
+```bash
+systemctl status ssh --no-pager || systemctl status sshd --no-pager
+```
+
+如果这四步都正常，再回 Jenkins 看节点日志，通常问题就只剩 Credentials 选错或 Host Key 校验策略过严。
+
+如果节点日志里已经出现下面这种报错：
+
+```text
+UnsupportedClassVersionError
+class file version 61.0
+only recognizes class file versions up to 52.0
+```
+
+就不要再查 SSH 或 Credentials 了，这个报错已经很明确地说明：
+
+- SSH 认证已经成功
+- `remoting.jar` 已经成功下发
+- 失败点是 Agent 上实际运行的 `java` 太旧
+- `61.0` 对应 Java 17
+- `52.0` 对应 Java 8
+
+也就是说，这种场景通常是：
+
+- Agent 上虽然可能装过 `openjdk-17-jre`
+- 但 Jenkins 启动 agent 时实际调用到的仍然是旧的 Java 8
+
+这时直接在 Agent 上执行下面这组命令排查和修复：
+
+```bash
+java -version
+readlink -f "$(which java)"
+update-alternatives --list java || true
+sudo apt install -y openjdk-17-jre openjdk-17-jre-headless
+sudo update-alternatives --config java
+java -version
+readlink -f "$(which java)"
+```
+
+修复目标是：
+
+- `java -version` 输出为 `17.x`
+- `which java` 指向的最终路径落在 `java-17-openjdk`
+
+如果你不想依赖系统默认 `java`，也可以在 Jenkins 节点配置页中把 `JavaPath` 显式填成 Java 17 的绝对路径，例如：
+
+```text
+/usr/lib/jvm/java-17-openjdk-amd64/bin/java
+```
+
+填完后重新点 `Launch agent`。只要 Java 版本正确，这类 `UnsupportedClassVersionError` 一般就会直接消失。
 
 ### 13.3 Agent 侧代码同步原则
 
@@ -1866,18 +2349,22 @@ git push origin main
 
 1. 按第 8 步完成 Agent 机器基础环境：
    - 安装 `python3`
-   - 安装 `openjdk-21-jre`
+    - 安装 `openjdk-17-jre`
    - 安装 `git`
    - 安装 `openssh-server`
 2. 创建 `jenkins` 用户并准备 `/automation/workspace`
 3. 在 Master 上生成 SSH 密钥
 4. 将公钥加入 Agent 的 `authorized_keys`
-5. 在 Jenkins Web 中新增节点：
+5. 在 Jenkins Web 中点击 `Set up an agent` 或进入 `Manage Jenkins -> Nodes -> New Node` 新增节点：
    - Name: `t813-agent`
    - Remote root directory: `/automation/workspace`
    - Labels: `t813 robot`
    - Launch method: `Launch agents via SSH`
    - Host: `10.57.159.149`
+    - Number of executors: `1`
+    - Usage: `Only build jobs with label expressions matching this node`
+    - Credentials: 选择 `jenkins` 用户对应的 SSH 私钥凭据
+    - Host Key Verification Strategy: 第一轮可选 `Non verifying Verification Strategy`
 6. 点击连接并观察日志
 
 #### 命令参考
@@ -1887,7 +2374,7 @@ Agent 侧：
 ```bash
 sudo apt update
 sudo apt upgrade -y
-sudo apt install -y python3 python3-pip python3-venv openjdk-21-jre git openssh-server curl vim
+sudo apt install -y python3 python3-pip python3-venv openjdk-17-jre git openssh-server curl vim
 sudo useradd -m -s /bin/bash jenkins || true
 echo "jenkins ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/jenkins
 sudo mkdir -p /automation/{workspace,venv,logs,downloads}
@@ -1907,25 +2394,137 @@ ssh -i ~/.ssh/jenkins_agent_rsa jenkins@10.57.159.149 "echo 'SSH OK'"
 
 | 项目 | 目标值 | 实际结果 | 状态 |
 |---|---|---|---|
-| Agent 主机 | `10.57.159.149` | 待填写 | 未开始 |
-| Agent 用户 | `jenkins` | 待填写 | 未开始 |
-| Agent 工作目录 | `/automation/workspace` | 待填写 | 未开始 |
-| Agent 标签 | `t813 robot` | 待填写 | 未开始 |
-| SSH 私钥路径 | `~/.ssh/jenkins_agent_rsa` | 待填写 | 未开始 |
-| SSH 连通性 | `SSH OK` | 待填写 | 未开始 |
-| Jenkins 节点状态 | `online` | 待填写 | 未开始 |
+| Agent 主机 | `10.57.159.149` | `10.57.159.149` | 已完成 |
+| Agent 用户 | `jenkins` | `jenkins` | 已完成 |
+| Agent 工作目录 | `/automation/workspace` | `/automation/workspace` | 已完成 |
+| Agent 标签 | `t813 robot` | `t813 robot` | 已完成 |
+| SSH 私钥路径 | `~/.ssh/jenkins_agent_rsa` | `~/.ssh/jenkins_agent_rsa` | 已完成 |
+| SSH 连通性 | `SSH OK` | `SSH OK` | 已完成 |
+| Jenkins 节点状态 | `online` | `online` | 已完成 |
 
 建议再补一段执行日志：
 
 ```text
 [18.3 Agent 配置执行记录]
-- 日期：
-- 执行人：
-- Master 主机：
-- Agent 主机：
-- Jenkins 节点名：
-- 备注：
+- 日期：2026-04-21
+- 执行人：Jenkins Administrator（Smoke Test 由 Jenkins Web 手工触发）
+- Master 主机：10.71.210.104
+- Agent 主机：10.57.159.149
+- Jenkins 节点名：t813-agent
+- 备注：SSH Agent 已连通；最小 shell step 已执行成功；workspace 写入验证通过
 ```
+
+本次实际 Smoke Test 关键结果如下：
+
+```text
+Running on t813-agent in /automation/workspace/workspace/agent-smoke-test
+hostname -> tl12315-vm
+whoami -> jenkins
+pwd -> /automation/workspace/workspace/agent-smoke-test
+java -version -> openjdk 17
+touch workspace_write_test.txt -> 成功
+ls -l workspace_write_test.txt -> 文件由 jenkins:jenkins 创建
+Finished: SUCCESS
+```
+
+#### 怎么验证第 2 条和第 3 条
+
+上面的“已完成”是本次实际联调结果。以后如果你换了 Agent、换了工作目录，或者只是想重新确认，也可以固定按下面步骤再验一次。
+
+##### 第 2 条：验证 Jenkins 能在该 Agent 上执行一个最小 shell step
+
+在 Jenkins Web 中新建一个最小 Pipeline Job：
+
+1. 点击 `New Item`
+2. Job 名称填写：`agent-smoke-test`
+3. 类型选择：`Pipeline`
+4. 点击 `OK`
+5. 进入 `Pipeline` 配置区域
+6. `Definition` 选择 `Pipeline script`
+7. 粘贴下面这段最小脚本：
+
+```groovy
+pipeline {
+    agent { label 't813 && robot' }
+
+    stages {
+        stage('Agent Smoke Test') {
+            steps {
+                sh 'hostname'
+                sh 'whoami'
+                sh 'pwd'
+                sh 'java -version'
+            }
+        }
+    }
+}
+```
+
+8. 点击 `Save`
+9. 点击 `Build Now`
+10. 打开 `Console Output`
+
+这一步的通过标准是：
+
+- 日志里出现 `Running on t813-agent`
+- `hostname`、`whoami`、`pwd`、`java -version` 都成功执行
+- 构建最终显示 `Finished: SUCCESS`
+
+只要满足这几条，就说明：
+
+- Jenkins 已经把任务真正派发到这台 Agent 上了
+- 最小 shell step 已经可以在该 Agent 上执行
+
+##### 第 3 条：验证 Agent 工作目录 `/automation/workspace` 正常可写
+
+最直接的做法是在上面的 Smoke Test 里再加 3 条文件写入命令：
+
+```groovy
+pipeline {
+    agent { label 't813 && robot' }
+
+    stages {
+        stage('Agent Smoke Test') {
+            steps {
+                sh 'hostname'
+                sh 'whoami'
+                sh 'pwd'
+                sh 'java -version'
+                sh 'touch workspace_write_test.txt'
+                sh 'ls -l workspace_write_test.txt'
+                sh 'rm -f workspace_write_test.txt'
+            }
+        }
+    }
+}
+```
+
+再点一次 `Build Now`，然后看 `Console Output`。
+
+这一步的通过标准是：
+
+- `touch workspace_write_test.txt` 执行成功
+- `ls -l workspace_write_test.txt` 能看到文件
+- 文件所有者通常显示为 `jenkins jenkins`
+- `rm -f workspace_write_test.txt` 执行成功
+- 构建最终仍然是 `Finished: SUCCESS`
+
+如果日志里同时看到类似下面的输出：
+
+```text
+pwd -> /automation/workspace/workspace/agent-smoke-test
+```
+
+就可以这样理解：
+
+- Jenkins 当前 Job 的实际执行目录位于 `/automation/workspace` 下面
+- Jenkins 已经能在这个目录下创建和删除测试文件
+- 因此可以判定 `/automation/workspace` 这条工作链路是可写的
+
+一句话判断规则：
+
+- 第 2 条看的是“命令能不能在 Agent 上跑起来”
+- 第 3 条看的是“Agent 的 workspace 里能不能成功创建并删除文件”
 
 #### 验收结果
 
@@ -1935,7 +2534,46 @@ ssh -i ~/.ssh/jenkins_agent_rsa jenkins@10.57.159.149 "echo 'SSH OK'"
 2. Jenkins 能在该 Agent 上执行一个最小 shell step
 3. Agent 工作目录 `/automation/workspace` 正常可写
 
+当前环境这三条已经验证通过。
+
 ### 18.4 第三步：准备 Jenkins / 构建机的前端构建环境
+
+这里的“Jenkins / 构建机的前端构建环境”，通俗讲就是：
+
+- 一台专门负责把前端源码加工成可部署静态文件的机器
+- 这台机器上已经装好了 `Node.js` 和 `npm`
+- 它可以执行 `npm install` 和 `npm run build`
+
+你可以把它理解成一个“前端打包车间”。
+
+在这个车间里：
+
+- `automation-portal` 目录里的源码是原材料
+- `Node.js + npm` 是生产工具
+- `npm run build` 是加工动作
+- 最终生成的 `dist/` 是成品
+
+这一步做的不是前端业务功能，而是先解决一个很实际的问题：
+
+- 以后你写好的 React 前端，到底由哪台机器来编译
+
+因为你当前本机不装 `Node.js`，所以前端源码虽然能写，但不能在本机直接完成构建。这时就需要另一台机器来负责构建。这个“另一台机器”一般有两种选择：
+
+1. Jenkins Master 本机临时兼任前端构建机
+2. 单独一台 Jenkins Agent 专门负责前端构建
+
+它实际要做的事情很简单：
+
+1. 拉到 `automation-portal` 的源码
+2. 机器上已经装好 `Node.js` 和 `npm`
+3. 执行 `npm install`
+4. 执行 `npm run build`
+5. 生成前端静态产物 `dist/`
+6. 后面再把 `dist/` 交给 Nginx 提供访问
+
+所以这一节的核心目标不是“做页面”，而是先证明：
+
+- 你的前端以后有地方可以被稳定地构建出来
 
 #### 要做什么
 
@@ -1968,6 +2606,19 @@ node --version
 npm --version
 ```
 
+如果当前 Jenkins Master / 构建机访问外网需要代理，可改用：
+
+```bash
+sudo apt update
+sudo apt install -y ca-certificates curl gnupg
+export http_proxy=http://10.144.1.10:8080
+export https_proxy=http://10.144.1.10:8080
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+node --version
+npm --version
+```
+
 #### 验收结果
 
 满足以下条件就算通过：
@@ -1975,6 +2626,128 @@ npm --version
 1. 构建机上 `node --version` 返回 `v20.x.x`
 2. 构建机上 `npm --version` 正常
 3. Jenkins 可在该节点执行前端构建命令
+
+#### 第 3 条怎么验证
+
+第 3 条验证的不是“这台机器自己能不能敲出 `node --version`”，而是：
+
+- Jenkins 能不能真的把一个 Job 派到这台机器上
+- 并在这台机器上执行前端相关命令
+
+最直接的验证方式是新建一个最小 Pipeline Job，例如：`frontend-build-smoke-test`。
+
+##### 18.4.1 先确定这条 Job 要跑到哪台机器
+
+有两种常见情况：
+
+1. 如果当前是 Jenkins Master 临时承担前端构建：
+   - 可以先用 `agent any`
+   - 或者如果你给 Master 专门加了 label，也可以用那个 label
+2. 如果当前是单独的前端构建节点：
+   - 建议先给这台节点加一个明确 label，例如：`frontend`
+   - 后面 Pipeline 固定写 `agent { label 'frontend' }`
+
+为了让文档最容易照做，下面先用单独 label 的写法示例。
+
+##### 18.4.2 新建最小 Pipeline 验证 Job
+
+在 Jenkins Web 中：
+
+1. 点击 `New Item`
+2. 名称填写：`frontend-build-smoke-test`
+3. 类型选择：`Pipeline`
+4. 点击 `OK`
+5. 在 `Pipeline` 配置区域中，`Definition` 选择 `Pipeline script`
+6. 粘贴下面脚本：
+
+```groovy
+pipeline {
+    agent { label 'frontend' }
+
+    stages {
+        stage('Frontend Environment Check') {
+            steps {
+                sh 'hostname'
+                sh 'whoami'
+                sh 'node --version'
+                sh 'npm --version'
+            }
+        }
+    }
+}
+```
+
+如果你当前不是单独的 `frontend` 节点，而是让 Jenkins Master 临时承担前端构建，可以先把上面的：
+
+```groovy
+agent { label 'frontend' }
+```
+
+改成：
+
+```groovy
+agent any
+```
+
+##### 18.4.3 怎么看这一步有没有通过
+
+保存后：
+
+1. 点击 `Save`
+2. 点击 `Build Now`
+3. 打开 `Console Output`
+
+通过标准是：
+
+- 日志里显示 Job 确实跑在你选定的那台机器上
+- `node --version` 成功输出 `v20.x.x`
+- `npm --version` 成功输出 npm 版本号
+- 构建最终显示 `Finished: SUCCESS`
+
+只要满足这些条件，就说明：
+
+- Jenkins 已经能把任务派发到这台构建机
+- Jenkins 已经能在这台机器上执行前端构建相关命令
+
+##### 18.4.4 如果你想再多走一步，可以直接验证 `npm install` / `npm run build`
+
+上面的 Job 只验证 Node.js 和 npm 命令可用。
+
+如果你想把“前端构建环境”再验证得更实一点，可以把脚本改成下面这样：
+
+```groovy
+pipeline {
+    agent { label 'frontend' }
+
+    stages {
+        stage('Checkout Repo') {
+            steps {
+                git branch: 'main', url: 'https://github.com/stella555359/jenkins_robotframework.git'
+            }
+        }
+
+        stage('Build automation-portal') {
+            steps {
+                dir('automation-portal') {
+                    sh 'node --version'
+                    sh 'npm --version'
+                    sh 'npm install'
+                    sh 'npm run build'
+                }
+            }
+        }
+    }
+}
+```
+
+如果这段也能跑通，那么就不只是“命令可执行”，而是已经非常接近 `18.6` 的前端最小构建链路了。
+
+##### 18.4.5 一句话判断第 3 条
+
+第 3 条的本质判断规则是：
+
+- 不是你手工 SSH 到机器上运行成功
+- 而是 Jenkins 触发的 Job 在这台机器上运行成功
 
 ### 18.5 第四步：先打通 `reporting-portal` 最小后端链路
 
@@ -2096,6 +2869,202 @@ npm --version
 4. 执行一个最小 Robot case
 5. 归档 `output.xml`、`log.html`、`report.html`
 
+#### 第 1 轮为什么先用 dry run
+
+这里不要一上来就直接跑真实测试线 case。第一轮最小验证的目标不是“把真实业务 case 跑完”，而是先确认下面这条链路已经通了：
+
+- Jenkins 能把任务派发到 `t813-agent`
+- Agent 上能创建 Python 虚拟环境
+- Agent 上能安装并调用 Robot Framework
+- Jenkins 能拿到 Robot 产物
+
+因此第 1 轮最推荐的做法是：
+
+- 先拉取 `robotws`
+- 先用 `dummy_config.py`
+- 先用 `--dryrun`
+
+这样可以先避开真实 testline、硬件资源、环境预约、设备连通性这些变量，把问题范围压到最小。
+
+#### 第 1 轮最小验证步骤
+
+##### 18.8.1 先准备一个最小 Robot Pipeline Job
+
+在 Jenkins Web 中新建一个 Pipeline Job，例如：`robot-dryrun-smoke-test`。
+
+步骤和前面的 Agent Smoke Test 一样：
+
+1. 点击 `New Item`
+2. Job 名称填写：`robot-dryrun-smoke-test`
+3. 类型选择：`Pipeline`
+4. 点击 `OK`
+5. 在 `Pipeline` 配置区域中，`Definition` 选择 `Pipeline script`
+
+##### 18.8.2 选择正确的 lock 文件
+
+`robotws` 仓库里已经带了按 Python 版本区分的 lock 文件。第一轮建议按 Agent 上的 Python 版本选其中一个：
+
+- Debian 13 常见用：`dependencies.py311-rf50.lock`
+- Ubuntu 22.04 常见用：`dependencies.py310-rf50.lock`
+
+如果你不确定，就先在 Agent 上执行：
+
+```bash
+python3 --version
+```
+
+然后按版本选：
+
+- Python 3.11 -> `dependencies.py311-rf50.lock`
+- Python 3.10 -> `dependencies.py310-rf50.lock`
+
+##### 18.8.3 第 1 轮推荐直接使用这份最小 Pipeline
+
+下面这份脚本的目标非常单纯：
+
+- 在 `t813-agent` 上执行
+- 拉取 `robotws`
+- 创建 `.venv`
+- 安装 Robot 运行依赖
+- 使用 `dummy_config.py` 执行一次 dry run
+- 归档 Robot 结果文件
+
+如果你的 Agent 是 Python 3.10，请把脚本里的 `dependencies.py311-rf50.lock` 改成 `dependencies.py310-rf50.lock`。
+
+```groovy
+pipeline {
+    agent { label 't813 && robot' }
+
+    stages {
+        stage('Checkout robotws') {
+            steps {
+                dir('robotws') {
+                    git branch: 'master', url: 'https://wrgitlab.ext.net.nokia.com/RAN/robotws.git'
+                }
+            }
+        }
+
+        stage('Prepare Python Runtime') {
+            steps {
+                sh '''
+                python3 --version
+                python3 -m venv .venv
+                . .venv/bin/activate
+                python -m pip install --upgrade pip
+                python -m pip install -r robotws/dependencies.py311-rf50.lock
+                python -m robot --version
+                '''
+            }
+        }
+
+        stage('Robot Dry Run') {
+            steps {
+                sh '''
+                . .venv/bin/activate
+                mkdir -p robot-output
+                cd robotws
+                PYTHONPATH=. python -m robot \
+                  --dryrun \
+                  --exitonerror \
+                  --runemptysuite \
+                  --listener sanity-checks.checksyspath.SyspathGuard \
+                  --console dotted \
+                  -V dummy_config.py \
+                  -L DEBUG \
+                  -b ../robot-output/debug.log \
+                  -d ../robot-output \
+                  testsuite/Ulm/ET
+                '''
+            }
+        }
+    }
+
+    post {
+        always {
+            archiveArtifacts artifacts: 'robot-output/**', allowEmptyArchive: true
+        }
+    }
+}
+```
+
+##### 18.8.4 运行后要看什么
+
+保存脚本后：
+
+1. 点击 `Save`
+2. 点击 `Build Now`
+3. 打开 `Console Output`
+
+重点看下面几类输出：
+
+- Job 是否显示 `Running on t813-agent`
+- `python3 --version` 是否正常
+- `python -m robot --version` 是否正常
+- `Robot Dry Run` 阶段是否成功结束
+- 构建最终是否显示 `Finished: SUCCESS`
+
+##### 18.8.5 怎么判断这一步已经通过
+
+只要同时满足下面这些条件，就说明 `Jenkins -> Agent -> Robot` 的最小链路已经打通：
+
+1. Jenkins 构建成功结束
+2. `Console Output` 里能看到 Robot CLI 被真正调用
+3. Jenkins 构建产物里能看到以下文件中的至少 3 个：
+   - `robot-output/output.xml`
+   - `robot-output/log.html`
+   - `robot-output/report.html`
+   - `robot-output/debug.log`
+
+这时可以认定：
+
+- Jenkins 已经能在 Agent 上启动 Python 运行时
+- Agent 已经能执行 `python -m robot`
+- Jenkins 已经能收集 Robot 结果文件
+
+#### 第 2 轮再切到真实 testline / 真实 case
+
+只有在上面的 dry run 通过之后，再切到真实 case。
+
+这时才需要把：
+
+- `dummy_config.py`
+- `--dryrun`
+
+替换成：
+
+- 真实的 `testline_configuration/<TL>`
+- 真实的 `-t <case name>`
+- 真实的 `.robot` 文件路径
+
+命令形态建议固定为：
+
+```bash
+PYTHONPATH=robotws python -m robot \
+  --pythonpath robotws \
+  -V testline_configuration/<TL> \
+  -t "<case name>" \
+  -L DEBUG \
+  -b robot-output/debug.log \
+  -d robot-output \
+  robotws/testsuite/.../xxx.robot
+```
+
+例如将来切到真实场景时，可以按这个思路替换：
+
+- `<TL>` -> 某个真实 testline 目录
+- `<case name>` -> 某个真实 case 名称
+- `robotws/testsuite/.../xxx.robot` -> 某个真实 suite 文件
+
+#### 第 1 轮最常见失败点
+
+如果这一步失败，优先按下面顺序查：
+
+1. `git clone` / `git checkout` 失败：通常是 Agent 访问 GitLab 的权限或网络问题
+2. `pip install -r ...lock` 失败：通常是 Python 版本和 lock 文件不匹配，或 Agent 无法访问内部 PyPI 源
+3. `python -m robot --version` 失败：说明 Robot Framework 没有正确装进 `.venv`
+4. `listener sanity-checks.checksyspath.SyspathGuard` 导入失败：通常是没有在 `robotws` 根目录下执行，或者缺少 `PYTHONPATH=.`
+5. 没有生成 `output.xml` / `log.html` / `report.html`：说明 Robot 阶段根本没真正跑起来
+
 #### 第一轮只要求做到
 
 - 跑通一个最小 case
@@ -2109,11 +3078,42 @@ npm --version
 2. Agent 上真实执行过 Robot
 3. Jenkins 中可以看到 Robot 产物
 
+如果你当前 `reporting-portal` 还根本没有开始做，那么这里先不要继续跳到 `18.9`。
+
+这时正确理解应该是：
+
+- `18.8` 的目标只是先把 `Jenkins -> Agent -> Robot` 跑通
+- 跑通后，先回到前面的 `18.5`，把 `reporting-portal` 最小链路补起来
+- 至少先做到 `/health`
+- 再补最小 `run` 接口
+- 等 FastAPI 已经具备“接收 run 状态更新”的能力之后，才进入 `18.9`
+
 ### 18.9 第八步：回传 run 结果到 FastAPI
 
 #### 要做什么
 
 把 Jenkins 执行结果回写到 `reporting-portal`，这样前端才能真正显示状态。
+
+#### 这一节的前提条件
+
+这一节不是当前 Agent 刚打通后就立刻做。
+
+只有在下面这些条件已经成立时，才进入这一节：
+
+1. `18.5` 已完成，`reporting-portal` 最小服务已经可以启动
+2. `18.7` 已完成，FastAPI 已经具备最小 `run` 记录能力
+3. `18.8` 已完成，Jenkins 已经能在 Agent 上执行 Robot 并产出结果文件
+
+如果你当前的实际状态是：
+
+- Agent 已经通了
+- Robot dry run 也通了
+- 但 FastAPI 还没开始做
+
+那么这一节先不要做，应该先回去完成：
+
+- `18.5 第四步：先打通 reporting-portal 最小后端链路`
+- `18.7 第六步：打通 React -> FastAPI -> Jenkins` 里与 `run` 接口相关的最小部分
 
 #### 具体动作
 
@@ -2177,7 +3177,7 @@ npm --version
 5. 再打通 `automation-portal` 构建发布
 6. 再做 `POST /api/runs`
 7. 再让 Jenkins 触发 Agent 跑最小 Robot
-8. 再回传 run 状态
+8. 如果 FastAPI 最小 run 接口已经具备，再回传 run 状态
 9. 最后再接 KPI
 
 ---

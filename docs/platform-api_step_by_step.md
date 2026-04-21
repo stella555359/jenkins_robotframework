@@ -519,6 +519,46 @@ router.py
 入口 main -> 路由 router -> 逻辑 service -> 返回结果
 ```
 
+#### 问题 4：服务器上调试时要不要建 `.venv`？是每个模块一个，还是整个仓库共用一个？
+
+建议是：
+
+**每个 Python 模块一个 `.venv`，不要整个 `jenkins_robotframework` 仓库共用一个。**
+
+先说这次的 `platform-api`：
+
+- 推荐在 `platform-api/` 目录下建自己的 `.venv`
+- 后面启动、测试、部署都尽量使用这个环境里的 `python`
+
+为什么推荐“每个模块一个”：
+
+1. 依赖隔离更清楚  
+   `platform-api` 后面会有自己的 FastAPI、Pydantic、数据库相关依赖；别的 Python 模块未必完全一样。
+2. 降低冲突  
+   如果整个仓库共用一个 `venv`，一个模块升级依赖，可能把另一个模块带崩。
+3. 部署更贴近真实运行方式  
+   以后 `platform-api` 如果是独立服务，它本来就应该有自己独立的运行环境。
+4. 排查问题更简单  
+   出问题时更容易判断：这是 `platform-api` 自己的依赖问题，不是仓库里别的模块带出来的。
+
+对你这个仓库，推荐先这样理解：
+
+- `platform-api`：单独一个 `.venv`
+- `automation-portal`：它不是 Python 项目，不用 `venv`，它用的是 `node_modules`
+- 如果后面还有独立 Python 工具模块，例如单独部署的脚本服务，也建议它们各自有自己的 `.venv`
+
+推荐的目录理解方式：
+
+```text
+jenkins_robotframework/
+  platform-api/
+    .venv/
+  automation-portal/
+    node_modules/
+```
+
+不要一开始就在仓库根目录建一个通用 `.venv` 让所有模块混着用。
+
 ### 涉及文件
 
 - `platform-api/requirements.txt`
@@ -540,9 +580,12 @@ router.py
 
 ```powershell
 cd C:\TA\jenkins_robotframework\platform-api
-py -m pip install -r requirements.txt
-py -m pytest tests/test_health.py
-py -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python -m pytest tests/test_health.py
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
 另开一个终端窗口验证：
@@ -557,9 +600,12 @@ curl http://127.0.0.1:8000/api/health
 
 ```powershell
 cd C:\TA\jenkins_robotframework\platform-api
-py -m pip install -r requirements.txt
-py -m pytest tests/test_health.py
-py -m uvicorn app.main:app --reload
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python -m pytest tests/test_health.py
+python -m uvicorn app.main:app --reload
 curl http://127.0.0.1:8000/api/health
 ```
 

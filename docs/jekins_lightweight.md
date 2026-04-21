@@ -2810,9 +2810,12 @@ pipeline {
 
 ```powershell
 cd C:\TA\jenkins_robotframework\platform-api
-py -m pip install -r requirements.txt
-py -m pytest tests/test_health.py
-py -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python -m pytest tests/test_health.py
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
 验证命令：

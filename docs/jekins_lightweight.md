@@ -2768,9 +2768,9 @@ pipeline {
 #### 具体动作
 
 1. 确认 `platform-api` 骨架完整
-2. 本地安装依赖
-3. 本地跑 `pytest`
-4. 本地启动 `/health`
+2. 在 Jenkins Master / 目标服务器安装依赖
+3. 在 Jenkins Master / 目标服务器跑 `pytest`
+4. 在 Jenkins Master / 目标服务器启动 `/api/health`
 5. push 到 GitHub
 6. 服务器 `git pull`
 7. 创建 venv
@@ -2780,18 +2780,46 @@ pipeline {
 
 #### 第一轮只要求做到
 
-- `GET /health`
+- `GET /api/health`
 - 最小 FastAPI 服务能被 systemd 拉起
-- `/api/health` 或 `/api/health` 路径可验证
+- `/api/health` 路径可验证
 
 #### 验收结果
 
 满足以下条件就算通过：
 
-1. 本地 `pytest` 通过
-2. 本地 `http://127.0.0.1:8000/health` 可访问
-3. 服务器本机 `http://127.0.0.1:8000/health` 可访问
+1. Jenkins Master / 目标服务器上 `pytest` 通过
+2. Jenkins Master / 服务器本机 `http://127.0.0.1:8000/api/health` 可访问
+3. 服务器本机 `http://127.0.0.1:8000/api/health` 可访问
 4. 外部路径可访问
+
+#### 当前实现记录（Step 1）
+
+当前已完成的最小骨架包括：
+
+- `platform-api/app/main.py`
+- `platform-api/app/api/v1/router.py`
+- `platform-api/app/core/config.py`
+- `platform-api/app/schemas/health.py`
+- `platform-api/app/services/health_service.py`
+- `platform-api/tests/test_health.py`
+
+当前健康检查接口已经按 `GET /api/health` 落地。
+
+推荐先在 Jenkins Master / 目标服务器验证：
+
+```powershell
+cd C:\TA\jenkins_robotframework\platform-api
+py -m pip install -r requirements.txt
+py -m pytest tests/test_health.py
+py -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+验证命令：
+
+```powershell
+curl http://127.0.0.1:8000/api/health
+```
 
 ### 18.6 第五步：再打通 `automation-portal` 最小前端构建链路
 

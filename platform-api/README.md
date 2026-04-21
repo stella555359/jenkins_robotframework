@@ -1,0 +1,15 @@
+# platform-api
+
+`platform-api` 是当前轻量化自动化平台的 FastAPI 后端。
+
+第一轮先从最小骨架开始，只打通：
+
+- `GET /api/health`
+
+后续再逐步扩展：
+
+- `POST /api/runs`
+- `GET /api/runs`
+- `GET /api/runs/{run_id}`
+- Jenkins 集成
+- SQLite 持久化

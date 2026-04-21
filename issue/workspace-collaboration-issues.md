@@ -63,7 +63,7 @@
 ```powershell
 git checkout dev
 git pull origin dev
-git checkout -b feature/reporting-portal-api
+git checkout -b feature/platform-api
 ```
 
 开发完成后先回到 `dev`：
@@ -71,7 +71,7 @@ git checkout -b feature/reporting-portal-api
 ```powershell
 git checkout dev
 git pull origin dev
-git merge feature/reporting-portal-api
+git merge feature/platform-api
 git push origin dev
 ```
 
@@ -267,7 +267,7 @@ git push origin main
 在实际执行时，当前项目先完成了 Jenkins Master 安装、插件安装和本机 `localhost:8080` 登录验证，但文档原本把 Nginx / HTTPS / Windows 外部访问放在后面的独立章节，排在“三块代码的开发与部署方式”之后。
 
 ### 问题
-这样会导致执行者在进入 `reporting-portal`、`kpi-portal` 开发前，还要自己重新判断真实顺序，不适合直接照整篇文档往下走。
+这样会导致执行者在进入 `platform-api`、`kpi-portal` 开发前，还要自己重新判断真实顺序，不适合直接照整篇文档往下走。
 
 ### 原因
 对当前项目来说，更稳的真实顺序应该是：

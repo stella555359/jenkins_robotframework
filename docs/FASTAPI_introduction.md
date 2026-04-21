@@ -1,9 +1,9 @@
 # FastAPI 入门说明
-## 面向 `reporting-portal` 的通俗讲解
+## 面向 `platform-api` 的通俗讲解
 
 ## 1. 先一句话理解
 
-在你现在这个项目里，`reporting-portal` 这层 `FastAPI`，可以把它理解成：
+在你现在这个项目里，`platform-api` 这层 `FastAPI`，可以把它理解成：
 
 - 前面接 `automation-portal` React 页面
 - 后面接 Jenkins、数据库、KPI 结果、artifact
@@ -13,7 +13,7 @@
 
 - `automation-portal` 是前台页面
 - Jenkins 是执行车间
-- `reporting-portal` 是前台和车间之间的调度台
+- `platform-api` 是前台和车间之间的调度台
 
 它不是直接跑 Robot 的地方，也不是最终给用户看的页面，而是“平台后端”。
 
@@ -72,9 +72,9 @@ FastAPI 路由函数
 
 ---
 
-## 4. 在这个项目里，`reporting-portal` 的职责是什么
+## 4. 在这个项目里，`platform-api` 的职责是什么
 
-在你现在的设计里，`reporting-portal` 不再只是“结果展示服务”，而是统一后端。
+在你现在的设计里，`platform-api` 不再只是“结果展示服务”，而是统一后端。
 
 它后面至少要承担这些职责：
 
@@ -98,14 +98,14 @@ FastAPI 路由函数
 
 ## 5. 在这个项目里，数据库准备怎么用
 
-在你当前这套轻量化方案里，`reporting-portal` 第一轮默认会接一个数据库，而且建议直接用：
+在你当前这套轻量化方案里，`platform-api` 第一轮默认会接一个数据库，而且建议直接用：
 
 - `SQLite`
 
 这里要特别注意：
 
 - FastAPI 不是数据库
-- 但 `reporting-portal` 需要数据库来保存平台运行记录
+- 但 `platform-api` 需要数据库来保存平台运行记录
 
 你可以先把 SQLite 理解成：
 
@@ -145,15 +145,15 @@ FastAPI 路由函数
 
 而是：
 
-1. React 把参数发给 `reporting-portal`
-2. `reporting-portal` 检查参数
-3. `reporting-portal` 先生成一条 `run_id`
-4. `reporting-portal` 调 Jenkins 触发 job
+1. React 把参数发给 `platform-api`
+2. `platform-api` 检查参数
+3. `platform-api` 先生成一条 `run_id`
+4. `platform-api` 调 Jenkins 触发 job
 5. Jenkins 返回 queue / build 信息
-6. `reporting-portal` 把这些信息保存下来
+6. `platform-api` 把这些信息保存下来
 7. React 再去查 `run_id` 对应的状态
 
-所以 `reporting-portal` 的作用就是：
+所以 `platform-api` 的作用就是：
 
 - 不让前端直接碰 Jenkins
 - 把业务概念和 Jenkins 技术概念隔开
@@ -361,7 +361,7 @@ repository 不关心前端页面
 
 这点也很重要。
 
-`reporting-portal` 虽然是平台后端，但它不应该负责：
+`platform-api` 虽然是平台后端，但它不应该负责：
 
 - 直接做 React 页面
 - 直接承担所有长时间任务执行
@@ -387,7 +387,7 @@ FastAPI 更适合：
 
 ## 12. 你后面第一轮真正要写什么
 
-你现在不需要一上来把整个 `reporting-portal` 全写完。
+你现在不需要一上来把整个 `platform-api` 全写完。
 
 第一轮只需要把最小闭环搭起来：
 
@@ -432,13 +432,13 @@ FastAPI 更适合：
 如果把整个系统想成一家工厂：
 
 - `automation-portal` 是接待台
-- `reporting-portal` 是调度室
+- `platform-api` 是调度室
 - Jenkins 是生产线总调度
 - Agent 是工位
 - Robot Framework 是具体工序
 - KPI 模块是质检和分析
 
-在这个类比里，`reporting-portal` 的核心价值就是：
+在这个类比里，`platform-api` 的核心价值就是：
 
 - 让接待台不用直接操控生产设备
 - 让生产线执行情况有统一记录
@@ -450,7 +450,7 @@ FastAPI 更适合：
 
 ## 14. 你现在最该记住的三句话
 
-1. `reporting-portal` 不是页面，它是平台后端。
+1. `platform-api` 不是页面，它是平台后端。
 2. FastAPI 最擅长做“清晰的 JSON API + 参数校验 + 平台中间层”。
 3. 你第一轮先把 run 接口做出来，比先做复杂页面更重要。
 
@@ -458,7 +458,7 @@ FastAPI 更适合：
 
 ## 15. 当前项目里的实际提醒
 
-你当前仓库里的 `reporting-portal` 还只是很薄的占位状态，说明：
+你当前仓库里的 `platform-api` 还只是很薄的占位状态，说明：
 
 - 目录已经预留了
 - `.env.example` 已存在
@@ -472,7 +472,7 @@ FastAPI 更适合：
 
 在真正动手写代码前，最合适的下一步是：
 
-1. 先把 `reporting-portal` 的最小目录结构重新补齐
+1. 先把 `platform-api` 的最小目录结构重新补齐
 2. 先写 `GET /api/health`
 3. 再写 `POST /api/runs`
 4. 再写 `GET /api/runs`

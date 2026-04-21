@@ -47,9 +47,9 @@
 | 浏览器连不上 / 超时 / `Failed to connect` | [Nginx 排障清单](#nginx-troubleshooting-checklist) |
 | `https://10.71.210.104/jenkins/` 返回 `404` | 先看 [Nginx 排障清单](#nginx-troubleshooting-checklist)，再看 [Jenkins 排障清单](#jenkins-troubleshooting-checklist) |
 | Jenkins 页面返回 `502` | [Jenkins 排障清单](#jenkins-troubleshooting-checklist) |
-| `/reports/` 或 `/kpi/` 返回 `502` | [Portal 排障清单](#portal-troubleshooting-checklist) |
+| `/api/` 或 `/kpi/` 返回 `502` | [Portal 排障清单](#portal-troubleshooting-checklist) |
 | Jenkins 登录跳转异常 / 资源 404 / URL 很怪 | [Jenkins 排障清单](#jenkins-troubleshooting-checklist) |
-| `/reports/health` 不通 | [Portal 排障清单](#portal-troubleshooting-checklist) |
+| `/api/health` 不通 | [Portal 排障清单](#portal-troubleshooting-checklist) |
 | `/kpi/health` 不通 | [Portal 排障清单](#portal-troubleshooting-checklist) |
 | Jenkins 本机能通、外部 HTTPS 不通 | [Nginx 排障清单](#nginx-troubleshooting-checklist) |
 | Portal 本机健康检查能通、外部路径不通 | [Nginx 排障清单](#nginx-troubleshooting-checklist) |
@@ -67,7 +67,7 @@
 
 这份文档采用以下固定原则，后续所有步骤都以此为准：
 
-1. **`jenkins-kpi-platform`、`kpi-portal`、`reporting-portal` 这三块代码不在 Debian 服务器上直接编写。**
+1. **`jenkins-kpi-platform`、`kpi-portal`、`platform-api` 这三块代码不在 Debian 服务器上直接编写。**
 2. **所有代码统一在本地 IDE 中开发、调试、提交。**
 3. **唯一的版本管理与同步入口是 GitHub 仓库**：`https://github.com/stella555359/jenkins_robotframework`
 4. **服务器只负责部署和运行**，即执行 `git pull`、安装依赖、迁移配置、重启服务。
@@ -99,7 +99,7 @@ jenkins_robotframework/
 │   ├── app/
 │   ├── requirements.txt
 │   └── README.md
-├── reporting-portal/
+├── platform-api/
 │   ├── app/
 │   ├── requirements.txt
 │   └── README.md
@@ -115,7 +115,7 @@ jenkins_robotframework/
 
 - **jenkins-kpi-platform**：Jenkins 配置、JCasC、Pipeline、部署脚本、自动化编排逻辑
 - **kpi-portal**：KPI 分析和报告生成入口服务
-- **reporting-portal**：测试结果查询、汇总、展示 API 或页面服务
+- **platform-api**：测试结果查询、汇总、展示 API 或页面服务
 
 **补充说明**：
 
@@ -136,7 +136,7 @@ jenkins_robotframework/
 
 - `/opt/jenkins_robotframework/jenkins-kpi-platform`
 - `/opt/jenkins_robotframework/kpi-portal`
-- `/opt/jenkins_robotframework/reporting-portal`
+- `/opt/jenkins_robotframework/platform-api`
 
 这样做的好处是：
 
@@ -235,7 +235,7 @@ jenkins_robotframework/
 
 ## 第二步：GitHub 仓库与本地开发模式
 
-这一章是整个方案的核心。以后 `jenkins-kpi-platform`、`kpi-portal`、`reporting-portal` 的任何改动都走这里。
+这一章是整个方案的核心。以后 `jenkins-kpi-platform`、`kpi-portal`、`platform-api` 的任何改动都走这里。
 
 ### 2.1 本地克隆 GitHub 仓库
 
@@ -332,7 +332,7 @@ git push -u origin main
 ```powershell
 git checkout dev
 git pull origin dev
-git checkout -b feature/reporting-portal-api
+git checkout -b feature/platform-api
 ```
 
 功能完成后：
@@ -340,7 +340,7 @@ git checkout -b feature/reporting-portal-api
 ```powershell
 git checkout dev
 git pull origin dev
-git merge feature/reporting-portal-api
+git merge feature/platform-api
 git push origin dev
 ```
 
@@ -358,7 +358,7 @@ git push origin main
 例如：
 
 ```powershell
-git checkout -b feature/reporting-portal-api
+git checkout -b feature/platform-api
 ```
 
 ### 2.3 代码修改的标准流程
@@ -380,7 +380,7 @@ cd C:\TA\jenkins_robotframework
 git status
 git add .
 git commit -m "feat: update kpi portal workflow"
-git push origin feature/reporting-portal-api
+git push origin feature/platform-api
 ```
 
 如果直接同步到主线：
@@ -388,7 +388,7 @@ git push origin feature/reporting-portal-api
 ```powershell
 git checkout main
 git pull origin main
-git merge feature/reporting-portal-api
+git merge feature/platform-api
 git push origin main
 ```
 
@@ -549,9 +549,9 @@ jenkins-kpi-platform/
 
 kpi-portal/
     app/api/v1/ app/core/ app/models/ app/schemas/ app/services/ app/utils/
-    tests/ data/uploads/ data/jobs/ data/reports/ logs/ scripts/ docs/
+    tests/ data/uploads/ data/jobs/ data/api/ logs/ scripts/ docs/
 
-reporting-portal/
+platform-api/
     app/api/v1/ app/core/ app/models/ app/schemas/ app/services/ app/utils/
     tests/ data/uploads/ data/results/ data/exports/ logs/ scripts/ docs/
 ```
@@ -936,7 +936,7 @@ server {
         proxy_set_header Connection "";
     }
 
-    location /reports/ {
+    location /api/ {
         proxy_pass http://127.0.0.1:8000/;
     }
 
@@ -1132,7 +1132,7 @@ sudo cp /opt/jenkins_robotframework/deploy/nginx/jenkins-kpi-platform.conf /etc/
 
 ```bash
 curl -k -I https://10.71.210.104/jenkins/
-curl -k -I https://10.71.210.104/reports/health
+curl -k -I https://10.71.210.104/api/health
 curl -k -I https://10.71.210.104/kpi/health
 ```
 
@@ -1283,7 +1283,7 @@ https://10.71.210.104/jenkins/
 
 ### 5.1 总原则
 
-对于 `jenkins-kpi-platform`、`kpi-portal`、`reporting-portal`：
+对于 `jenkins-kpi-platform`、`kpi-portal`、`platform-api`：
 
 - **代码编写地点**：本地 IDE
 - **版本管理地点**：GitHub 仓库 `jenkins_robotframework`
@@ -1404,16 +1404,16 @@ jenkins-kpi-platform/
 
 ---
 
-### 5.3 reporting-portal 的开发与部署
+### 5.3 platform-api 的开发与部署
 
-`reporting-portal` 是业务应用代码，开发流程应完全在本地完成。
+`platform-api` 是业务应用代码，开发流程应完全在本地完成。
 
 #### 本地开发
 
 ```powershell
 cd C:\TA\jenkins_robotframework
-git checkout -b feature/reporting-portal
-cd reporting-portal
+git checkout -b feature/platform-api
+cd platform-api
 ```
 
 在本地 IDE 中：
@@ -1426,7 +1426,7 @@ cd reporting-portal
 建议先从以下骨架开始：
 
 ```text
-reporting-portal/
+platform-api/
 ├── app/main.py
 ├── app/core/config.py
 ├── app/api/v1/router.py
@@ -1442,8 +1442,8 @@ reporting-portal/
 ```powershell
 cd C:\TA\jenkins_robotframework
 git add .
-git commit -m "feat: update reporting portal"
-git push origin feature/reporting-portal
+git commit -m "feat: update platform api"
+git push origin feature/platform-api
 ```
 
 #### 服务器部署
@@ -1475,12 +1475,12 @@ git checkout main
 git -c http.proxy=http://10.144.1.10:8080 -c https.proxy=http://10.144.1.10:8080 pull --ff-only origin main
 ```
 
-为 `reporting-portal` 单独创建虚拟环境：
+为 `platform-api` 单独创建虚拟环境：
 
 **服务器动作标签**：`允许做 / 运行环境 / python3 -m venv`
 
 ```bash
-cd /opt/jenkins_robotframework/reporting-portal
+cd /opt/jenkins_robotframework/platform-api
 python3 -m venv venv
 source venv/bin/activate
 pip install --upgrade pip
@@ -1498,17 +1498,17 @@ deactivate
 **服务器动作标签**：`允许做 / 运行配置文件 / tee`
 
 ```bash
-sudo tee /etc/systemd/system/reporting-portal.service > /dev/null << 'EOF'
+sudo tee /etc/systemd/system/platform-api.service > /dev/null << 'EOF'
 [Unit]
-Description=Reporting Portal Service
+Description=Platform API Service
 After=network.target
 
 [Service]
 Type=simple
 User=ute
-WorkingDirectory=/opt/jenkins_robotframework/reporting-portal
-Environment="PATH=/opt/jenkins_robotframework/reporting-portal/venv/bin"
-ExecStart=/opt/jenkins_robotframework/reporting-portal/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+WorkingDirectory=/opt/jenkins_robotframework/platform-api
+Environment="PATH=/opt/jenkins_robotframework/platform-api/venv/bin"
+ExecStart=/opt/jenkins_robotframework/platform-api/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
 Restart=always
 RestartSec=5
 
@@ -1517,14 +1517,14 @@ WantedBy=multi-user.target
 EOF
 
 sudo systemctl daemon-reload
-sudo systemctl enable reporting-portal
-sudo systemctl restart reporting-portal
-sudo systemctl status reporting-portal
+sudo systemctl enable platform-api
+sudo systemctl restart platform-api
+sudo systemctl status platform-api
 ```
 
 解释：
 
-- `reporting-portal.service` 属于 `运行配置文件`
+- `platform-api.service` 属于 `运行配置文件`
 - `daemon-reload`、`enable`、`restart`、`status` 属于让服务注册并生效的运行动作
 
 发布新版本时通常只需要：
@@ -1534,11 +1534,11 @@ sudo systemctl status reporting-portal
 ```bash
 cd /opt/jenkins_robotframework
 git pull --ff-only origin main
-cd reporting-portal
+cd platform-api
 source venv/bin/activate
 pip install -r requirements.txt
 deactivate
-sudo systemctl restart reporting-portal
+sudo systemctl restart platform-api
 ```
 
 解释：
@@ -1554,11 +1554,11 @@ sudo systemctl restart reporting-portal
 ```bash
 cd /opt/jenkins_robotframework
 git -c http.proxy=http://10.144.1.10:8080 -c https.proxy=http://10.144.1.10:8080 pull --ff-only origin main
-cd reporting-portal
+cd platform-api
 source venv/bin/activate
 pip install -r requirements.txt
 deactivate
-sudo systemctl restart reporting-portal
+sudo systemctl restart platform-api
 ```
 
 解释：
@@ -1623,7 +1623,7 @@ git pull --ff-only origin main
 
 解释：
 
-- KPI Portal 与 Reporting Portal 的服务器同步原则一致
+- KPI Portal 与 Platform API 的服务器同步原则一致
 - 服务器只同步代码并安装依赖，不直接维护业务源码
 
 如果服务器访问 GitHub 需要经过代理，则改用：
@@ -1639,7 +1639,7 @@ git -c http.proxy=http://10.144.1.10:8080 -c https.proxy=http://10.144.1.10:8080
 
 解释：
 
-- KPI Portal 的代理同步方式与 Reporting Portal 完全一致
+- KPI Portal 的代理同步方式与 Platform API 完全一致
 - 这样可以保持服务器发布流程统一
 
 安装依赖：
@@ -1710,7 +1710,7 @@ sudo systemctl restart kpi-portal
 
 解释：
 
-- 与 Reporting Portal 相同，动作顺序是更新代码、更新依赖、重启服务
+- 与 Platform API 相同，动作顺序是更新代码、更新依赖、重启服务
 - 这属于运行发布动作，不属于开发动作
 
 如果该服务器对 GitHub 需要代理，则改用：
@@ -1749,7 +1749,7 @@ git fetch origin
 git checkout main
 git pull --ff-only origin main
 
-cd /opt/jenkins_robotframework/reporting-portal
+cd /opt/jenkins_robotframework/platform-api
 source venv/bin/activate
 pip install -r requirements.txt
 deactivate
@@ -1759,7 +1759,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 deactivate
 
-sudo systemctl restart reporting-portal
+sudo systemctl restart platform-api
 sudo systemctl restart kpi-portal
 ```
 
@@ -1794,7 +1794,7 @@ deploy/scripts/deploy_all.sh
 
 **重要说明**：
 
-- `deploy_all.sh` 默认只重启 `reporting-portal` 和 `kpi-portal`
+- `deploy_all.sh` 默认只重启 `platform-api` 和 `kpi-portal`
 - 不要在 Jenkins 触发自己的部署任务时顺便重启 Jenkins
 - 如果确实需要更新 Jenkins 自身配置，建议单独准备 `deploy_jenkins_config.sh`，并在维护窗口手工执行
 
@@ -1810,7 +1810,7 @@ Agent 节点主要负责：
 - 执行 `robotws` 自动化任务
 - 调用测试线资源
 - 生成测试结果
-- 将结果推送给 `reporting-portal` 或 `kpi-portal`
+- 将结果推送给 `platform-api` 或 `kpi-portal`
 
 ### 6.2 在 Jenkins 中添加 Agent
 
@@ -1834,7 +1834,7 @@ Agent 节点主要负责：
 
 Agent 上运行的测试仓库，例如 `robotws`、`testline_configuration`，仍然可以由 Jenkins Job 在构建时拉取。
 
-但 `jenkins-kpi-platform`、`kpi-portal`、`reporting-portal` 的业务代码主线仍以 GitHub 仓库为准，不在 Agent 上手工维护。
+但 `jenkins-kpi-platform`、`kpi-portal`、`platform-api` 的业务代码主线仍以 GitHub 仓库为准，不在 Agent 上手工维护。
 
 ---
 
@@ -1878,7 +1878,7 @@ pipeline {
                     git checkout main
                     git pull --ff-only origin main
 
-                    cd /opt/jenkins_robotframework/reporting-portal
+                    cd /opt/jenkins_robotframework/platform-api
                     . venv/bin/activate
                     pip install -r requirements.txt
                     deactivate
@@ -1888,7 +1888,7 @@ pipeline {
                     pip install -r requirements.txt
                     deactivate
 
-                    sudo systemctl restart reporting-portal
+                    sudo systemctl restart platform-api
                     sudo systemctl restart kpi-portal
                 '
                 '''
@@ -1926,7 +1926,7 @@ ssh ute@10.71.210.104 '
     git checkout main
     git -c http.proxy=http://10.144.1.10:8080 -c https.proxy=http://10.144.1.10:8080 pull --ff-only origin main
 
-    cd /opt/jenkins_robotframework/reporting-portal
+    cd /opt/jenkins_robotframework/platform-api
     . venv/bin/activate
     pip install -r requirements.txt
     deactivate
@@ -1936,7 +1936,7 @@ ssh ute@10.71.210.104 '
     pip install -r requirements.txt
     deactivate
 
-    sudo systemctl restart reporting-portal
+    sudo systemctl restart platform-api
     sudo systemctl restart kpi-portal
 '
 ```
@@ -1965,9 +1965,9 @@ ssh ute@10.71.210.104 '
 
 - [ ] GitHub 上目标分支代码已更新
 - [ ] 服务器 `git pull` 成功
-- [ ] `reporting-portal` 依赖安装成功
+- [ ] `platform-api` 依赖安装成功
 - [ ] `kpi-portal` 依赖安装成功
-- [ ] Jenkins / KPI Portal / Reporting Portal 服务状态正常
+- [ ] Jenkins / KPI Portal / Platform API 服务状态正常
 - [ ] `/health` 接口正常
 
 ### 8.2 常用检查命令
@@ -1980,7 +1980,7 @@ git log -1 --oneline
 git status
 
 sudo systemctl status jenkins
-sudo systemctl status reporting-portal
+sudo systemctl status platform-api
 sudo systemctl status kpi-portal
 
 curl --noproxy localhost http://localhost:8000/health
@@ -2016,7 +2016,7 @@ cd /opt/jenkins_robotframework
 git fetch origin
 git checkout main
 git pull --ff-only origin main
-sudo systemctl restart reporting-portal
+sudo systemctl restart platform-api
 sudo systemctl restart kpi-portal
 ```
 
@@ -2034,7 +2034,7 @@ cd /opt/jenkins_robotframework
 git -c http.proxy=http://10.144.1.10:8080 -c https.proxy=http://10.144.1.10:8080 fetch origin
 git checkout main
 git -c http.proxy=http://10.144.1.10:8080 -c https.proxy=http://10.144.1.10:8080 pull --ff-only origin main
-sudo systemctl restart reporting-portal
+sudo systemctl restart platform-api
 sudo systemctl restart kpi-portal
 ```
 
@@ -2159,18 +2159,18 @@ sudo systemctl status nginx
 
 适用场景：
 
-- `/reports/health` 不通
+- `/api/health` 不通
 - `/kpi/health` 不通
 - Portal 页面或 API 异常
 
 按下面顺序排查：
 
 ```bash
-sudo systemctl status reporting-portal
+sudo systemctl status platform-api
 sudo systemctl status kpi-portal
-systemctl is-active reporting-portal
+systemctl is-active platform-api
 systemctl is-active kpi-portal
-sudo journalctl -u reporting-portal -n 100
+sudo journalctl -u platform-api -n 100
 sudo journalctl -u kpi-portal -n 100
 sudo ss -lntp | grep :8000
 sudo ss -lntp | grep :8001
@@ -2182,9 +2182,9 @@ curl --noproxy localhost http://127.0.0.1:8001/health
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl restart reporting-portal
+sudo systemctl restart platform-api
 sudo systemctl restart kpi-portal
-sudo systemctl status reporting-portal
+sudo systemctl status platform-api
 sudo systemctl status kpi-portal
 ```
 
@@ -2221,7 +2221,7 @@ sudo systemctl status kpi-portal
 **服务器动作标签**：`允许做 / 运维检查 / journalctl`
 
 ```bash
-sudo journalctl -u reporting-portal -n 100
+sudo journalctl -u platform-api -n 100
 sudo journalctl -u kpi-portal -n 100
 sudo journalctl -u jenkins -n 100
 ```
@@ -2262,7 +2262,7 @@ sudo journalctl -u jenkins -n 100
 
 ## 最终结论
 
-从本版本文档开始，`jenkins-kpi-platform`、`kpi-portal`、`reporting-portal` 的标准工作方式明确如下：
+从本版本文档开始，`jenkins-kpi-platform`、`kpi-portal`、`platform-api` 的标准工作方式明确如下：
 
 - **代码在本地 IDE 中开发**
 - **代码统一 push 到 GitHub 仓库**：`https://github.com/stella555359/jenkins_robotframework`

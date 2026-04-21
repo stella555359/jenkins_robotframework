@@ -10,14 +10,14 @@
 
 ## 文档概述
 
-本文档用于指导你以轻量化方式搭建 Jenkins 自动化测试平台，并集成 KPI Portal 与 Reporting Portal。
+本文档用于指导你以轻量化方式搭建 Jenkins 自动化测试平台，并集成 KPI Portal 与 Platform API。
 
 这份版本已经统一为以下原则：
 
-- `jenkins-kpi-platform`、`kpi-portal`、`reporting-portal` 三块代码统一在本地 IDE 开发
+- `jenkins-kpi-platform`、`kpi-portal`、`platform-api` 三块代码统一在本地 IDE 开发
 - 所有代码统一 push 到 GitHub 仓库 `jenkins_robotframework`
 - Debian 服务器只负责 `git pull`、安装依赖、配置 systemd、启动服务
-- Jenkins、KPI Portal、Reporting Portal 统一通过 Nginx 暴露为 HTTPS 入口
+- Jenkins、KPI Portal、Platform API 统一通过 Nginx 暴露为 HTTPS 入口
 
 ---
 
@@ -39,12 +39,12 @@
 - 在当前已有 2 台服务器基础上完成平台上线
 - 支持测试线 `7_5_UTE5G402T813` 的自动化测试执行
 - 实现 Jenkins 调度 -> Robot Framework 执行 -> KPI 分析 -> 结果展示的闭环
-- 以最小可维护成本部署 Jenkins、KPI Portal、Reporting Portal
+- 以最小可维护成本部署 Jenkins、KPI Portal、Platform API
 - 后续所有代码修改都通过 GitHub 同步，而不是在服务器直接改代码
 
 ### 2.2 轻量化原则
 
-- 单台 Master 服务器承载 Jenkins + KPI Portal + Reporting Portal
+- 单台 Master 服务器承载 Jenkins + KPI Portal + Platform API
 - 单台 Agent 服务器承载测试线执行
 - 先使用 FastAPI + Python venv + systemd + Nginx
 - 先支持 IP + HTTPS，自签名或公司内部 CA 证书均可
@@ -68,7 +68,7 @@ flowchart TB
         NGINX[Nginx HTTPS 入口\n443]
         JENKINS[Jenkins\n127.0.0.1:8080/jenkins]
         KPI[KPI Portal\n127.0.0.1:8001]
-        REPORT[Reporting Portal\n127.0.0.1:8000]
+        REPORT[Platform API\n127.0.0.1:8000]
         CODE[/opt/jenkins_robotframework]
         NGINX --> JENKINS
         NGINX --> KPI
@@ -103,7 +103,7 @@ flowchart LR
     C --> D[Jenkins 手工或自动触发]
     D --> E[Master 服务器 git pull]
     E --> F[安装 Python 依赖]
-    F --> G[重启 reporting-portal / kpi-portal]
+    F --> G[重启 platform-api / kpi-portal]
     G --> H[健康检查]
 ```
 
@@ -115,7 +115,7 @@ sequenceDiagram
     participant Jenkins as Jenkins Master
     participant Agent as T813 Agent
     participant Robot as Robot Framework
-    participant Report as Reporting Portal
+    participant Report as Platform API
     participant Kpi as KPI Portal
 
     User->>Jenkins: 触发任务
@@ -136,7 +136,7 @@ sequenceDiagram
 
 - `jenkins-kpi-platform` 配置和 Pipeline 开发
 - `kpi-portal` 代码开发
-- `reporting-portal` 代码开发
+- `platform-api` 代码开发
 - 自测和提交 Git 版本
 
 ### 4.2 GitHub 仓库负责
@@ -175,7 +175,7 @@ C:\TA\jenkins_robotframework
 ├── kpi-portal/
 │   ├── app/
 │   └── requirements.txt
-├── reporting-portal/
+├── platform-api/
 │   ├── app/
 │   └── requirements.txt
 ├── deploy/
@@ -191,14 +191,14 @@ C:\TA\jenkins_robotframework
 /opt/jenkins_robotframework
 ├── jenkins-kpi-platform/
 ├── kpi-portal/
-├── reporting-portal/
+├── platform-api/
 ├── deploy/
 └── docs/
 ```
 
 ### 5.3 FastAPI 入口说明
 
-当前 `kpi-portal` 和 `reporting-portal` 的实际入口文件都是：
+当前 `kpi-portal` 和 `platform-api` 的实际入口文件都是：
 
 - `app/main.py`
 
@@ -379,12 +379,12 @@ git checkout main
 git pull --ff-only origin main
 ```
 
-### 第七步：KPI Portal 和 Reporting Portal 部署
+### 第七步：KPI Portal 和 Platform API 部署
 
-安装 `reporting-portal` 依赖：
+安装 `platform-api` 依赖：
 
 ```bash
-cd /opt/jenkins_robotframework/reporting-portal
+cd /opt/jenkins_robotframework/platform-api
 python3 -m venv venv
 source venv/bin/activate
 pip install --upgrade pip
@@ -406,12 +406,12 @@ deactivate
 配置 systemd：
 
 ```bash
-sudo cp /opt/jenkins_robotframework/deploy/systemd/reporting-portal.service /etc/systemd/system/reporting-portal.service
+sudo cp /opt/jenkins_robotframework/deploy/systemd/platform-api.service /etc/systemd/system/platform-api.service
 sudo cp /opt/jenkins_robotframework/deploy/systemd/kpi-portal.service /etc/systemd/system/kpi-portal.service
 sudo systemctl daemon-reload
-sudo systemctl enable reporting-portal
+sudo systemctl enable platform-api
 sudo systemctl enable kpi-portal
-sudo systemctl restart reporting-portal
+sudo systemctl restart platform-api
 sudo systemctl restart kpi-portal
 ```
 
@@ -455,7 +455,7 @@ server {
         proxy_set_header Connection "";
     }
 
-    location /reports/ {
+    location /api/ {
         proxy_pass http://127.0.0.1:8000/;
     }
 
@@ -479,7 +479,7 @@ sudo systemctl restart nginx
 
 ```bash
 curl -k -I https://10.71.210.104/jenkins/
-curl -k -I https://10.71.210.104/reports/health
+curl -k -I https://10.71.210.104/api/health
 curl -k -I https://10.71.210.104/kpi/health
 ```
 
@@ -493,7 +493,7 @@ curl -k -I https://10.71.210.104/kpi/health
 4. `git push` 到 GitHub
 5. Master 服务器 `git pull`
 6. 安装依赖
-7. 重启 `reporting-portal` / `kpi-portal`
+7. 重启 `platform-api` / `kpi-portal`
 
 标准命令：
 
@@ -534,9 +534,9 @@ Jenkins 自身重启只放在以下场景：
 
 - [ ] Jenkins Web 可通过 `https://10.71.210.104/jenkins/` 访问
 - [ ] Agent 成功在线
-- [ ] `reporting-portal` 服务正常
+- [ ] `platform-api` 服务正常
 - [ ] `kpi-portal` 服务正常
-- [ ] `/reports/health` 返回 200
+- [ ] `/api/health` 返回 200
 - [ ] `/kpi/health` 返回 200
 - [ ] 服务器代码路径为 `/opt/jenkins_robotframework`
 - [ ] 本地代码路径为 `C:\TA\jenkins_robotframework`
@@ -549,7 +549,7 @@ git log -1 --oneline
 git status
 
 sudo systemctl status jenkins
-sudo systemctl status reporting-portal
+sudo systemctl status platform-api
 sudo systemctl status kpi-portal
 
 curl --noproxy localhost http://localhost:8000/health
@@ -578,7 +578,7 @@ cd /opt/jenkins_robotframework
 git fetch origin
 git checkout main
 git pull --ff-only origin main
-sudo systemctl restart reporting-portal
+sudo systemctl restart platform-api
 sudo systemctl restart kpi-portal
 ```
 
@@ -598,7 +598,7 @@ git push origin release-2026-04-16
 1. 配 Jenkins Prefix `/jenkins`
 2. 配 Agent 和 SSH 免密
 3. 同步 GitHub 仓库到 `/opt/jenkins_robotframework`
-4. 启动 `reporting-portal` 和 `kpi-portal`
+4. 启动 `platform-api` 和 `kpi-portal`
 5. 配 Nginx 和 HTTPS
 6. 做健康检查
 7. 最后再接 Jenkins 自动发布

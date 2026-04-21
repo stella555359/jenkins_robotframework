@@ -30,7 +30,7 @@
 
 这部分已经具备“先承载 Jenkins 配置、部署脚本和流水线骨架”的基础，但当前阶段不需要先把它做重。
 
-### 2. reporting-portal
+### 2. platform-api
 
 当前已经具备：
 
@@ -56,7 +56,7 @@
 
 结论：
 
-这部分也已具备最小服务骨架，但建议放在 reporting-portal 之后推进。
+这部分也已具备最小服务骨架，但建议放在 platform-api 之后推进。
 
 ### 4. deploy/scripts/deploy_all.sh
 
@@ -65,7 +65,7 @@
 - 拉取代码
 - 创建 venv
 - 安装依赖
-- 重启 `reporting-portal`
+- 重启 `platform-api`
 - 重启 `kpi-portal`
 
 结论：
@@ -78,13 +78,13 @@
 
 建议顺序：
 
-1. `reporting-portal`
+1. `platform-api`
 2. `kpi-portal`
 3. `jenkins-kpi-platform`
 
 理由：
 
-- `reporting-portal` 当前依赖更轻，更适合先打通“代码 -> 服务 -> systemd -> Nginx 路径”的第一条最小链路
+- `platform-api` 当前依赖更轻，更适合先打通“代码 -> 服务 -> systemd -> Nginx 路径”的第一条最小链路
 - `kpi-portal` 可以复用同一套落地模式，在第一条链路成功后再复制推进
 - `jenkins-kpi-platform` 当前应优先承担配置和部署编排角色，而不是先做重功能
 
@@ -100,7 +100,7 @@
 - 至少维护一个部署脚本入口
 - 暂时不优先扩展复杂 Job DSL 和重型 Jenkins 逻辑
 
-### 2. reporting-portal
+### 2. platform-api
 
 当前阶段最小目标：
 
@@ -111,7 +111,7 @@
 - `requirements.txt`
 - 可被 `uvicorn app.main:app` 启动
 - 可被 systemd 拉起
-- 可通过 `/reports/health` 由 Nginx 转发访问
+- 可通过 `/api/health` 由 Nginx 转发访问
 
 ### 3. kpi-portal
 
@@ -131,13 +131,13 @@
 建议按下面顺序推进：
 
 1. 先做一次 commit 和 push，把当前 Jenkins / Nginx 已打通后的状态固化为基线
-2. 本地先只完善 `reporting-portal` 的最小可运行状态
-3. 本地跑通 `reporting-portal` 的测试和健康检查
+2. 本地先只完善 `platform-api` 的最小可运行状态
+3. 本地跑通 `platform-api` 的测试和健康检查
 4. push 到 GitHub
-5. 服务器 `git pull`，部署并拉起 `reporting-portal`
+5. 服务器 `git pull`，部署并拉起 `platform-api`
 6. 验证：
    - `http://127.0.0.1:8000/health`
-   - `https://10.71.210.104/reports/health`
+   - `https://10.71.210.104/api/health`
 7. 这条链路稳定后，再用同样方法推进 `kpi-portal`
 8. 两个 Portal 都稳定后，再回到 `jenkins-kpi-platform` 收口第一版部署脚本、Pipeline、JCasC
 
@@ -148,7 +148,7 @@
 最稳的推进方式不是三块一起铺开，而是：
 
 1. 先 commit + push 固化基线
-2. 先做 `reporting-portal`
+2. 先做 `platform-api`
 3. 再做 `kpi-portal`
 4. 最后收口 `jenkins-kpi-platform`
 
@@ -160,7 +160,7 @@
 
 ## 第五步第一轮实施动作清单
 
-下面这份清单按“先固化基线，再打通 reporting-portal，再复制到 kpi-portal”的顺序编排。
+下面这份清单按“先固化基线，再打通 platform-api，再复制到 kpi-portal”的顺序编排。
 
 ### A. 先固化当前基线
 
@@ -192,16 +192,16 @@ git push origin main
 - 把“Jenkins / Nginx 已打通”的当前状态固化到 GitHub
 - 后面第五步如果出问题，至少有一个清晰基线可回看
 
-### B. 先在本地打通 reporting-portal
+### B. 先在本地打通 platform-api
 
-#### 步骤 3：先确认 reporting-portal 最小骨架完整
+#### 步骤 3：先确认 platform-api 最小骨架完整
 
 重点确认这些文件存在：
 
-- `reporting-portal/app/main.py`
-- `reporting-portal/app/api/v1/router.py`
-- `reporting-portal/requirements.txt`
-- `reporting-portal/tests/test_health.py`
+- `platform-api/app/main.py`
+- `platform-api/app/api/v1/router.py`
+- `platform-api/requirements.txt`
+- `platform-api/tests/test_health.py`
 
 目标：
 
@@ -213,7 +213,7 @@ git push origin main
 如果当前使用本机 Python，建议在本地执行：
 
 ```powershell
-cd C:\TA\jenkins_robotframework\reporting-portal
+cd C:\TA\jenkins_robotframework\platform-api
 C:\Users\stlin\Python313\python.exe -m pip install -r requirements.txt
 C:\Users\stlin\Python313\python.exe -m pytest tests\test_health.py
 ```
@@ -223,10 +223,10 @@ C:\Users\stlin\Python313\python.exe -m pytest tests\test_health.py
 - 先验证最小测试通过
 - 先在本地发现缺依赖、导入路径、配置对象问题
 
-#### 步骤 5：本地启动 reporting-portal
+#### 步骤 5：本地启动 platform-api
 
 ```powershell
-cd C:\TA\jenkins_robotframework\reporting-portal
+cd C:\TA\jenkins_robotframework\platform-api
 C:\Users\stlin\Python313\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
@@ -241,13 +241,13 @@ curl http://127.0.0.1:8000/health
 - 确认最小服务能在本地真正启动
 - 确认 `/health` 返回正常
 
-#### 步骤 6：如果本地通过，再提交 reporting-portal 当前最小版本
+#### 步骤 6：如果本地通过，再提交 platform-api 当前最小版本
 
 ```powershell
 cd C:\TA\jenkins_robotframework
 git status
 git add .
-git commit -m "feat: validate minimal reporting portal health flow"
+git commit -m "feat: validate minimal platform api health flow"
 git push origin main
 ```
 
@@ -255,7 +255,7 @@ git push origin main
 
 - 把第一条最小可运行链路的代码状态推到 GitHub
 
-### C. 在服务器部署 reporting-portal
+### C. 在服务器部署 platform-api
 
 #### 步骤 7：服务器同步最新代码
 
@@ -268,10 +268,10 @@ git pull --ff-only origin main
 
 如果服务器访问 GitHub 需要代理，则改用文档里的代理版命令。
 
-#### 步骤 8：在服务器安装 reporting-portal 依赖
+#### 步骤 8：在服务器安装 platform-api 依赖
 
 ```bash
-cd /opt/jenkins_robotframework/reporting-portal
+cd /opt/jenkins_robotframework/platform-api
 python3 -m venv venv
 source venv/bin/activate
 pip install --upgrade pip
@@ -283,21 +283,21 @@ deactivate
 
 - 保证服务器运行环境和当前代码匹配
 
-#### 步骤 9：确认或创建 reporting-portal.service
+#### 步骤 9：确认或创建 platform-api.service
 
 如果服务文件还没正式落地，按主文档中的 service 模板创建：
 
-- `WorkingDirectory=/opt/jenkins_robotframework/reporting-portal`
-- `Environment="PATH=/opt/jenkins_robotframework/reporting-portal/venv/bin"`
-- `ExecStart=/opt/jenkins_robotframework/reporting-portal/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000`
+- `WorkingDirectory=/opt/jenkins_robotframework/platform-api`
+- `Environment="PATH=/opt/jenkins_robotframework/platform-api/venv/bin"`
+- `ExecStart=/opt/jenkins_robotframework/platform-api/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000`
 
 然后执行：
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable reporting-portal
-sudo systemctl restart reporting-portal
-sudo systemctl status reporting-portal
+sudo systemctl enable platform-api
+sudo systemctl restart platform-api
+sudo systemctl status platform-api
 ```
 
 #### 步骤 10：先做服务器本机验证
@@ -313,13 +313,13 @@ curl --noproxy localhost http://127.0.0.1:8000/health
 #### 步骤 11：再做 Nginx 路径验证
 
 ```bash
-curl -k -I https://10.71.210.104/reports/health
-curl -k https://10.71.210.104/reports/health
+curl -k -I https://10.71.210.104/api/health
+curl -k https://10.71.210.104/api/health
 ```
 
 目标：
 
-- 确认 `/reports/health` 已通过 Nginx 暴露成功
+- 确认 `/api/health` 已通过 Nginx 暴露成功
 
 ### D. 再复制到 kpi-portal
 
@@ -385,10 +385,10 @@ curl -k https://10.71.210.104/kpi/health
 
 第一轮不追求复杂业务功能，只要满足下面这些条件，就算完成：
 
-1. `reporting-portal` 本地测试通过
-2. `reporting-portal` 本地 `/health` 可访问
+1. `platform-api` 本地测试通过
+2. `platform-api` 本地 `/health` 可访问
 3. 服务器本机 `http://127.0.0.1:8000/health` 可访问
-4. 外部 `https://10.71.210.104/reports/health` 可访问
+4. 外部 `https://10.71.210.104/api/health` 可访问
 5. `kpi-portal` 本地测试通过
 6. `kpi-portal` 本地 `/health` 可访问
 7. 服务器本机 `http://127.0.0.1:8001/health` 可访问

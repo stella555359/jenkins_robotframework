@@ -15,7 +15,7 @@
 当前统一方案的核心结构是：
 
 - `jenkins-kpi-platform`：Jenkins 配置、Pipeline、部署编排
-- `reporting-portal`：FastAPI 后端，统一 API、任务记录、结果聚合
+- `platform-api`：FastAPI 后端，统一 API、任务记录、结果聚合
 - `automation-portal`：React 门户层，负责触发、查看、分析
 
 前端构建策略统一采用：
@@ -123,7 +123,7 @@
 
 ### 4.1 直接用 Jenkins 与带门户层方案对比
 
-| 对比点 | 直接进入 Jenkins 调 Job | `automation-portal + reporting-portal + Jenkins` |
+| 对比点 | 直接进入 Jenkins 调 Job | `automation-portal + platform-api + Jenkins` |
 |---|---|---|
 | 面向对象 | 自动化工程师、平台维护者 | 普通测试用户、测试管理者、平台维护者 |
 | 用户看到的概念 | Job、参数、构建号、Agent | 测试线、版本、用例、环境、结果、趋势 |
@@ -154,7 +154,7 @@
 | 层级 | 组件 | 职责 |
 |---|---|---|
 | L0 门户层 | `automation-portal` React | 任务触发、构建历史、结果详情、KPI 页面 |
-| L1 API 层 | `reporting-portal` FastAPI | 对接 Jenkins、聚合运行记录、封装 KPI 任务 |
+| L1 API 层 | `platform-api` FastAPI | 对接 Jenkins、聚合运行记录、封装 KPI 任务 |
 | L2 调度层 | Jenkins | 调度 Pipeline、编排 Agent、归档产物 |
 | L3 执行层 | Agent + Robot Framework + `robotws` + `testline_configuration` | 执行自动化 case |
 | L4 后处理层 | `kpi-generator` + `kpi-anomaly-detector` | 生成 KPI Excel、异常分析、输出 HTML/Excel 结果 |
@@ -170,7 +170,7 @@
 - Robot 执行链路编排
 - KPI 后处理 Pipeline 编排
 
-#### `reporting-portal`
+#### `platform-api`
 
 - Jenkins API 封装
 - run 记录与状态管理
@@ -196,7 +196,7 @@ jenkins_robotframework/
 │   ├── pipelines/
 │   ├── scripts/
 │   └── README.md
-├── reporting-portal/
+├── platform-api/
 │   ├── app/
 │   │   ├── api/
 │   │   ├── core/
@@ -225,7 +225,7 @@ jenkins_robotframework/
 统一由 Nginx 收口：
 
 - `/jenkins/` -> Jenkins
-- `/api/` -> `reporting-portal`
+- `/api/` -> `platform-api`
 - `/` -> `automation-portal`
 
 推荐最终外部访问形态：
@@ -240,7 +240,7 @@ jenkins_robotframework/
 flowchart LR
     U["用户"]
     FE["automation-portal<br/>React"]
-    API["reporting-portal<br/>FastAPI"]
+    API["platform-api<br/>FastAPI"]
     JM["Jenkins Master"]
     JA["Agent"]
     RF["Robot Framework<br/>robotws + testline_configuration"]
@@ -304,7 +304,7 @@ python --version
 
 ### 6.3 第一轮建议准备的本地能力
 
-- Python：用于 `reporting-portal`
+- Python：用于 `platform-api`
 - Git：用于本地开发与同步
 - SSH：用于远程部署和验证
 
@@ -793,7 +793,7 @@ https://10.71.210.104/jenkins/
 从这里开始，不再沿用“两个 FastAPI 服务并列”的旧思路，而是切换成：
 
 - `automation-portal`：React 门户层
-- `reporting-portal`：FastAPI 平台后端
+- `platform-api`：FastAPI 平台后端
 - Jenkins：执行与编排层
 
 ### 10.2 第一轮目标
@@ -909,11 +909,11 @@ npm run build
 
 ---
 
-## 12. 第七步：`reporting-portal` FastAPI 平台后端
+## 12. 第七步：`platform-api` FastAPI 平台后端
 
 ### 12.1 新职责
 
-`reporting-portal` 不再只是“报告展示服务”，而是统一平台后端。
+`platform-api` 不再只是“报告展示服务”，而是统一平台后端。
 
 它要承担：
 
@@ -938,15 +938,15 @@ npm run build
 
 第一版默认使用 `SQLite`，后续数据量变大或并发需求更高时，再切 `PostgreSQL`。
 
-也就是说，当前轻量化方案里，`reporting-portal` 的数据库基线就是：
+也就是说，当前轻量化方案里，`platform-api` 的数据库基线就是：
 
 - 数据库类型：`SQLite`
 - 目标：先把 run、artifact、KPI 结果这些核心元数据稳稳存下来
 
 建议第一轮数据库文件先放在：
 
-- 本地开发：`reporting-portal/data/results/reporting_portal.db`
-- 服务器：`/opt/jenkins_robotframework/reporting-portal/data/results/reporting_portal.db`
+- 本地开发：`platform-api/data/results/reporting_portal.db`
+- 服务器：`/opt/jenkins_robotframework/platform-api/data/results/reporting_portal.db`
 
 为什么第一轮先用 `SQLite`：
 
@@ -1039,7 +1039,7 @@ npm run build
 ### 12.4 本地开发
 
 ```powershell
-cd C:\TA\jenkins_robotframework\reporting-portal
+cd C:\TA\jenkins_robotframework\platform-api
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
@@ -1049,7 +1049,7 @@ uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ### 12.5 服务器部署
 
 ```bash
-cd /opt/jenkins_robotframework/reporting-portal
+cd /opt/jenkins_robotframework/platform-api
 python3 -m venv venv
 source venv/bin/activate
 pip install --upgrade pip
@@ -1061,15 +1061,15 @@ systemd 示例：
 
 ```ini
 [Unit]
-Description=Reporting Portal Service
+Description=Platform API Service
 After=network.target
 
 [Service]
 Type=simple
 User=ute
-WorkingDirectory=/opt/jenkins_robotframework/reporting-portal
-Environment="PATH=/opt/jenkins_robotframework/reporting-portal/venv/bin"
-ExecStart=/opt/jenkins_robotframework/reporting-portal/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+WorkingDirectory=/opt/jenkins_robotframework/platform-api
+Environment="PATH=/opt/jenkins_robotframework/platform-api/venv/bin"
+ExecStart=/opt/jenkins_robotframework/platform-api/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
 Restart=always
 RestartSec=5
 
@@ -1491,7 +1491,7 @@ Agent 构建时可以拉取：
 
 负责：
 
-1. 更新 `reporting-portal`
+1. 更新 `platform-api`
 2. 在 Jenkins 或构建机中构建 `automation-portal`
 3. 更新 Nginx 静态目录
 4. 重启 FastAPI 服务
@@ -1600,7 +1600,7 @@ stage('Publish automation-portal dist') {
 ```mermaid
 flowchart LR
     FE["automation-portal"]
-    API["reporting-portal"]
+    API["platform-api"]
     J["Jenkins"]
     A["Agent"]
     R["Robot Framework"]
@@ -1625,7 +1625,7 @@ flowchart LR
     G["GitHub"]
     J["Jenkins deploy pipeline"]
     S["Master server"]
-    RP["reporting-portal"]
+    RP["platform-api"]
     FE["automation-portal dist"]
     N["Nginx"]
 
@@ -1678,7 +1678,7 @@ flowchart LR
 更合理的分工是：
 
 - `automation-portal`：让用户选择“是否生成 KPI / 是否做异常检测”
-- `reporting-portal`：接收请求、记录状态、提供结果查询
+- `platform-api`：接收请求、记录状态、提供结果查询
 - Jenkins / Agent：真正执行 `kpi-generator` 与 `kpi-anomaly-detector`
 
 ### 15.3 推荐放置位置
@@ -1688,7 +1688,7 @@ flowchart LR
 建议职责归属：
 
 - 执行编排：`jenkins-kpi-platform`
-- 任务记录与结果接口：`reporting-portal`
+- 任务记录与结果接口：`platform-api`
 - 配置页面与结果展示：`automation-portal`
 
 ### 15.4 推荐接入时序
@@ -1702,7 +1702,7 @@ flowchart TB
     T5{"是否启用异常分析?"}
     T6["kpi-anomaly-detector<br/>读取 xlsx 做分析"]
     T7["归档 KPI Excel / HTML / summary"]
-    T8["reporting-portal 更新 run 记录"]
+    T8["platform-api 更新 run 记录"]
     T9["automation-portal 展示结果"]
 
     T1 --> T2 --> T3
@@ -1763,7 +1763,7 @@ flowchart TB
 - KPI 结果标签页
 - 异常结果摘要展示
 
-#### `reporting-portal`
+#### `platform-api`
 
 建议新增接口：
 
@@ -1795,7 +1795,7 @@ Stage 2  Run Robot Framework
 Stage 3  Archive Robot artifacts
 Stage 4  Generate KPI Workbook (optional)
 Stage 5  Run KPI Anomaly Detector (optional)
-Stage 6  Publish artifacts and callback reporting-portal
+Stage 6  Publish artifacts and callback platform-api
 ```
 
 ### 15.10 `kpi-generator` 接入注意点
@@ -1891,7 +1891,7 @@ Stage 6  Publish artifacts and callback reporting-portal
 
 为了让这一章后续可以直接落地，建议按下面三块拆开推进：
 
-1. `reporting-portal` 先补 API 与数据模型
+1. `platform-api` 先补 API 与数据模型
 2. `jenkins-kpi-platform` 再补 Pipeline stage
 3. `automation-portal` 最后补页面、字段与结果展示
 
@@ -1901,7 +1901,7 @@ Stage 6  Publish artifacts and callback reporting-portal
 - 再让 Jenkins 能真正执行 KPI 两个模块
 - 最后让 React 把参数配置与结果展示补完整
 
-### 15.16 `reporting-portal` 需要新增哪些 API
+### 15.16 `platform-api` 需要新增哪些 API
 
 建议按“先最小可用，再逐步扩展”的方式增加。
 
@@ -1981,7 +1981,7 @@ Stage 6  Publish artifacts and callback reporting-portal
 
 #### FastAPI 端第一轮最小完成标准
 
-只要满足下面这些点，就说明 `reporting-portal` 的 KPI 接口层已经够用了：
+只要满足下面这些点，就说明 `platform-api` 的 KPI 接口层已经够用了：
 
 1. 创建 run 时可以保存 KPI 参数
 2. Jenkins 执行后可以回写 KPI 状态
@@ -2004,7 +2004,7 @@ Stage 6  Publish artifacts and callback reporting-portal
 | `Generate KPI Workbook` | 可选 | 调 `kpi-generator` 生成 KPI `.xlsx` |
 | `Run KPI Anomaly Detector` | 可选 | 调 `kpi-anomaly-detector` 做分析 |
 | `Archive KPI Artifacts` | 可选 | 归档 KPI Excel / HTML / Excel 报告 |
-| `Callback reporting-portal` | 必选 | 把状态和 artifact 信息回写 FastAPI |
+| `Callback platform-api` | 必选 | 把状态和 artifact 信息回写 FastAPI |
 
 #### `Generate KPI Workbook` 阶段建议接收的参数
 
@@ -2051,7 +2051,7 @@ Stage 6  Publish artifacts and callback reporting-portal
 2. 能生成 KPI `.xlsx`
 3. 能执行 anomaly detector
 4. 能归档 KPI 报告
-5. 能把结果回传到 `reporting-portal`
+5. 能把结果回传到 `platform-api`
 
 ### 15.18 `automation-portal` 需要新增哪些页面和字段
 
@@ -2124,7 +2124,7 @@ Stage 6  Publish artifacts and callback reporting-portal
 
 最推荐按下面顺序做：
 
-1. `reporting-portal` 先补字段和接口
+1. `platform-api` 先补字段和接口
 2. Jenkins Pipeline 补 KPI 两个可选 stage
 3. `automation-portal` 再接参数表单和结果展示
 
@@ -2138,7 +2138,7 @@ Stage 6  Publish artifacts and callback reporting-portal
 
 如果按你现在仓库状态继续推进，建议下一轮直接做这些文件层动作：
 
-#### `reporting-portal`
+#### `platform-api`
 
 - 在 `app/api/v1/router.py` 补 KPI 相关路由入口
 - 新建 `app/services/kpi_service.py`
@@ -2161,7 +2161,7 @@ Stage 6  Publish artifacts and callback reporting-portal
 
 ## 16. 第十一步：统一 Nginx 路由
 
-当 `reporting-portal` 与 `automation-portal` 落地后，把 Nginx 配置更新为统一入口。
+当 `platform-api` 与 `automation-portal` 落地后，把 Nginx 配置更新为统一入口。
 
 这里要特别注意：
 
@@ -2239,7 +2239,7 @@ git log -1 --oneline
 git status
 
 sudo systemctl status jenkins
-sudo systemctl status reporting-portal
+sudo systemctl status platform-api
 
 curl -k -I https://127.0.0.1/jenkins/
 curl --noproxy localhost http://127.0.0.1:8000/health
@@ -2272,7 +2272,7 @@ cd /opt/jenkins_robotframework
 git fetch origin
 git checkout main
 git pull --ff-only origin main
-sudo systemctl restart reporting-portal
+sudo systemctl restart platform-api
 sudo systemctl restart nginx
 ```
 
@@ -2293,7 +2293,7 @@ sudo systemctl restart nginx
 1. 先固化当前 Jenkins 基线
 2. 先完成 Jenkins Agent 配置
 3. 再准备 Jenkins / 构建机的 Node.js 20 LTS 构建环境
-4. 再打通 `reporting-portal` 最小后端链路
+4. 再打通 `platform-api` 最小后端链路
 5. 再打通 `automation-portal` 最小前端构建链路
 6. 再打通 `React -> FastAPI -> Jenkins`
 7. 再打通 `Jenkins -> Agent -> Robot`
@@ -2304,7 +2304,7 @@ sudo systemctl restart nginx
 
 - 没有 Agent，就没有真实执行闭环
 - 没有前端构建环境，React 页面后面无法真正发布
-- 没有 `reporting-portal`，前端和 Jenkins 之间就缺统一 API
+- 没有 `platform-api`，前端和 Jenkins 之间就缺统一 API
 - KPI 模块属于后处理，不适合放在第一轮起步阶段
 
 ### 18.2 第一步：固化当前 Jenkins 基线
@@ -2749,7 +2749,7 @@ pipeline {
 - 不是你手工 SSH 到机器上运行成功
 - 而是 Jenkins 触发的 Job 在这台机器上运行成功
 
-### 18.5 第四步：先打通 `reporting-portal` 最小后端链路
+### 18.5 第四步：先打通 `platform-api` 最小后端链路
 
 #### 要做什么
 
@@ -2767,7 +2767,7 @@ pipeline {
 
 #### 具体动作
 
-1. 确认 `reporting-portal` 骨架完整
+1. 确认 `platform-api` 骨架完整
 2. 本地安装依赖
 3. 本地跑 `pytest`
 4. 本地启动 `/health`
@@ -2782,7 +2782,7 @@ pipeline {
 
 - `GET /health`
 - 最小 FastAPI 服务能被 systemd 拉起
-- `/api/health` 或 `/reports/health` 路径可验证
+- `/api/health` 或 `/api/health` 路径可验证
 
 #### 验收结果
 
@@ -2832,7 +2832,7 @@ pipeline {
 
 #### 具体动作
 
-1. `reporting-portal` 增加最小 run 接口：
+1. `platform-api` 增加最小 run 接口：
    - `POST /api/runs`
    - `GET /api/runs`
    - `GET /api/runs/{run_id}`
@@ -3078,12 +3078,12 @@ PYTHONPATH=robotws python -m robot \
 2. Agent 上真实执行过 Robot
 3. Jenkins 中可以看到 Robot 产物
 
-如果你当前 `reporting-portal` 还根本没有开始做，那么这里先不要继续跳到 `18.9`。
+如果你当前 `platform-api` 还根本没有开始做，那么这里先不要继续跳到 `18.9`。
 
 这时正确理解应该是：
 
 - `18.8` 的目标只是先把 `Jenkins -> Agent -> Robot` 跑通
-- 跑通后，先回到前面的 `18.5`，把 `reporting-portal` 最小链路补起来
+- 跑通后，先回到前面的 `18.5`，把 `platform-api` 最小链路补起来
 - 至少先做到 `/health`
 - 再补最小 `run` 接口
 - 等 FastAPI 已经具备“接收 run 状态更新”的能力之后，才进入 `18.9`
@@ -3092,7 +3092,7 @@ PYTHONPATH=robotws python -m robot \
 
 #### 要做什么
 
-把 Jenkins 执行结果回写到 `reporting-portal`，这样前端才能真正显示状态。
+把 Jenkins 执行结果回写到 `platform-api`，这样前端才能真正显示状态。
 
 #### 这一节的前提条件
 
@@ -3100,7 +3100,7 @@ PYTHONPATH=robotws python -m robot \
 
 只有在下面这些条件已经成立时，才进入这一节：
 
-1. `18.5` 已完成，`reporting-portal` 最小服务已经可以启动
+1. `18.5` 已完成，`platform-api` 最小服务已经可以启动
 2. `18.7` 已完成，FastAPI 已经具备最小 `run` 记录能力
 3. `18.8` 已完成，Jenkins 已经能在 Agent 上执行 Robot 并产出结果文件
 
@@ -3112,7 +3112,7 @@ PYTHONPATH=robotws python -m robot \
 
 那么这一节先不要做，应该先回去完成：
 
-- `18.5 第四步：先打通 reporting-portal 最小后端链路`
+- `18.5 第四步：先打通 platform-api 最小后端链路`
 - `18.7 第六步：打通 React -> FastAPI -> Jenkins` 里与 `run` 接口相关的最小部分
 
 #### 具体动作
@@ -3173,7 +3173,7 @@ PYTHONPATH=robotws python -m robot \
 1. 先提交当前 Jenkins 基线
 2. 先完成 Jenkins Agent
 3. 先准备 Jenkins / 构建机的 Node.js 20 LTS
-4. 先打通 `reporting-portal` `/health`
+4. 先打通 `platform-api` `/health`
 5. 再打通 `automation-portal` 构建发布
 6. 再做 `POST /api/runs`
 7. 再让 Jenkins 触发 Agent 跑最小 Robot
@@ -3189,7 +3189,7 @@ PYTHONPATH=robotws python -m robot \
 新的统一结论是：
 
 1. 前四步继续沿用你已经验证过的 Jenkins / Nginx / HTTPS 路线。
-2. 第五步以后正式切换到 `automation-portal + reporting-portal + Jenkins` 的三层结构。
+2. 第五步以后正式切换到 `automation-portal + platform-api + Jenkins` 的三层结构。
 3. `kpi-generator` 与 `kpi-anomaly-detector` 不是独立门户，而是 Robot case 执行后的后处理阶段。
 4. 最推荐的职责分工是：
    - React 负责配置与展示

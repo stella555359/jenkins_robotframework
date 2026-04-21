@@ -308,3 +308,56 @@ git push origin main
 - 更容易看出问题出在哪一步
 - 不容易在同步 `main` 时意外制造 merge commit
 - 更适合主分支要保持清晰历史的团队
+
+## 10. 合并完成后删除本地 / 远端 feature 分支
+
+如果你已经确认下面这些条件都成立：
+
+- `feature/agent-setup` 已经成功合入 `main`
+- `main` 已经 `push` 到远端
+- 这个功能分支后面不再继续复用
+
+那么可以顺手把功能分支删掉。
+
+### 删除本地分支
+
+```bash
+git branch -d feature/agent-setup
+```
+
+作用：
+
+- 删除本地 `feature/agent-setup`
+- 只有在 Git 判断它已经合并完成时才会删除
+
+如果 Git 提示还没有合并，不要急着改成强删，先确认是不是确实还没合到 `main`。
+
+### 删除远端分支
+
+```bash
+git push origin --delete feature/agent-setup
+```
+
+作用：
+
+- 删除远端仓库上的 `feature/agent-setup`
+
+这样做之后，团队里其他人下次 `fetch` 时，也会看到这个远端功能分支已经被移除。
+
+### 对应这次场景的完整收尾命令
+
+```bash
+git fetch origin
+git checkout main
+git pull --ff-only origin main
+git merge feature/agent-setup
+git push origin main
+git branch -d feature/agent-setup
+git push origin --delete feature/agent-setup
+```
+
+### 一句话判断
+
+- `git branch -d ...` 是删本地分支
+- `git push origin --delete ...` 是删远端分支
+- 通常先确认 `main` 已经 push 成功，再删分支更稳

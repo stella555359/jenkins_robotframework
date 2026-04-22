@@ -91,6 +91,65 @@ Allure 侧：
 - `story = Run detail`
 - `title = ...`
 
+## 测试用例执行流程图
+
+这张图回答的不是“业务代码怎么调用”，而是：
+
+```text
+Step 9 这一轮自动化测试在执行时，测试数据和测试场景是怎么串起来跑的。
+```
+
+```mermaid
+flowchart LR
+    Start["开始执行 Step 9 自动化测试"]
+    Start --> Setup["加载公共 fixture"]
+    Setup --> Happy["已存在 run_id -> 返回 200"]
+    Setup --> Missing["不存在 run_id -> 返回 404"]
+    Setup --> Db["详情结果 -> 与 SQLite 一致"]
+    Setup --> Consistency["列表结果 -> 与详情一致"]
+    Setup --> Suffix["短后缀 run_id -> 也可查询"]
+    Happy --> Pytest["pytest 汇总"]
+    Missing --> Pytest
+    Db --> Pytest
+    Consistency --> Pytest
+    Suffix --> Pytest
+    Pytest --> Allure["输出 allure-results"]
+```
+
+每条用例怎么跑，拆开记最清楚：
+
+- `test_get_run_detail_returns_expected_record`
+  - 先创建一条普通 run
+  - 再调用 `GET /api/runs/{run_id}`
+  - 断言返回 `200`，并且详情字段完整
+
+- `test_get_run_detail_returns_404_for_missing_run`
+  - 不创建数据，直接查询一个不存在的 `run_id`
+  - 断言返回 `404`
+
+- `test_get_run_detail_matches_persisted_record`
+  - 先创建一条真实持久化 run
+  - 再从 SQLite 读取同一条记录
+  - 然后调用详情接口
+  - 断言接口返回值和数据库记录一致
+
+- `test_run_list_and_detail_are_consistent`
+  - 先创建一条 run
+  - 先调用 `GET /api/runs`
+  - 再调用 `GET /api/runs/{run_id}`
+  - 断言同一个 `run_id` 在列表和详情里语义一致
+
+- `test_get_run_detail_supports_suffixed_run_ids`
+  - 先创建一条带短后缀的 `run_id`
+  - 再调用详情接口
+  - 断言该类 `run_id` 也能正常命中
+
+最短记忆版：
+
+```text
+先加载公共 fixture，再分 5 条测试分支覆盖命中 / 未命中 / DB 一致性 / 列表一致性 / 特殊 run_id，最后统一输出 pytest 与 Allure 结果。
+```
+
 ## 本轮已自动化文件
 
 - `platform-api/tests/conftest.py`

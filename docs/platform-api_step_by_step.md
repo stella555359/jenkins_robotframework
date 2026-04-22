@@ -2031,6 +2031,7 @@ app.include_router(api_router, prefix="/api")
 
 ```python
 # app/services/run_service.py
+import sqlite3
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -2038,12 +2039,15 @@ from app.repositories.run_repository import insert_run_record
 from app.schemas.run import RunCreateRequest, RunCreateResponse
 
 
+def _build_run_id(timestamp: str, sequence: int) -> str:
+    return f"run-{timestamp}-{sequence:02d}"
+
+
 def run_create(request: RunCreateRequest) -> RunCreateResponse:
     now = datetime.now(ZoneInfo("Asia/Shanghai"))
-    run_id = f"run-{now.strftime('%Y%m%d%H%M%S%f')[:-3]}"
+    timestamp = now.strftime('%Y%m%d%H%M%S%f')[:-3]
 
     record = {
-        "run_id": run_id,
         "testline": request.testline,
         "robotcase_path": request.robotcase_path,
         "status": "created",
@@ -2051,7 +2055,14 @@ def run_create(request: RunCreateRequest) -> RunCreateResponse:
         "created_at": now.isoformat(),
         "updated_at": now.isoformat(),
     }
-    insert_run_record(record)
+
+    for sequence in range(1, 1000):
+        record["run_id"] = _build_run_id(timestamp, sequence)
+        try:
+            insert_run_record(record)
+            break
+        except sqlite3.IntegrityError:
+            continue
 
     return RunCreateResponse(
         run_id=record["run_id"],
@@ -2231,8 +2242,9 @@ core = 全局公共基础层，不是某个具体业务层
 现在改成了：
 
 - 时间使用 `CST`（`Asia/Shanghai`）
-- `run_id` 只保留 `run-时间戳`
+- `run_id` 默认先用 `run-时间戳`
 - 时间戳精度提升到毫秒
+- 如果插入冲突，再补 `-01 / -02` 这类短序号
 
 也就是像这样：
 
@@ -2240,15 +2252,21 @@ core = 全局公共基础层，不是某个具体业务层
 run-20260422104958123
 ```
 
-之前后面拼随机短串，目的其实只有一个：
+这样改的好处是：
 
 ```text
-避免同一秒内创建多条 run 时发生重复
+既保留时间戳的可读性，也给后续冲突重试留出了空间
 ```
 
-但它的代价就是人工阅读时不够直观。
+如果同一时间戳下第一次插入冲突，就继续尝试：
 
-现在改成“毫秒时间戳”后，保留了大部分可读性，也能比“只到秒”的格式更稳一点。
+```text
+run-20260422104958123
+   -> run-20260422104958123-01
+   -> run-20260422104958123-02
+```
+
+这样比拼一段随机串更直观，也更方便人工排查。
 
 ### 涉及文件
 
@@ -2317,6 +2335,366 @@ python -m pytest tests/test_health.py tests/test_runs.py
 - `POST /api/runs` 的“最小可用”不只是返回 JSON，而是要真的生成 run 记录
 - 一旦开始有持久化需求，就应该把 HTTP、业务语义、数据访问三层职责分开
 - 现在 `platform-api` 已经具备了后续继续实现列表、详情、Jenkins 回写的基础数据面
+
+### 复盘问题（你来回答）
+
+#### 题目 1：复述调用链
+
+请你用自己的话复述一下这条链路：
+
+```text
+POST /api/runs 从收到请求开始，到最后把数据写进 SQLite 并返回响应，中间依次经过了哪几层？每一层大概负责什么？
+```
+Stella: 
+runs请求先到API,到对应的Router接住这个请求，Schemas校验输入，然后到Services创建Run id等信息给Schemas校验输出，同时Services将Run id等信息整理成一条record，repository负责把这条record记录到sqlite db.
+
+#### 题目 2：字段职责题
+
+请说明下面这些字段分别是谁负责、主要用途是什么：
+
+- `testline`
+- `robotcase_path`
+- `run_id`
+- `status`
+- `message`
+- `created_at`
+- `updated_at`
+
+重点说清：
+
+- 哪些是请求传进来的
+- 哪些是服务端生成的
+- 哪些是先入库但暂时不对外返回的
+
+Stella: testline和robotcase_path是请求传进来的，后面几个都是服务端生成，目前只返回run_id，status， message
+
+
+#### 题目 3：判断题
+
+判断下面说法对不对，并简单说明原因：
+
+1. `router` 这一层适合直接写 `sqlite3.connect(...)`，因为这样少绕一层。
+  no 
+2. `service` 这一层主要负责组装业务语义，比如生成 `run_id`、补状态字段。
+yes
+3. `repository` 这一层主要负责和数据库打交道。
+yes
+4. `core/config.py` 主要是 run 业务逻辑层的一部分。
+no
+
+#### 题目 4：改错题
+
+假设有人把代码改成下面这种思路：
+
+- `router` 里直接生成 `run_id`
+- `router` 里直接写 SQL
+- `service` 只剩下一层空转调用
+- `repository` 删掉
+
+请说说这套改法最主要有哪两个问题。
+分工不明确 后续代码逻辑容易混乱
+
+#### 题目 5：场景题
+
+如果后面要继续做 `GET /api/runs`，你觉得最应该优先新增到哪一层的方法？
+
+可以按这个格式回答：
+
+- `repository` 里加什么
+get好像用不到db?
+- `service` 里加什么
+  如何get run result的实现 
+- `router` 里加什么
+  get run result
+
+不用写代码，只说职责。
+
+#### 题目 6：通俗解释题
+
+请你用这套比喻，再讲一遍当前的 `SQLite` 流程：
+
+- 前台接待
+route
+- 表单检查
+schemas
+- 业务同事
+services
+- 录入员
+repositories
+- 账本
+sqlite db存储
+
+#### 题目 7：小判断题
+
+为什么这一步返回给前端的还是只有：
+
+- `run_id`
+- `status`
+- `message`
+
+而不是把 `created_at`、`robotcase_path` 也一起直接返回？
+
+请说出你理解的设计考虑。
+还没有真实接jenkins跑case
+
+#### 题目 8：轻微变形题
+
+现在 `run_id` 改成了 `CST + 毫秒时间戳`。
+
+如果以后真的出现“同一毫秒内连续创建两条 run”这种极端情况，你觉得可以往哪个方向改，既尽量保留可读性，又降低重复风险？
+Stella: 我认为同一毫秒内连续创建两条 run也并没有什么影响啊 会创建不起来还是？
+
+不用写标准答案，说你的思路就行。
+
+### 你的答案
+
+#### 题目 1
+
+<你填写>
+
+#### 题目 2
+
+<你填写>
+
+#### 题目 3
+
+<你填写>
+
+#### 题目 4
+
+<你填写>
+
+#### 题目 5
+
+<你填写>
+
+#### 题目 6
+
+<你填写>
+
+#### 题目 7
+
+<你填写>
+
+#### 题目 8
+
+<你填写>
+
+### 我的 Review 结论
+
+#### 这轮答得比较稳的点
+
+- 你已经能复述出主链路：`router -> schema -> service -> repository -> SQLite`
+- 你已经知道 `testline`、`robotcase_path` 是请求传入，`run_id / status / message` 是服务端生成
+- 你已经知道 `router` 不应该直接写 `sqlite3.connect(...)`
+- 你已经知道 `service` 负责业务语义，`repository` 负责数据库访问，`core` 不是 run 业务层
+
+#### 这轮最需要补强的点
+
+1. `GET /api/runs` 当然还是要用数据库
+
+你在题目 5 里写了“get 好像用不到 db?”，这里要尽快纠正。
+
+因为当前 run 数据就是存在 `SQLite` 里的，所以后面无论是：
+
+- `GET /api/runs`
+- `GET /api/runs/{run_id}`
+
+本质上都要去数据库里把数据查出来。
+
+2. 题目 7 的理解还不够完整
+
+你写“还没有真实接 Jenkins 跑 case”，这个方向不算错，但还不够到位。
+
+当前只返回 `run_id / status / message`，更核心的原因是：
+
+- 这一步的目标是先打通“最小创建语义”
+- 不是一步把详情接口也做完
+- 像 `created_at`、`robotcase_path` 这种信息虽然已经入库，但更适合留给后续列表 / 详情接口去返回
+
+也就是说，这里重点是“接口职责收敛”，不只是“Jenkins 还没接”。
+
+3. 题目 8 还没真正回答到点上
+
+你问“会创建不起来还是？”，这说明你已经意识到可能有冲突风险，但还没把后果说清。
+
+如果同一毫秒内生成了完全相同的 `run_id`，最直接的问题就是：
+
+- 主键冲突
+- 插入失败
+
+因为当前 `runs` 表里：
+
+- `run_id` 是主键
+
+所以后面要继续考虑“如何在保留可读性的同时避免重复”。
+
+#### 表达上的小建议
+
+后面答题时，尽量不要只写：
+
+- `yes`
+- `no`
+- “分工不明确”
+
+因为这样虽然方向可能是对的，但不方便你自己回看，也不方便我判断你到底是“真的理解”还是“刚好猜对”。
+
+更好的写法是每题至少补一句“为什么”。
+
+### 最优答案（Review 后沉淀）
+
+#### 题目 1：复述调用链
+
+`POST /api/runs` 进来后，先由 `router` 接住 HTTP 请求；请求体先按 `RunCreateRequest` 做输入校验；然后 `service` 负责生成 `run_id`、补 `status / message / created_at / updated_at`，并组装成一条 record；再交给 `repository` 去操作 `SQLite`，如果表不存在就先建表，再把 record 插入 `runs` 表；最后 `service` 返回 `RunCreateResponse`，由接口返回给调用方。
+
+最短记忆版：
+
+```text
+router 接请求，schema 做校验，service 组装业务数据，repository 写入 SQLite，最后返回最小响应。
+```
+
+#### 题目 2：字段职责题
+
+- `testline`：请求传入，表示这次 run 选中的测试线
+- `robotcase_path`：请求传入，表示这次要跑的 Robot case 路径
+- `run_id`：服务端生成，作为这次 run 的平台唯一标识
+- `status`：服务端生成，当前第一版固定表达为 `created`
+- `message`：服务端生成，给调用方一个简短稳定的说明
+- `created_at`：服务端生成，记录创建时间
+- `updated_at`：服务端生成，记录更新时间
+
+当前对外返回：
+
+- `run_id`
+- `status`
+- `message`
+
+当前先入库但暂时不对外返回：
+
+- `created_at`
+- `updated_at`
+- `testline`
+- `robotcase_path`
+
+#### 题目 3：判断题
+
+1. `router` 这一层适合直接写 `sqlite3.connect(...)`，因为这样少绕一层。
+
+错误。`router` 主要负责 HTTP 接入，如果把数据库细节写进来，会让接口层和持久化层耦合，后面会越来越乱。
+
+2. `service` 这一层主要负责组装业务语义，比如生成 `run_id`、补状态字段。
+
+正确。`service` 的职责就是把输入变成业务上真正需要落地的数据。
+
+3. `repository` 这一层主要负责和数据库打交道。
+
+正确。它负责建表、插入、查询、更新等持久化动作。
+
+4. `core/config.py` 主要是 run 业务逻辑层的一部分。
+
+错误。`core/config.py` 属于全局基础配置层，不是 run 的业务逻辑层。
+
+#### 题目 4：改错题
+
+如果把 `run_id` 生成和 SQL 都塞进 `router`，再删掉 `repository`，最主要会有两个问题：
+
+1. 分层职责被打乱
+
+`router` 本来只该处理 HTTP，现在却同时承担业务逻辑和数据库访问，代码会越来越难维护。
+
+2. 后续扩展会很痛苦
+
+以后只要加：
+
+- `GET /api/runs`
+- `GET /api/runs/{run_id}`
+- 更新状态
+- 换数据库
+
+都会被迫继续在 `router` 里堆逻辑，代码很快会失控。
+
+#### 题目 5：场景题
+
+如果后面做 `GET /api/runs`，建议优先这样拆：
+
+- `repository`：增加查询 runs 列表的方法，例如 `list_runs()`
+- `service`：增加组装列表返回结果的方法，例如 `get_runs()`
+- `router`：增加 `GET /api/runs` 路由，把请求交给 service，再把结果返回给调用方
+
+最关键的一点是：
+
+```text
+GET /api/runs` 当然也要查数据库，因为当前 run 数据就是存放在 SQLite 里的。
+```
+
+#### 题目 6：通俗解释题
+
+可以这样记：
+
+- `router` 是前台接待，先把请求接住
+- `schema` 是表单检查员，确认请求格式对不对
+- `service` 是业务同事，决定这次 run 要记哪些信息
+- `repository` 是录入员，真的去把这条记录写进账本
+- `SQLite` 就是那个本地账本文件
+
+整条链路就是：
+
+```text
+前台接到申请 -> 检查表单 -> 业务同事整理内容 -> 录入员写到账本 -> 返回受理结果
+```
+
+#### 题目 7：为什么当前只返回 `run_id / status / message`
+
+因为这一步的目标是先把“最小创建闭环”打通，而不是一步做完整详情接口。
+
+所以当前接口只需要稳定表达：
+
+```text
+这次 run 请求平台已经接住，并且 run 记录已经创建成功。
+```
+
+像下面这些信息虽然已经入库：
+
+- `created_at`
+- `updated_at`
+- `testline`
+- `robotcase_path`
+
+但更适合放到后续的列表接口和详情接口里返回，而不是在创建接口里一次性全塞出来。
+
+#### 题目 8：如果同一毫秒内重复，怎么办？
+
+如果同一毫秒内真的生成了两条完全相同的 `run_id`，就可能导致：
+
+- `run_id` 主键冲突
+- 插入失败
+
+后续可以考虑几种改法，同时尽量保留可读性：
+
+1. 先直接使用可读时间戳，如果冲突，再在后面加一个很短的递增序号
+
+例如：
+
+```text
+run-20260422104958123
+run-20260422104958123-01
+```
+
+2. 在时间戳后面加一个更短、更可读的补充片段
+
+例如只保留 2 到 3 位短后缀，而不是很长的随机串。
+
+3. 把“可读 `run_id`”和“数据库内部主键”分开
+
+例如数据库内部用自增整数或 UUID，外部展示仍然保留可读时间戳。
+
+当前阶段最实用的思路通常是第 1 种：
+
+```text
+先用时间戳，冲突时再补短序号
+```
+
+这样既保留可读性，也能降低重复风险。
 
 ---
 
@@ -2390,4 +2768,54 @@ python -m pytest tests/test_health.py tests/test_runs.py
 
 - <总结 1>
 - <总结 2>
+
+### 复盘问题（你来回答）
+
+#### 题目 1
+
+<调用链复述题：请你用自己的话讲清这一步的业务流程和调用链>
+
+##### 你的答案
+
+<你填写>
+
+##### 我的 Review
+
+<我来补 review 结果>
+
+##### 最优答案
+
+<我来补最终沉淀版答案>
+
+#### 题目 2
+
+<场景题：给一个真实改动场景，请说明应该改哪一层、为什么这样拆>
+
+##### 你的答案
+
+<你填写>
+
+##### 我的 Review
+
+<我来补 review 结果>
+
+##### 最优答案
+
+<我来补最终沉淀版答案>
+
+#### 题目 3
+
+<设计判断题 / 改错题 / 风险题：说明当前设计为什么这样做，不这样做会有什么问题>
+
+##### 你的答案
+
+<你填写>
+
+##### 我的 Review
+
+<我来补 review 结果>
+
+##### 最优答案
+
+<我来补最终沉淀版答案>
 ```

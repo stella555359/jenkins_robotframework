@@ -7,3 +7,4 @@ def get_health_payload() -> dict[str, str]:
         "service": settings.app_name,
         "environment": settings.app_env,
     }
+

@@ -945,8 +945,8 @@ npm run build
 
 建议第一轮数据库文件先放在：
 
-- 本地开发：`platform-api/data/results/reporting_portal.db`
-- 服务器：`/opt/jenkins_robotframework/platform-api/data/results/reporting_portal.db`
+- 本地开发：`platform-api/data/results/automation_platform.db`
+- 服务器：`/opt/jenkins_robotframework/platform-api/data/results/automation_platform.db`
 
 为什么第一轮先用 `SQLite`：
 
@@ -2140,10 +2140,10 @@ Stage 6  Publish artifacts and callback platform-api
 
 #### `platform-api`
 
-- 在 `app/api/v1/router.py` 补 KPI 相关路由入口
-- 新建 `app/services/kpi_service.py`
-- 新建 `app/repositories/kpi_repository.py`
-- 扩展 run 相关 schema
+- 当前已经有 `GET /api/health` 和可落库的 `POST /api/runs`
+- 下一轮先补 `GET /api/runs`
+- 再补 `GET /api/runs/{run_id}`
+- 然后再准备 `app/services/jenkins_service.py`
 
 #### `jenkins-kpi-platform`
 
@@ -2808,10 +2808,10 @@ pipeline {
 
 推荐先在 Jenkins Master / 目标服务器验证：
 
-```powershell
-cd C:\TA\jenkins_robotframework\platform-api
-py -m venv .venv
-.\.venv\Scripts\Activate.ps1
+```bash
+cd /path/to/jenkins_robotframework/platform-api
+python3 -m venv .venv
+source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 python -m pytest tests/test_health.py
@@ -3205,11 +3205,12 @@ PYTHONPATH=robotws python -m robot \
 2. 先完成 Jenkins Agent
 3. 先准备 Jenkins / 构建机的 Node.js 20 LTS
 4. 先打通 `platform-api` `/health`
-5. 再打通 `automation-portal` 构建发布
-6. 再做 `POST /api/runs`
-7. 再让 Jenkins 触发 Agent 跑最小 Robot
-8. 如果 FastAPI 最小 run 接口已经具备，再回传 run 状态
-9. 最后再接 KPI
+5. 再做带 `SQLite` 持久化的 `POST /api/runs`
+6. 再补 `GET /api/runs` 和 `GET /api/runs/{run_id}`
+7. 再打通 `automation-portal` 构建发布
+8. 再让 Jenkins 触发 Agent 跑最小 Robot
+9. 如果 FastAPI 最小 run 接口已经具备，再回传 run 状态
+10. 最后再接 KPI
 
 ---
 

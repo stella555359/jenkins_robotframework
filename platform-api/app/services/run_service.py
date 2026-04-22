@@ -1,14 +1,14 @@
-from datetime import UTC, datetime
-from uuid import uuid4
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from app.repositories.run_repository import insert_run_record
 from app.schemas.run import RunCreateRequest, RunCreateResponse
 
 
 def run_create(request: RunCreateRequest) -> RunCreateResponse:
-    now = datetime.now(UTC)
-    timestamp = now.strftime("%Y%m%d%H%M%S")
-    run_id = f"run-{timestamp}-{uuid4().hex[:6]}"
+    now = datetime.now(ZoneInfo("Asia/Shanghai"))
+    timestamp = now.strftime("%Y%m%d%H%M%S%f")[:-3]
+    run_id = f"run-{timestamp}"
 
     record = {
         "run_id": run_id,

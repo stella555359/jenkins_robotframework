@@ -2031,16 +2031,16 @@ app.include_router(api_router, prefix="/api")
 
 ```python
 # app/services/run_service.py
-from datetime import UTC, datetime
-from uuid import uuid4
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from app.repositories.run_repository import insert_run_record
 from app.schemas.run import RunCreateRequest, RunCreateResponse
 
 
 def run_create(request: RunCreateRequest) -> RunCreateResponse:
-    now = datetime.now(UTC)
-    run_id = f"run-{now.strftime('%Y%m%d%H%M%S')}-{uuid4().hex[:6]}"
+    now = datetime.now(ZoneInfo("Asia/Shanghai"))
+    run_id = f"run-{now.strftime('%Y%m%d%H%M%S%f')[:-3]}"
 
     record = {
         "run_id": run_id,
@@ -2223,6 +2223,32 @@ core = 全局公共基础层，不是某个具体业务层
 - `service` 像业务同事，决定这次要记什么
 - `repository` 像录入员，真的去写账本
 - `SQLite` 就是那个本地账本文件
+
+#### 问题 7：为什么现在不用 `UTC`，也不再在 `run_id` 后面拼随机短串？
+
+这次调整主要是为了让当前阶段的 `run_id` 更符合你的使用习惯，也更容易人工排查。
+
+现在改成了：
+
+- 时间使用 `CST`（`Asia/Shanghai`）
+- `run_id` 只保留 `run-时间戳`
+- 时间戳精度提升到毫秒
+
+也就是像这样：
+
+```text
+run-20260422104958123
+```
+
+之前后面拼随机短串，目的其实只有一个：
+
+```text
+避免同一秒内创建多条 run 时发生重复
+```
+
+但它的代价就是人工阅读时不够直观。
+
+现在改成“毫秒时间戳”后，保留了大部分可读性，也能比“只到秒”的格式更稳一点。
 
 ### 涉及文件
 

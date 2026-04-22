@@ -2141,8 +2141,8 @@ Stage 6  Publish artifacts and callback platform-api
 #### `platform-api`
 
 - 当前已经有 `GET /api/health` 和可落库的 `POST /api/runs`
-- 下一轮先补 `GET /api/runs`
-- 再补 `GET /api/runs/{run_id}`
+- 当前已经补上 `GET /api/runs`
+- 当前已经补上 `GET /api/runs/{run_id}`
 - 然后再准备 `app/services/jenkins_service.py`
 
 #### `jenkins-kpi-platform`
@@ -2871,6 +2871,7 @@ curl http://127.0.0.1:8000/api/health
 3. `automation-portal` 增加最小 trigger 页面
 4. trigger 页面提交到 FastAPI
 5. FastAPI 触发 Jenkins Job
+6. pytest 结果继续输出 `allure-results`，但 HTML 报告发布放到 Jenkins 测试流水线阶段统一处理
 
 #### 第一轮只要求做到
 

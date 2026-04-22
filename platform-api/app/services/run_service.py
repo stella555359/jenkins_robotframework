@@ -2,8 +2,20 @@ import sqlite3
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from app.repositories.run_repository import insert_run_record
-from app.schemas.run import RunCreateRequest, RunCreateResponse
+from fastapi import HTTPException
+
+from app.repositories.run_repository import (
+    get_run_record_by_id,
+    insert_run_record,
+    list_run_records,
+)
+from app.schemas.run import (
+    RunCreateRequest,
+    RunCreateResponse,
+    RunDetailResponse,
+    RunListItem,
+    RunListResponse,
+)
 
 
 def _build_run_id(timestamp: str, sequence: int) -> str:
@@ -39,3 +51,16 @@ def run_create(request: RunCreateRequest) -> RunCreateResponse:
         status=record["status"],
         message=record["message"],
     )
+
+
+def get_run_list() -> RunListResponse:
+    records = list_run_records()
+    return RunListResponse(items=[RunListItem(**record) for record in records])
+
+
+def get_run_detail(run_id: str) -> RunDetailResponse:
+    record = get_run_record_by_id(run_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Run not found.")
+
+    return RunDetailResponse(**record)

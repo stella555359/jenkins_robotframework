@@ -1,0 +1,40 @@
+---
+description: Recover project context from docs before planning or continuing work. Use the roadmap for module order and each module index for next steps, especially after session restarts or when the user says continue/next step.
+alwaysApply: true
+---
+
+# Docs Context Recovery
+
+- Before planning or continuing implementation, recover context from project docs in this order:
+  1. `docs/README.md`
+  2. `docs/overview/roadmap.md`
+  3. `docs/modules/<module>/README.md`
+  4. `docs/modules/<module>/index.md`
+
+- Use these responsibilities consistently:
+  - `docs/overview/roadmap.md` decides which module the project should advance next.
+  - `docs/modules/<module>/index.md` decides the next step inside that module.
+  - `docs/modules/<module>/guides/` explains stable design and workflow knowledge.
+  - `docs/modules/<module>/testing-training/` and `testing-automation/` are module-specific, not global.
+
+- Treat short restart-style prompts such as `continue`, `next step`, `start`, `开始`, `继续`, `下一步`, or similarly brief resume messages as a default instruction to recover context from the mainline docs and continue the project.
+
+- If the user says `continue`, `next step`, `start`, or returns after a restart, follow the recovery order above before asking broad context questions.
+
+- In those short-prompt cases, default to the main project path:
+  - use `docs/overview/roadmap.md` to determine the current module,
+  - then use that module's `README.md` and `index.md` to determine the next concrete step.
+
+- Do not ask the user to restate background context when the roadmap and module docs already make the next mainline step clear.
+
+- Treat the current workspace and current chat context as the default project scope. Do not assume that a short prompt like `继续` refers to some other repository the user may also have open elsewhere.
+
+- If multiple workspace roots are attached to the current session, prefer the repository that contains this rule file and matching project docs as the default scope for short resume prompts.
+
+- If the user explicitly includes a project or module name, treat that as a stronger signal than the default workspace.
+
+- Only ask a short clarification question when the active project is genuinely ambiguous after checking the current workspace roots and the project docs.
+
+- If the active module is still unclear after reading the roadmap and module docs, ask the user which module to continue.
+
+- Do not use `docs/archive/` or `issue/` as the primary source for deciding the next implementation step unless the user explicitly points there or the current task is historical/debugging work.

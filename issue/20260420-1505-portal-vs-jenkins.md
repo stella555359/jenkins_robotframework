@@ -25,7 +25,7 @@
 
 ## 相关文件
 
-- `docs/jekins_lightweight.md`
+- `docs/overview/roadmap.md`
 - `.cursor/skills/issue-recording/SKILL.md`
 
 ## 后续动作

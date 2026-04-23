@@ -73,6 +73,7 @@
 2. 如果想看项目总路线，进 `docs/overview/roadmap.md`
 3. 如果想看当前模块，进 `docs/modules/platform-api/`
 4. 然后去 `platform-api/` 看代码和测试
+5. 如果当前是在推进 GNB KPI 新主线，再补看 `docs/modules/platform-api/guides/gnb-kpi-regression-architecture.md`
 
 ### 如果你想回看测试 workflow
 

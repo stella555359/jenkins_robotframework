@@ -1,0 +1,1986 @@
+[
+  {
+    "timestamp": "2026-01-26 16:18:31",
+    "code": "M55113C01001",
+    "kpi_name": "Number of Ue Context Setup Requests sent",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:31",
+    "code": "M55113C01002",
+    "kpi_name": "Number of Ue Context Setup Response received",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:31",
+    "code": "M55113C01009",
+    "kpi_name": "Number of Ue Context Release Command sent",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:31",
+    "code": "M55113C01010",
+    "kpi_name": "Number of Ue Context Release Complete received",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:31",
+    "code": "M55117C01009",
+    "kpi_name": "Number of Ue Context Release Command received",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:31",
+    "code": "M55117C01010",
+    "kpi_name": "Number of Ue Context Release Complete sent",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:31",
+    "code": "M55118C00051",
+    "kpi_name": "FR1 SA/NSA Avg simultaneous used outgoing CA relations in CU per cell",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:31",
+    "code": "M55118C00052",
+    "kpi_name": "FR1 SA/NSA Avg simultaneous used incoming CA relations in CU per cell",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:31",
+    "code": "M55119C00028",
+    "kpi_name": "Number of RRC Resume Request1(s) received at gNB-CU in response to RAN paging per NRBTS",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:31",
+    "code": "M55124C00001",
+    "kpi_name": "Number of RRC RELEASE Messages sent",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:31",
+    "code": "M55124C00006",
+    "kpi_name": "Number of RRC Releases with suspension for non-RNA update resume cause",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:31",
+    "code": "M55124C00007",
+    "kpi_name": "Number of RRC Resume Requests1 received at gNB-CU",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:31",
+    "code": "M55124C00010",
+    "kpi_name": "Number of RRC Resume Successes at gNB-CU",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55124C00504",
+    "kpi_name": "Number of RRC Re-establishment Request caused by handover failure",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55124C01011",
+    "kpi_name": "Number of RRC REJECT sent by gNB-CU due to request from gNB-DU",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55124C01012",
+    "kpi_name": "Number of RRC RELEASE sent by gNB-CU due to RRC SETUP Failure",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55124C01022",
+    "kpi_name": "Number of RRC CONNECTION Attempts for Mobile Originated Data that are rejected",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55125C00019",
+    "kpi_name": "In-session connected time for QoS flows excluding suspended period",
+    "original_strategy": "TAIL_AWARE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55125C00504",
+    "kpi_name": "Number of AMF-initiated UE context releases received at gNB for RRC-inactive UE",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55125C02504",
+    "kpi_name": "Number of PDU SESSION RESOURCE SETUP REQUEST received",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55125C02505",
+    "kpi_name": "Number of PDU SESSION RESOURCE SETUP RESPONSE sent",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55125C09516",
+    "kpi_name": "In-session connected time for QoS flows",
+    "original_strategy": "TAIL_AWARE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55138C00053",
+    "kpi_name": "Denominator for cumulative time of SA RRC_INACTIVE users",
+    "original_strategy": "TAIL_AWARE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55139C00001",
+    "kpi_name": "The number of radio admission requests for SA user",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55139C00002",
+    "kpi_name": "The number of radio admitted UEs for SA user",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55139C02504",
+    "kpi_name": "Number of admission successes due to BWP3 selected for SA",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55142C00529",
+    "kpi_name": "Number of late RSRP handover executions",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55142C00535",
+    "kpi_name": "Number of ping-pong handovers",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55158C00012",
+    "kpi_name": "INIT RLC SDU in burst DL IP latency in DU for profile",
+    "original_strategy": "TAIL_AWARE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55161C00003",
+    "kpi_name": "Peak number of SA RRC users in the CU NRPMQAP",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55161C00008",
+    "kpi_name": "Number of NR PMQAP profile DRBs RAC att for SA user in CU during initial access",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55161C00009",
+    "kpi_name": "Number of NR PMQAP profile DRBs RAC succ for SA user in CU during initial access",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55163C00008",
+    "kpi_name": "In-session connected time for PMQAP profile-based QoS Flows excluding suspended period",
+    "original_strategy": "TAIL_AWARE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55163C00521",
+    "kpi_name": "In-session connected time for PMQAP profile-based QoS Flows",
+    "original_strategy": "TAIL_AWARE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55166C00506",
+    "kpi_name": "Number of RRC Resume Requests1 received at gNB-DU",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55166C00508",
+    "kpi_name": "Number of RRC Resume Successes at gNB-DU",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55193C00001",
+    "kpi_name": "Number of NR PMQAP profile DRBs AC att for SA user in DU during initial access",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55193C00002",
+    "kpi_name": "Number of NR PMQAP profile DRBs AC succ for SA user in DU during initial access",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55197C00001",
+    "kpi_name": "Number of times full I-RNTI is used as Paging UE-Identity in 1st RAN paging attempt per paging strategy",
+    "original_strategy": "WINDOW_COUNT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55200C00003",
+    "kpi_name": "Number of late RSRP handover executions per NR-NR neighbor cell relationship",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55200C00009",
+    "kpi_name": "Number of ping-pong handovers per NR-NR neighbor cell relationship",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55300C00000",
+    "kpi_name": "PDSCH initial transmissions with 64QAM MCS table using MCS 0",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55300C04000",
+    "kpi_name": "PDSCH initial transmissions with 256QAM MCS table using MCS 0",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55300C05000",
+    "kpi_name": "Successful PDSCH transmissions by initial transmission with 256QAM MCS table using MCS 0",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55300C06000",
+    "kpi_name": "Successful PDSCH transmissions by any transmission with 256QAM MCS table using MCS 0",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55300C07031",
+    "kpi_name": "Unsuccessful PDSCH transmissions by last HARQ reTx with 256QAM MCS table using MCS 31",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55301C00000",
+    "kpi_name": "PDSCH transmissions in Rank1 with 64QAM MCS table using MCS0",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55301C15000",
+    "kpi_name": "PDSCH transmissions in Rank1 with 256QAM MCS table using MCS 0",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55301C15031",
+    "kpi_name": "PDSCH transmissions in Rank1 with 256QAM MCS table using MCS 31",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55301C18000",
+    "kpi_name": "PDSCH transmissions in Rank4 with 256QAM MCS table using MCS 0",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55303C00032",
+    "kpi_name": "Number of SR response grants scheduled with an SR request class priority",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55304C02004",
+    "kpi_name": "Initial and retransmission volume on PDSCH with 64QAM MCS table using MCS 4",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55304C02005",
+    "kpi_name": "Initial and retransmission volume on PDSCH with 64QAM MCS table using MCS 5",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55304C02018",
+    "kpi_name": "Initial and retransmission volume on PDSCH with 64QAM MCS table using MCS 18",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55304C02029",
+    "kpi_name": "Retransmission volume on PDSCH with 64QAM MCS table using MCS 29",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55306C03001",
+    "kpi_name": "RA setup completions for contention based group A preambles",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55306C06002",
+    "kpi_name": "Number of RA msg3 with CCCH1 receptions",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55306C10006",
+    "kpi_name": "Number of UL Grants for MSG3 retransmissions",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55308C00057",
+    "kpi_name": "DL initial scheduling delay - DRX ACTIVE",
+    "original_strategy": "TAIL_AWARE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55308C00061",
+    "kpi_name": "DL initial scheduling delay - DRX INACTIVE denominator",
+    "original_strategy": "TAIL_AWARE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55308C00108",
+    "kpi_name": "Number of unpaired UL MU-MIMO UEs per TTI due to a lack of PRBs required for transmission",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55308C00124",
+    "kpi_name": "Number of times PUSCH transmission was scheduled over the second UL slot",
+    "original_strategy": "TAIL_AWARE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55308C00125",
+    "kpi_name": "Number of times PUSCH transmission failed over the first UL slot",
+    "original_strategy": "TAIL_AWARE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55308C00136",
+    "kpi_name": "Average initial MCS for 256QAM PUSCH over the second slot",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55310C00010",
+    "kpi_name": "INIT RLC SDU in burst DL IP latency in DU",
+    "original_strategy": "TAIL_AWARE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55310C13001",
+    "kpi_name": "DL RLC delay - SRB1",
+    "original_strategy": "TAIL_AWARE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55311C27001",
+    "kpi_name": "DL RLC Data PDUs retransmitted by high RLC - SRB1",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55318C00020",
+    "kpi_name": "Number of eCPRI C-Plane messages transmitted by DU",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55318C00023",
+    "kpi_name": "Number of C-Plane messages received on time within the reception window by RU",
+    "original_strategy": "TAIL_AWARE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55330C00020",
+    "kpi_name": "Maximum number of PDSCH PRBs scheduled with subband beamforming per slot",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55335C03003",
+    "kpi_name": "Number of Uplink AL4 grant in Cell BWP-1",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55335C04005",
+    "kpi_name": "number of UE-Specific DCI Format 1-1 CCE preempted in Cell BWP-1",
+    "original_strategy": "RANGE_CONTEXT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55335C09004",
+    "kpi_name": "Number of Uplink AL8 grant in Cell BWP-3",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55352C03020",
+    "kpi_name": "DL UE throughput at PDCP SDU Level BIN20 NRPMQAP",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55353C00002",
+    "kpi_name": "ThpVolDl DL UE throughput volume at RLC PDU (MAC SDU) level NRPMQAP for FR1",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55356C00004",
+    "kpi_name": "DL initial scheduling delay - DRX ACTIVE at profile level",
+    "original_strategy": "TAIL_AWARE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55356C00008",
+    "kpi_name": "Number of UEs in a slot with 1 SU MIMO in DL per profile.",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55356C00009",
+    "kpi_name": "Number of UEs in a slot with 2 SU MIMO in DL per profile.",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55356C00012",
+    "kpi_name": "Number of UEs in a slot with 1 SU MIMO in UL per profile.",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55356C00013",
+    "kpi_name": "Number of UEs in a slot with 2 SU MIMO in UL per profile.",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55360C00004",
+    "kpi_name": "Cell level average UL RIP for scheduled PRB 4",
+    "original_strategy": "WINDOW_COUNT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55360C00006",
+    "kpi_name": "Cell level average UL RIP for scheduled PRB 6",
+    "original_strategy": "WINDOW_COUNT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55360C01010",
+    "kpi_name": "Cell level maximum UL RIP for scheduled PRB 10",
+    "original_strategy": "WINDOW_COUNT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55360C01011",
+    "kpi_name": "Cell level maximum UL RIP for scheduled PRB 11",
+    "original_strategy": "WINDOW_COUNT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55360C01012",
+    "kpi_name": "Cell level maximum UL RIP for scheduled PRB 12",
+    "original_strategy": "WINDOW_COUNT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55360C01013",
+    "kpi_name": "Cell level maximum UL RIP for scheduled PRB 13",
+    "original_strategy": "WINDOW_COUNT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55360C01136",
+    "kpi_name": "Cell level maximum UL RIP for scheduled PRB 136",
+    "original_strategy": "WINDOW_COUNT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55360C01137",
+    "kpi_name": "Cell level maximum UL RIP for scheduled PRB 137",
+    "original_strategy": "WINDOW_COUNT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55360C01139",
+    "kpi_name": "Cell level maximum UL RIP for scheduled PRB 139",
+    "original_strategy": "WINDOW_COUNT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55360C01272",
+    "kpi_name": "Cell level maximum UL RIP for scheduled PRB 272",
+    "original_strategy": "WINDOW_COUNT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55363C00003",
+    "kpi_name": "Maximum DL PRB utilization for NRPMQAP",
+    "original_strategy": "RANGE_CONTEXT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55369C00208",
+    "kpi_name": "Minimum RTWP for UL Spatial stream 8",
+    "original_strategy": "WINDOW_COUNT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55369C00210",
+    "kpi_name": "Minimum RTWP for UL Spatial stream 10",
+    "original_strategy": "WINDOW_COUNT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55369C00212",
+    "kpi_name": "Minimum RTWP for UL Spatial stream 12",
+    "original_strategy": "WINDOW_COUNT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55369C00213",
+    "kpi_name": "Minimum RTWP for UL Spatial stream 13",
+    "original_strategy": "WINDOW_COUNT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55369C00214",
+    "kpi_name": "Minimum RTWP for UL Spatial stream 14",
+    "original_strategy": "WINDOW_COUNT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55369C00215",
+    "kpi_name": "Minimum RTWP for UL Spatial stream 15",
+    "original_strategy": "WINDOW_COUNT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55601C02002",
+    "kpi_name": "Number of samples when the cell is in \"reduced TX power saving mode\"",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "M55604C00007",
+    "kpi_name": "Number of control packets received on time",
+    "original_strategy": "TAIL_AWARE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "MRBTS_5600a",
+    "kpi_name": "SBTS Energy consumption in system modules",
+    "original_strategy": "WINDOW_COUNT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "NR_5012a",
+    "kpi_name": "5G Contention based RACH setup attempts",
+    "original_strategy": "RANGE_CONTEXT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "NR_5013a",
+    "kpi_name": "5G Contention based RACH setup success ratio",
+    "original_strategy": "RELATIVE_CHANGE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "NR_5054b",
+    "kpi_name": "5G Initial BLER in downlink transmissions in PDSCH",
+    "original_strategy": "RELATIVE_CHANGE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "NR_5057e",
+    "kpi_name": "5G Residual BLER in PUSCH",
+    "original_strategy": "WINDOW_COUNT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "NR_5062b",
+    "kpi_name": "5G Average UE related SINR for PUSCH in Rank 1",
+    "original_strategy": "ABS_DELTA_TREND",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "NR_5119a",
+    "kpi_name": "5G SA Maximum number of SA users with non-GBR DRBs",
+    "original_strategy": "RANGE_CONTEXT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "NR_5142a",
+    "kpi_name": "5G SA Number of PDU session resource setup requests",
+    "original_strategy": "RANGE_CONTEXT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "NR_5151d",
+    "kpi_name": "5G SA Accessibility success ratio",
+    "original_strategy": "RELATIVE_CHANGE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "NR_5167c",
+    "kpi_name": "5G SA RRC connection establishment success ratio",
+    "original_strategy": "RELATIVE_CHANGE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "NR_5175b",
+    "kpi_name": "5G SA intra-frequency intra-gNB intra-DU handover preparation success ratio",
+    "original_strategy": "ABS_THRESHOLD",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "NR_5351a",
+    "kpi_name": "5G SA QoS Flow Setup Failure Ratio per cause: Wrong parameter in message",
+    "original_strategy": "ABS_THRESHOLD",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "NR_5400b",
+    "kpi_name": "5G SA RRC re-establishment Success Ratio per CU",
+    "original_strategy": "RELATIVE_CHANGE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "NR_5614a",
+    "kpi_name": "5G SA Total number of RRC Resume attempts",
+    "original_strategy": "RANGE_CONTEXT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "NR_5618b",
+    "kpi_name": "5G SA Average number of SA RRC inactive users in selected area",
+    "original_strategy": "WINDOW_COUNT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "NR_5621a",
+    "kpi_name": "5G SA Average in-session time for QoS flows excluding suspension time",
+    "original_strategy": "TAIL_AWARE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "NR_5913a",
+    "kpi_name": "5G Average UL MAC contention delay after BSR reception per cell",
+    "original_strategy": "WINDOW_COUNT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "NR_6084b",
+    "kpi_name": "5G Average number of UEs in a slot with 2 SU MIMO in DL",
+    "original_strategy": "WINDOW_COUNT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "NR_6090a",
+    "kpi_name": "5G PUSCH transmission failure ratio over the second UL slot due to DTX or CRC error",
+    "original_strategy": "RELATIVE_CHANGE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "NR_6094a",
+    "kpi_name": "5G Average air-interface MAC SDU delay in UL per cell",
+    "original_strategy": "TAIL_AWARE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "NR_6175a",
+    "kpi_name": "5G Final AM RLC DL success ratio for CA",
+    "original_strategy": "ABS_THRESHOLD",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "NR_6176a",
+    "kpi_name": "5G Initial AM RLC UL success ratio",
+    "original_strategy": "ABS_THRESHOLD",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "NR_6197a",
+    "kpi_name": "5G Contention based RACH setup success ratio excluding ghost preambles",
+    "original_strategy": "ABS_THRESHOLD",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "NR_6227a",
+    "kpi_name": "5G SA NGAP connection establishment success ratio",
+    "original_strategy": "ABS_THRESHOLD",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "NR_6230a",
+    "kpi_name": "5G Maximum DL PDCP SDU NR leg throughput per DRB",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "NR_6231a",
+    "kpi_name": "5G Combined RACH setup success ratio",
+    "original_strategy": "RELATIVE_CHANGE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "NR_6240a",
+    "kpi_name": "5G SA ratio of SCell suspension",
+    "original_strategy": "WINDOW_COUNT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "NR_6243a",
+    "kpi_name": "5G Contention based Msg3 retransmission ratio",
+    "original_strategy": "ABS_THRESHOLD",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "SCOUT_1452b",
+    "kpi_name": "5G SA gNB-initiated release ratio due to RLF",
+    "original_strategy": "ABS_THRESHOLD",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "SCOUT_NR_1225b",
+    "kpi_name": "5G SA NGAP connection establishment success ratio",
+    "original_strategy": "ABS_THRESHOLD",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "SCOUT_NR_1450b",
+    "kpi_name": "5G Residual BLER in PUSCH with CP-OFDM using 256QAM MCS table",
+    "original_strategy": "WINDOW_COUNT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "SCOUT_NR_1484a",
+    "kpi_name": "5G Maximum DL PDCP SDU NR leg throughput per DRB",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "SCOUT_NR_1592a",
+    "kpi_name": "5G Combined RACH setup success ratio",
+    "original_strategy": "RELATIVE_CHANGE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "SCOUT_NR_1605a",
+    "kpi_name": "5G Percentage of PDCCH uplink grants with AL4",
+    "original_strategy": "RELATIVE_CHANGE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "SCOUT_NR_1606a",
+    "kpi_name": "5G Percentage of PDCCH uplink grants with AL2",
+    "original_strategy": "RELATIVE_CHANGE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "SCOUT_NR_2477a",
+    "kpi_name": "5G PDCP PDU lost ratio in F1 interface in downlink per PMQAP profile",
+    "original_strategy": "WINDOW_COUNT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "SCOUT_NR_2501a",
+    "kpi_name": "5G RACH Contention based success ratio per SSB beam",
+    "original_strategy": "ABS_THRESHOLD",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "SCOUT_NR_2504a",
+    "kpi_name": "5G Average air-interface MAC SDU delay in UL per PMQAP profile",
+    "original_strategy": "TAIL_AWARE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "SCOUT_NR_2517a",
+    "kpi_name": "5G SA Average number of SA RRC inactive users per PLMN",
+    "original_strategy": "WINDOW_COUNT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "SCOUT_NR_2519a",
+    "kpi_name": "5G SA NGAP connection establishment success ratio per PLMN",
+    "original_strategy": "ABS_THRESHOLD",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "SCOUT_NR_59b",
+    "kpi_name": "5G Average delay UL RLC data PDU in High RLC",
+    "original_strategy": "TAIL_AWARE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "SCOUT_OEM_NR_QAL_Custom_2",
+    "kpi_name": "OEM NR QAL Ratio CP PUSCH initial transmissions vs all OFDM transmissions",
+    "original_strategy": "RELATIVE_CHANGE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "SCOUT_OEM_NR_QAL_custom7",
+    "kpi_name": "OEM NR QAL UL BLER REsidual 64QAM DFT only",
+    "original_strategy": "WINDOW_COUNT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "SCOUT_OEM_NR_QAL_custom_01",
+    "kpi_name": "OEM NR QAL Ratio DFT PUSCH initial transmissions vs all OFDM transmissions",
+    "original_strategy": "RELATIVE_CHANGE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "SCOUT_RJIO_MSG1_MSG3",
+    "kpi_name": "MSG1_MSG3_Ratio",
+    "original_strategy": "RELATIVE_CHANGE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "SCOUT_RJIO_MSG3_MSG5",
+    "kpi_name": "MSG3_MSG5_Ratio",
+    "original_strategy": "RELATIVE_CHANGE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "SCOUT_RRC_success_ratio",
+    "kpi_name": "RRC connected success ratio",
+    "original_strategy": "RELATIVE_CHANGE",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:18:32",
+    "code": "SCOUT_TMO_MAGENTA_1027a",
+    "kpi_name": "NTM NR RET Retainability ( SA + NSA Weighted )",
+    "original_strategy": "WINDOW_COUNT",
+    "new_strategy": "nan",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55124C00501",
+    "kpi_name": "Number of RRC Re-establishment Discarding",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55124C01003",
+    "kpi_name": "Number of RRC CONNECTION Attempts for Mobile Terminated Access",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55124C03001",
+    "kpi_name": "Number of RRC RECONFIGURATION sent",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55124C03002",
+    "kpi_name": "Number of RRC RECONFIGURATION COMPLETE received",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55124C08501",
+    "kpi_name": "Accumulated number of UEs configured to provide release preference with UE Assistance Information",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55125C00020",
+    "kpi_name": "Number of suspended QoS flows released during RRC_INACTIVE to RRC_IDLE state transition",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55125C00021",
+    "kpi_name": "Number of QoS Flows suspended during RRC_CONNECTED to RRC_INACTIVE state transition",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55125C00022",
+    "kpi_name": "Number of suspended QoS Flows resumed during RRC_INACTIVE to RRC_CONNECTED state transition",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55125C00023",
+    "kpi_name": "Duration for which QoS flows are suspended due to RRC INACTIVE state",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55125C09005",
+    "kpi_name": "Number of QoS flows released due to lost connection to UE",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55125C09025",
+    "kpi_name": "Number of in-session QoS flows released due to normal causes",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55128C01001",
+    "kpi_name": "Number of Handover attempts for UEs running in DRX mode",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55128C01002",
+    "kpi_name": "Number of successful Handover completions for UEs running in DRX mode",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55129C00005",
+    "kpi_name": "Number of UE Context Release caused by gNB detected RLF",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55139C04002",
+    "kpi_name": "Number of successful radio admissions for SCell additions in SA mode with large BWP",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55139C04513",
+    "kpi_name": "Number of successful radio admissions for SCell additions in SA mode with BWP3",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55145C00304",
+    "kpi_name": "The number of intra-freq intra-DU HO prep failures due to Other Reasons for SA per PLMN-ID",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55153C00003",
+    "kpi_name": "HO preparation failure per neighbour cell relation",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55156C00023",
+    "kpi_name": "Max CA UEs in the current cell configured as a PCell, which have 1 configured SCell in DL",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55156C00051",
+    "kpi_name": "Peak number of UEs in RRC_INACTIVE state",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55163C00009",
+    "kpi_name": "Number of suspended PMQAP-based QoS flows released during RRC_INACTIVE to RRC_IDLE state transition",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55163C00010",
+    "kpi_name": "Number of PMQAP-based QoS Flows suspended during RRC_CONNECTED to RRC_INACTIVE state transition",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55163C00012",
+    "kpi_name": "Duration for which PMQAP profile-based QoS flows are suspended due to RRC INACTIVE state",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55163C00013",
+    "kpi_name": "Number of in-session QoS flows released due to normal causes per profile",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55163C00014",
+    "kpi_name": "Number of in-session QoS flows released due to abnormal causes per profile",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55163C00503",
+    "kpi_name": "Number of PMQAP Profile based QoS Flows released due to redirect",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55163C00506",
+    "kpi_name": "Number of PMQAP profile-based QoS flows released due to lost connection to UE",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55163C03001",
+    "kpi_name": "Number of PMQAP Profile QoS Flows released due to failed Intra NR HO at the source cell",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55166C00511",
+    "kpi_name": "Number of RRC RECONFIGURATION sent with BWP3 in P(S)Cell",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55166C00512",
+    "kpi_name": "Number of RRC RECONFIGURATION COMPLETE received due to BWP3 configured in P(S)Cell",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55184C00014",
+    "kpi_name": "Other failures in preparation phase of intra-freq intra-gNB intra-DU HO for SA for PMQAP profile",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55184C00034",
+    "kpi_name": "Intra-gNB Measurement Report discards due to bad uplink radio conditions for PMQAP profile",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55196C00001",
+    "kpi_name": "Accumulated number of UEs configured with periodic Codebook SRS for DL",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55196C00002",
+    "kpi_name": "Accumulated number of UEs configured with periodic Codebook SRS for UL",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55196C00007",
+    "kpi_name": "Maximum numbers of UEs without periodic SRS configured for DL",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55196C00008",
+    "kpi_name": "Maximum numbers of UEs without periodic SRS configured for UL",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55196C00012",
+    "kpi_name": "Maximum number of UEs configured to be enabled with SB beamforming based on TAS SRS",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55304C02000",
+    "kpi_name": "Initial and retransmission volume on PDSCH with 64QAM MCS table using MCS 0",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55304C02015",
+    "kpi_name": "Initial and retransmission volume on PDSCH with 64QAM MCS table using MCS 15",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55305C09001",
+    "kpi_name": "Beam Recoveries - Beam ID 0",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55305C10001",
+    "kpi_name": "Succesful Beam Recoveries - Beam ID 0",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55308C10011",
+    "kpi_name": "Number of PRBs used for paging",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55308C27001",
+    "kpi_name": "Accumulated number of UEs in DRX-sleep state with DL DRB data buffered",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55308C35005",
+    "kpi_name": "Number of PRBs for 4-layer Rx for MU MIMO in UL",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55308C35007",
+    "kpi_name": "Number of PRBs for 2 UE pair Rx for MU MIMO in UL",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55308C35010",
+    "kpi_name": "Total Number of MU MIMO paired UEs for PUSCH",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55330C00021",
+    "kpi_name": "Accumulated number of PDSCH PRBs scheduled with subband beamforming",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55330C00042",
+    "kpi_name": "Number of times UE configured for subband beamforming is scheduled with legacy beamforming",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55331C00001",
+    "kpi_name": "Number of RRC Paging message successfully broadcasted",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55335C02005",
+    "kpi_name": "number of Downlink slots without PDCCH symbol configured in Cell BWP-0",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55335C02006",
+    "kpi_name": "number of Downlink slots with 1 PDCCH symbol configured in Cell BWP-0",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55335C02007",
+    "kpi_name": "number of Downlink slots with 2 PDCCH symbols configured in Cell BWP-0",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55335C05006",
+    "kpi_name": "number of Downlink slots with 1 PDCCH symbol configured in Cell BWP-1",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55335C05007",
+    "kpi_name": "number of Downlink slots with 2 PDCCH symbols configured in Cell BWP-1",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55335C08006",
+    "kpi_name": "number of Downlink slots with 1 PDCCH symbol configured in Cell BWP-2",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55335C08007",
+    "kpi_name": "number of Downlink slots with 2 PDCCH symbols configured in Cell BWP-2",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55349C00061",
+    "kpi_name": "DL UE throughput at RLC PDU (MAC SDU) Level BIN13",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55349C00062",
+    "kpi_name": "DL UE throughput at RLC PDU (MAC SDU) Level BIN14",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55352C02004",
+    "kpi_name": "Number of discarded downlink PDCP SDUs in gNB-CU-UP for NRPMQAP",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55352C03013",
+    "kpi_name": "DL UE throughput at PDCP SDU Level BIN13 NRPMQAP",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55352C03014",
+    "kpi_name": "DL UE throughput at PDCP SDU Level BIN14 NRPMQAP",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55353C02004",
+    "kpi_name": "Number of lost DL RLC SDUs on air interface for NRPMQAP",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55362C00002",
+    "kpi_name": "Number of uplink PDCP PDUs lost over F1-U for NRPMQAP",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55371C00140",
+    "kpi_name": "UE-related TAS SRS power for subband beamforming - Level 01",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55371C00150",
+    "kpi_name": "UE-related TAS SRS power for subband beamforming - Level 11",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55371C00151",
+    "kpi_name": "UE-related TAS SRS power for subband beamforming - Level 12",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55371C00153",
+    "kpi_name": "UE-related TAS SRS power for subband beamforming - Level 14",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55371C00155",
+    "kpi_name": "UE-related TAS SRS power for subband beamforming - Level 16",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55371C00156",
+    "kpi_name": "UE-related TAS SRS power for subband beamforming - Level 17",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55371C00157",
+    "kpi_name": "UE-related TAS SRS power for subband beamforming - Level 18",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55371C00159",
+    "kpi_name": "UE-related TAS SRS power for subband beamforming - Level 20",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55371C00160",
+    "kpi_name": "UE-related TAS SRS power for subband beamforming - Level 21",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "M55371C00161",
+    "kpi_name": "UE-related TAS SRS power for subband beamforming - Level 22",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "NR_5134b",
+    "kpi_name": "5G Downlink only carrier aggregation activated to configured SCell ratio",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "NR_5165a",
+    "kpi_name": "5G SA Number of RRC reconfiguration attempts",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "NR_5166a",
+    "kpi_name": "5G SA RRC reconfiguration success ratio",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "NR_5246a",
+    "kpi_name": "5G SA Average Number of PCell UEs with Configured one SCell in DL",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "NR_5539b",
+    "kpi_name": "5G SA Maximum number of UEs configured for overheating reporting",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "NR_5665a",
+    "kpi_name": "5G SA Number of QoS Flows suspensions due to UE transition to RRC Inactive state",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "NR_5926a",
+    "kpi_name": "5G SA Downlink carrier aggregation reconfiguration attempts",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "NR_5952a",
+    "kpi_name": "5G BWP3 Configuration Success Ratio",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "NR_6023a",
+    "kpi_name": "5G SA average duration for which each UE had DL CA configured in a PCell in CU per cell",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "NR_6081a",
+    "kpi_name": "5G Average number of UEs configured as cell-specific CSI RS",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "NR_6100a",
+    "kpi_name": "5G SA DL CA configuration attempts in CU",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "NR_6168a",
+    "kpi_name": "5G SA Average SCell configuration delay",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "NR_6169a",
+    "kpi_name": "5G SA Average SCell RRC Reconfiguration delay",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "SCOUT_NR_1472a",
+    "kpi_name": "5G SA Average number of SCell UEs with configured 1 SCell in DL",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-26 16:26:43",
+    "code": "SCOUT_NTM_NR_RET_SA_DRB_Total_Drop_Volume",
+    "kpi_name": "NTM NR RET SA DRB Total Drop Volume",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-27 13:43:30",
+    "code": "M55308C00136",
+    "kpi_name": "Average initial MCS for 256QAM PUSCH over the second slot",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-27 13:43:30",
+    "code": "M55318C00020",
+    "kpi_name": "Number of eCPRI C-Plane messages transmitted by DU",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-27 13:43:30",
+    "code": "M55318C00023",
+    "kpi_name": "Number of C-Plane messages received on time within the reception window by RU",
+    "original_strategy": "TAIL_AWARE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-27 13:43:30",
+    "code": "M55604C00007",
+    "kpi_name": "Number of control packets received on time",
+    "original_strategy": "TAIL_AWARE",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-27 13:43:30",
+    "code": "M55301C17027",
+    "kpi_name": "PDSCH transmissions in Rank3 with 256QAM MCS table using MCS 27",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-27 13:43:30",
+    "code": "M55330C00039",
+    "kpi_name": "Successful PUSCH transmissions by initial Tx using non-tapered 2D-DFT beams",
+    "original_strategy": "QUANTILES",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-27 13:43:30",
+    "code": "NR_5127c",
+    "kpi_name": "5G SA Average number of SA non-GBR users in selected area",
+    "original_strategy": "RANGE_CONTEXT",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-27 13:43:30",
+    "code": "NR_5615b",
+    "kpi_name": "5G SA RRC Resume Success Ratio excluding fallback attempts",
+    "original_strategy": "ABS_THRESHOLD",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-27 13:43:30",
+    "code": "NR_6222a",
+    "kpi_name": "5G SA Number of RRC Paging message broadcasted",
+    "original_strategy": "RANGE_CONTEXT",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-01-27 13:43:30",
+    "code": "SCOUT_NR_2536a",
+    "kpi_name": "5G Share of UEs configured with SB beamforming based on TAS SRS for PDSCH",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "RANGE_CONTEXT",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-02-02 17:13:41",
+    "code": "NR_5077b",
+    "kpi_name": "5G Average number of activated SCells in downlink",
+    "original_strategy": "WINDOW_COUNT",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-02-02 17:13:41",
+    "code": "NR_5101b",
+    "kpi_name": "5G Average MAC layer user throughput in uplink",
+    "original_strategy": "WINDOW_COUNT",
+    "new_strategy": "STANDARD_SPC",
+    "modified_by": "user"
+  },
+  {
+    "timestamp": "2026-02-02 17:13:41",
+    "code": "SCOUT_NR_2538a",
+    "kpi_name": "5G Share of UEs configured with cell-specific CSI RS for PDSCH",
+    "original_strategy": "SEMANTIC_RULE",
+    "new_strategy": "RANGE_CONTEXT",
+    "modified_by": "user"
+  }
+]

@@ -28,11 +28,14 @@ archive = 历史 / 参考材料
 
 - [Overview Docs](overview/README.md)
 - [项目路线图](overview/roadmap.md)
+- [GNB KPI Regression Architecture](overview/gnb-kpi-regression-architecture.md)
+- [GNB KPI System Runtime](overview/gnb-kpi-system-runtime.md)
 
 这部分负责回答：
 
 - 整个项目最终要做成什么
 - 模块之间怎么串起来
+- 系统运行时怎么协作
 - 当前主线应该往哪里推进
 
 ### 2. 想进入某个具体模块
@@ -40,6 +43,8 @@ archive = 历史 / 参考材料
 当前已落地的模块入口：
 
 - [Platform API Docs](modules/platform-api/README.md)
+- [Jenkins KPI Platform Docs](modules/jenkins-kpi-platform/README.md)
+- [Automation Portal Docs](modules/automation-portal/README.md)
 
 进入模块后，再按模块自己的 `README.md -> index.md -> guides / steps / testing` 顺序看。
 
@@ -57,6 +62,7 @@ archive = 历史 / 参考材料
 
 - 路线图
 - 跨模块架构
+- 系统级 runtime
 - 端到端主线
 
 当前入口：
@@ -82,11 +88,15 @@ docs/modules/<module>/
 当前已落地模块：
 
 - `platform-api`
+- `jenkins-kpi-platform`
+- `automation-portal`
 
 当前入口：
 
 - [Platform API Docs](modules/platform-api/README.md)
 - [Platform API 学习总索引](modules/platform-api/index.md)
+- [Jenkins KPI Platform Docs](modules/jenkins-kpi-platform/README.md)
+- [Automation Portal Docs](modules/automation-portal/README.md)
 
 ### `archive/`
 
@@ -121,7 +131,7 @@ docs/modules/<module>/
 后面如果新增：
 
 - `automation-portal`
-- `jenkins`
+- `jenkins-kpi-platform`
 
 默认都放到：
 

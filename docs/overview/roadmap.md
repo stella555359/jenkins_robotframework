@@ -43,6 +43,36 @@
 
 因此，本文档既保留前四步的完整手册，也把第五步以后改造成当前真正要走的主线。
 
+### 2.1 当前冻结主线（2026-04 更新）
+
+从当前开始，后续继续按 step 推进时，不再把所有实现步骤继续混写在这一份 overview 文档里，而是固定采用下面这套分工：
+
+- `overview/`
+  - 负责系统级架构、跨模块执行链、总推进顺序
+- `docs/modules/platform-api/`
+  - 负责 `platform-api` 自己的 step 主线
+- `docs/modules/jenkins-kpi-platform/`
+  - 负责 runner / generator / detector 的 execution 主线
+- `docs/modules/automation-portal/`
+  - 先预留独立 step 轨，后续再详细展开
+
+当前全局最推荐顺序固定为：
+
+1. 先推进 `platform-api`
+   - 先打稳执行器无关的 run contract 和状态面
+   - 再打稳 Jenkins trigger / callback / artifact / KPI metadata 闭环
+2. 再推进 `jenkins-kpi-platform`
+   - 单独承接 runner、generator、detector 的执行层 step
+3. 最后再推进 `automation-portal`
+   - 在 backend 和 execution 主线稳定后，再展开 workflow builder 和结果展示
+
+一句话记忆：
+
+```text
+overview 决定先做哪个模块；
+module index 决定该模块下一步做什么。
+```
+
 ---
 
 ## 3. 实施原则

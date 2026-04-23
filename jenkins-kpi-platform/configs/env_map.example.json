@@ -1,0 +1,14 @@
+{
+  "T813": {
+    "config_id": "T813",
+    "config_path": "testline_configuration/T813.py",
+    "department": "RRM",
+    "site": "HZ",
+    "topology_id": "gnb-kpi-benchmark",
+    "match_type": "static_map",
+    "confidence": "high",
+    "allowed_script_roots": [
+      "scripts/traffic"
+    ]
+  }
+}

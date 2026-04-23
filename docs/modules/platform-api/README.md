@@ -14,6 +14,11 @@
 4. `steps/` 下当前正在推进的 step
 5. `testing-training/` 和 `testing-automation/` 下对应 step 的测试文档
 
+如果你要看跨模块的 GNB KPI 系统方案，请转到：
+
+- `docs/overview/gnb-kpi-regression-architecture.md`
+- `docs/overview/gnb-kpi-system-runtime.md`
+
 ## 当前目录怎么理解
 
 - `index.md`

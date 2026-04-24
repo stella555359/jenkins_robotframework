@@ -1,0 +1,21 @@
+{
+  "id": "b4d032d4-7f65-4ce4-a7b0-0ba99732efb7",
+  "name": "Platform API Local",
+  "values": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8000/api",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "run_id",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    }
+  ],
+  "_postman_variable_scope": "environment",
+  "_postman_exported_at": "2026-04-24T10:30:00.000Z",
+  "_postman_exported_using": "Cursor"
+}

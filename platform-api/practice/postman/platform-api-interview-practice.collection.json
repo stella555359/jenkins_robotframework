@@ -1,0 +1,408 @@
+{
+  "info": {
+    "name": "Platform API Interview Practice",
+    "_postman_id": "3cf7cc28-4f53-4738-9c2b-3f0d0a2f6f51",
+    "description": "Interview-oriented Postman drill for the current platform-api surface. Recommended order: health -> create run -> list -> detail -> callback -> artifacts -> kpi.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8000/api"
+    },
+    {
+      "key": "run_id",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status code is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const payload = pm.response.json();",
+                  "",
+                  "pm.test('status is ok', function () {",
+                  "  pm.expect(payload.status).to.eql('ok');",
+                  "});",
+                  "",
+                  "pm.test('service and environment fields exist', function () {",
+                  "  pm.expect(payload).to.have.property('service');",
+                  "  pm.expect(payload).to.have.property('environment');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Run Create And Query",
+      "item": [
+        {
+          "name": "POST /runs (robot happy path)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status code is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const payload = pm.response.json();",
+                  "pm.collectionVariables.set('run_id', payload.run_id);",
+                  "",
+                  "pm.test('run is created in robot mode', function () {",
+                  "  pm.expect(payload.run_id).to.match(/^run-/);",
+                  "  pm.expect(payload.executor_type).to.eql('robot');",
+                  "  pm.expect(payload.status).to.eql('created');",
+                  "  pm.expect(payload.message).to.eql('Run request accepted.');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"testline\": \"smoke\",\n  \"robotcase_path\": \"cases/login.robot\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/runs",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "runs"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /runs (python_orchestrator negative path)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status code is 400', function () {",
+                  "  pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "const payload = pm.response.json();",
+                  "",
+                  "pm.test('validation detail is stable', function () {",
+                  "  pm.expect(payload.detail).to.eql('workflow_spec is required when executor_type is python_orchestrator.');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"testline\": \"T813\",\n  \"executor_type\": \"python_orchestrator\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/runs",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "runs"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /runs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status code is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const payload = pm.response.json();",
+                  "",
+                  "pm.test('items array exists', function () {",
+                  "  pm.expect(payload.items).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test('latest run can be found in list', function () {",
+                  "  const runId = pm.collectionVariables.get('run_id');",
+                  "  pm.expect(payload.items.some(item => item.run_id === runId)).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/runs",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "runs"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /runs/{run_id}",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status code is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const payload = pm.response.json();",
+                  "",
+                  "pm.test('detail matches current run', function () {",
+                  "  pm.expect(payload.run_id).to.eql(pm.collectionVariables.get('run_id'));",
+                  "  pm.expect(payload.status).to.eql('created');",
+                  "  pm.expect(payload).to.have.property('artifact_manifest');",
+                  "  pm.expect(payload).to.have.property('kpi_summary');",
+                  "  pm.expect(payload).to.have.property('detector_summary');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/runs/{{run_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "runs",
+                "{{run_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /runs/run-unknown (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status code is 404', function () {",
+                  "  pm.response.to.have.status(404);",
+                  "});",
+                  "",
+                  "pm.test('error detail is stable', function () {",
+                  "  pm.expect(pm.response.json()).to.deep.eql({ detail: 'Run not found.' });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/runs/run-unknown",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "runs",
+                "run-unknown"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Jenkins Callback And Follow-up Queries",
+      "item": [
+        {
+          "name": "POST /runs/{run_id}/callbacks/jenkins",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status code is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const payload = pm.response.json();",
+                  "",
+                  "pm.test('callback response returns completed status', function () {",
+                  "  pm.expect(payload.run_id).to.eql(pm.collectionVariables.get('run_id'));",
+                  "  pm.expect(payload.status).to.eql('completed');",
+                  "  pm.expect(payload).to.have.property('updated_at');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"completed\",\n  \"message\": \"Pipeline completed.\",\n  \"jenkins_build_ref\": \"gnb-kpi-regression#42\",\n  \"started_at\": \"2026-04-23T09:00:00+08:00\",\n  \"finished_at\": \"2026-04-23T09:30:00+08:00\",\n  \"artifact_manifest\": [\n    {\n      \"kind\": \"kpi_excel\",\n      \"label\": \"KPI workbook\",\n      \"path\": \"artifacts/kpi.xlsx\",\n      \"url\": \"https://jenkins.local/job/42/artifact/kpi.xlsx\"\n    },\n    {\n      \"kind\": \"detector_html\",\n      \"label\": \"Detector report\",\n      \"path\": \"artifacts/detector.html\",\n      \"url\": \"https://jenkins.local/job/42/artifact/detector.html\"\n    }\n  ],\n  \"kpi_summary\": {\n    \"counter_count\": 182,\n    \"window\": \"09:00-09:30\"\n  },\n  \"detector_summary\": {\n    \"anomaly_count\": 3,\n    \"top_counter\": \"RRC_SUCCESS_RATE\"\n  },\n  \"metadata\": {\n    \"pipeline_stage\": \"callback_platform_api\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/runs/{{run_id}}/callbacks/jenkins",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "runs",
+                "{{run_id}}",
+                "callbacks",
+                "jenkins"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /runs/{run_id}/artifacts",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status code is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const payload = pm.response.json();",
+                  "",
+                  "pm.test('artifact list contains callback data', function () {",
+                  "  pm.expect(payload.items.length).to.be.above(0);",
+                  "  pm.expect(payload.items[0]).to.have.property('kind');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/runs/{{run_id}}/artifacts",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "runs",
+                "{{run_id}}",
+                "artifacts"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /runs/{run_id}/kpi",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status code is 200', function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "const payload = pm.response.json();",
+                  "",
+                  "pm.test('kpi summary reflects callback payload', function () {",
+                  "  pm.expect(payload.generator_enabled).to.eql(false);",
+                  "  pm.expect(payload.detector_enabled).to.eql(false);",
+                  "  pm.expect(payload.kpi_summary.counter_count).to.eql(182);",
+                  "  pm.expect(payload.detector_summary.top_counter).to.eql('RRC_SUCCESS_RATE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/runs/{{run_id}}/kpi",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "runs",
+                "{{run_id}}",
+                "kpi"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

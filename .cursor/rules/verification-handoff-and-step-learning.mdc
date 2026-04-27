@@ -1,0 +1,21 @@
+---
+description: Hand verification commands to the user and preserve step learning notes
+alwaysApply: true
+---
+
+# Verification Handoff And Step Learning
+
+- Do not proactively run verification commands such as `pytest`, Allure, Postman/Newman, JMeter, frontend test runners, or long server-side validation commands.
+- After each small step, provide:
+  - the server-side validation commands,
+  - the expected result,
+  - how to recognize common failure modes.
+- Wait for the user to run validation on the target server and paste results back before marking the step verified.
+- Each small step must include a learning record in the relevant project docs:
+  - what problem the step solved,
+  - which files changed and why,
+  - the core call flow,
+  - key fields and where they are stored/returned,
+  - validation commands and expected results,
+  - review questions for the user.
+- For project recovery after restart, use `docs/overview/8-day-full-project-execution-plan.md` as the execution status source.

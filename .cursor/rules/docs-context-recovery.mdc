@@ -8,11 +8,13 @@ alwaysApply: true
 - Before planning or continuing implementation, recover context from project docs in this order:
   1. `docs/README.md`
   2. `docs/overview/roadmap.md`
-  3. `docs/modules/<module>/README.md`
-  4. `docs/modules/<module>/index.md`
+  3. `docs/overview/8-day-full-project-execution-plan.md`
+  4. `docs/modules/<module>/README.md`
+  5. `docs/modules/<module>/index.md`
 
 - Use these responsibilities consistently:
   - `docs/overview/roadmap.md` decides which module the project should advance next.
+  - `docs/overview/8-day-full-project-execution-plan.md` records the active 8-day execution plan, current day, current step, verification handoff status, and restart recovery state.
   - `docs/modules/<module>/index.md` decides the next step inside that module.
   - `docs/modules/<module>/guides/` explains stable design and workflow knowledge.
   - `docs/modules/<module>/testing-training/` and `testing-automation/` are module-specific, not global.
@@ -23,6 +25,7 @@ alwaysApply: true
 
 - In those short-prompt cases, default to the main project path:
   - use `docs/overview/roadmap.md` to determine the current module,
+  - then use `docs/overview/8-day-full-project-execution-plan.md` to recover the active day, current step, and verification status,
   - then use that module's `README.md` and `index.md` to determine the next concrete step.
 
 - Do not ask the user to restate background context when the roadmap and module docs already make the next mainline step clear.

@@ -340,7 +340,14 @@ def test_create_robot_run_rejects_kpi_options(client) -> None:
 def test_jenkins_callback_updates_artifacts_and_kpi_summary(client, create_run_via_api) -> None:
     created_run = create_run_via_api(
         "T813",
-        "cases/kpi.robot",
+        "",
+        executor_type="python_orchestrator",
+        workflow_spec={
+            "name": "kpi-regression",
+            "stages": [],
+            "runtime_options": {},
+            "portal_followups": {},
+        },
         enable_kpi_generator=True,
         enable_kpi_anomaly_detector=True,
     )

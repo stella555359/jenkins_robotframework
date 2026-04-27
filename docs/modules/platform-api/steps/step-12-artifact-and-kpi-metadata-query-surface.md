@@ -4,21 +4,28 @@
 
 把执行层回传后的结果，正式整理成前端可查、可展示、可下载的查询面。
 
-这一轮最重要的不是生成文件本身，而是固定：
+这一轮最重要的不是生成文件本身，而是固定两个查询面：
 
-- `platform-api` 如何暴露 artifact 清单
-- `platform-api` 如何暴露 kpi_generator 执行摘要与 detector 摘要
-- 哪些信息应该存数据库元数据
-- 哪些信息仍然只保留在 Jenkins artifact / 文件系统
+1. artifact 查询面
+   - `GET /api/runs/{run_id}/artifacts`
+   - 返回 artifact manifest
+   - 回答“文件在哪里”
+2. KPI 查询面
+   - `GET /api/runs/{run_id}/kpi`
+   - 返回 KPI 后处理元数据
+   - 包含 KPI 开关、KPI 配置、kpi_generator 执行摘要、detector 执行摘要
+   - 回答“KPI 后处理结果怎么样”
+
+这一步不新增单独的 detector 查询接口。`detector_summary` 是 `/kpi` 响应的一部分。
 
 ## 预期结果
 
 这一轮做完后，系统应该具备下面这些可观察结果：
 
-- `GET /api/runs/{run_id}/artifacts`
-- `GET /api/runs/{run_id}/kpi`
-- 前端能拿到 artifact manifest
-- 前端能拿到 KPI 开关、KPI 配置、kpi_generator 执行摘要、detector 摘要
+- `GET /api/runs/{run_id}/artifacts` 返回 artifact manifest
+- `GET /api/runs/{run_id}/kpi` 返回 KPI 后处理元数据
+- 前端通过 `/artifacts` 拿到文件清单
+- 前端通过 `/kpi` 拿到 KPI 开关、KPI 配置、kpi_generator 执行摘要、detector 摘要
 - `SQLite` 继续只存元数据，不直接存大文件内容
 
 这一轮先不扩的内容包括：
@@ -40,7 +47,8 @@
 - `repository`
   - 继续从同一条 run 记录里读取 `artifact_manifest_json`、`kpi_summary_json`、`detector_summary_json`
 - `schema`
-  - 用 `RunArtifactsResponse`、`RunKpiResponse` 固定查询面
+  - 用 `RunArtifactsResponse` 固定 artifact 查询面
+  - 用 `RunKpiResponse` 固定 KPI 查询面，其中包含 `kpi_summary` 和 `detector_summary`
 
 这一轮最关键的函数调用链是：
 
@@ -135,15 +143,22 @@ Step 12 解决的是“执行结果怎么给前端查”的问题。
 Step 11 已经让 Jenkins callback 可以把 artifact、kpi_generator 执行摘要、detector summary 回写到同一条 run。Step 12 在这个基础上，把这些回写结果拆成两个专门查询面：
 
 - `GET /api/runs/{run_id}/artifacts`
+  - artifact 查询面
+  - 返回 artifact manifest
 - `GET /api/runs/{run_id}/kpi`
+  - KPI 查询面
+  - 返回 KPI 配置、kpi_generator 执行摘要和 detector 执行摘要
 
-这样前端不需要自己从完整 run detail 里到处找字段，也不需要直接读 Jenkins 文件系统。它只要调用稳定 API，就能拿到 artifact 清单、kpi_generator 执行摘要和 detector 摘要。
+这样前端不需要自己从完整 run detail 里到处找字段，也不需要直接读 Jenkins 文件系统。它只要调用稳定 API，就能知道文件在哪里，以及 KPI 后处理结果怎么样。
+
+这里没有单独的 `/detector` 接口。`detector_summary` 放在 `/kpi` 响应中，因为 detector 是 KPI 后处理链路的一部分。
 
 ### 改了哪些文件
 
 - `platform-api/app/schemas/run.py`
   - `RunArtifactsResponse` 固定 artifact 查询响应。
   - `RunKpiResponse` 固定 kpi_generator / detector 摘要查询响应。
+  - 这是 KPI 查询面，不是单独的 detector 查询面。
 
 - `platform-api/app/services/run_service.py`
   - `get_run_artifacts()` 从 run 记录中组织 artifact manifest。

@@ -397,6 +397,9 @@ def test_jenkins_callback_updates_artifacts_and_kpi_summary(client, create_run_v
     kpi_payload = kpi_response.json()
 
     assert detail_payload["status"] == "completed"
+    assert detail_payload["workflow_spec"]["name"] == "kpi-regression"
+    assert detail_payload["enable_kpi_generator"] is True
+    assert detail_payload["enable_kpi_anomaly_detector"] is True
     assert detail_payload["jenkins_build_ref"] == "gnb-kpi-regression#42"
     assert detail_payload["artifact_manifest"][0]["kind"] == "kpi_excel"
     assert detail_payload["kpi_summary"]["counter_count"] == 182

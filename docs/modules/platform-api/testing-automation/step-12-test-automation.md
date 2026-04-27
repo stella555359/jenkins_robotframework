@@ -4,11 +4,13 @@
 
 这份文档记录 `Step 12：补齐 artifact / KPI / detector metadata 查询面` 已落地和需要服务器确认的自动化测试内容。
 
-Step 12 的测试目标不是验证 KPI 文件真的生成，而是验证：
+Step 12 的测试目标不是验证 KPI 文件真的生成，而是验证两个查询面：
 
-1. callback 后 artifact manifest 可以查询。
-2. callback 后 kpi_generator 执行摘要 / detector 摘要可以查询。
+1. artifact 查询面：callback 后 artifact manifest 可以通过 `/artifacts` 查询。
+2. KPI 查询面：callback 后 kpi_generator 执行摘要 / detector 摘要可以通过 `/kpi` 查询。
 3. 不存在的 run 查询 metadata 接口会返回 `404`。
+
+这里没有单独的 detector 查询接口。`detector_summary` 是 `/kpi` 响应的一部分。
 
 ## 当前测试目标
 
@@ -19,8 +21,8 @@ Step 12 的测试目标不是验证 KPI 文件真的生成，而是验证：
 
 这一轮重点覆盖：
 
-- artifact 查询主路径
-- kpi_generator 执行摘要 / detector 查询主路径
+- artifact 查询面主路径
+- KPI 查询面主路径，包含 kpi_generator 执行摘要和 detector 摘要
 - artifacts 查询不存在 run 时返回 `404`
 - kpi 查询不存在 run 时返回 `404`
 
@@ -37,7 +39,7 @@ Step 12 的测试目标不是验证 KPI 文件真的生成，而是验证：
 
 - `test_jenkins_callback_updates_artifacts_and_kpi_summary`
 
-### 2. callback 后 kpi_generator 执行摘要 / detector 摘要可查询
+### 2. callback 后 KPI 查询面可查询
 
 目的：
 
@@ -45,6 +47,7 @@ Step 12 的测试目标不是验证 KPI 文件真的生成，而是验证：
 - 确认 detector summary 可以通过 `/kpi` 查询。
 - 确认 KPI 开关和 artifact manifest 也能一起返回给前端。
 - 确认 KPI 文件本体仍然属于 `artifact_manifest`，不属于 `kpi_summary`。
+- 确认 detector 摘要属于 KPI 查询面，不需要单独 `/detector` 接口。
 
 对应测试：
 

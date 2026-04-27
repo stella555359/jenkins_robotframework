@@ -408,3 +408,19 @@ def test_jenkins_callback_updates_artifacts_and_kpi_summary(client, create_run_v
     assert kpi_payload["detector_enabled"] is True
     assert kpi_payload["artifact_manifest"][1]["kind"] == "detector_html"
     assert kpi_payload["detector_summary"]["top_counter"] == "RRC_SUCCESS_RATE"
+
+
+@allure.feature("Run API")
+@allure.story("Run callbacks")
+@allure.title("Jenkins callback returns 404 for a missing run")
+def test_jenkins_callback_returns_404_for_missing_run(client) -> None:
+    response = client.post(
+        "/api/runs/run-unknown/callbacks/jenkins",
+        json={
+            "status": "completed",
+            "message": "Pipeline completed.",
+        },
+    )
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Run not found."}

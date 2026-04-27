@@ -183,12 +183,12 @@ curl -X POST http://127.0.0.1:8000/api/runs \
 
 ## 开发侧验收结果
 
-- [ ] `POST /api/runs` 已按统一 contract 接住两类执行器请求
-- [ ] `robot` 模式缺少 `robotcase_path` 时会明确报错
-- [ ] `python_orchestrator` 模式缺少 `workflow_spec` 时会明确报错
-- [ ] `robot` 模式携带 KPI 后处理配置时会明确报错
-- [ ] `run_id / executor_type / status / message` 的最小响应已稳定
-- [ ] `SQLite` 中的 run 记录已不再只围绕单一执行器设计
+- [x] `POST /api/runs` 已按统一 contract 接住两类执行器请求
+- [x] `robot` 模式缺少 `robotcase_path` 时会明确报错
+- [x] `python_orchestrator` 模式缺少 `workflow_spec` 时会明确报错
+- [x] `robot` 模式携带 KPI 后处理配置时会明确报错
+- [x] `run_id / executor_type / status / message` 的最小响应已稳定
+- [x] `SQLite` 中的 run 记录已不再只围绕单一执行器设计
 
 ## 测试侧验收步骤（服务器侧执行）
 
@@ -206,11 +206,16 @@ python -m pytest tests/test_runs.py --alluredir=allure-results
 
 ## 测试侧验收结果
 
-- [ ] pytest 已覆盖两类执行器的创建请求
-- [ ] pytest 已覆盖执行器相关的请求校验
-- [ ] pytest 已覆盖 `robot` 模式拒绝 KPI 后处理字段
-- [ ] pytest 已覆盖 run 记录最小持久化结果
-- [ ] `allure-results` 可正常产出
+- [x] pytest 已覆盖两类执行器的创建请求
+- [x] pytest 已覆盖执行器相关的请求校验
+- [x] pytest 已覆盖 `robot` 模式拒绝 KPI 后处理字段
+- [x] pytest 已覆盖 run 记录最小持久化结果
+- [x] `allure-results` 可正常产出
+
+说明：
+
+- Step 10 只要求产出 `allure-results` 原始结果目录。
+- Allure HTML 报告展示不在 Step 10 本身完成，会在后续 Jenkins 接入和测试流程收口时通过 Jenkins Allure Publisher 配置。
 
 ## 相关专题与测试文档
 

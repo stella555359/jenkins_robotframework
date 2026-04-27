@@ -145,6 +145,18 @@ python -m pytest tests/test_runs.py --alluredir=allure-results
 - `workflow_spec` 字段失败：检查 `RunCreateRequest` 和 `WorkflowSpec` schema。
 - Robot KPI 配置未被拒绝：检查 `_validate_run_create_request()` 是否仍限制 KPI 字段只能用于 `python_orchestrator`。
 
+## 服务器验证结果
+
+- [x] 用户已在服务器执行 Step 10 验证。
+- [x] Step 10 相关 pytest 已通过。
+- [x] `allure-results` 可正常产出。
+
+说明：
+
+- 当前 Step 10 只验证 Allure 原始结果目录产出。
+- Allure HTML 页面展示需要 Jenkins Allure 插件或 Allure CLI。
+- Jenkins 中展示 Allure HTML 会在后续 Jenkins 接入和测试流程收口时完成。
+
 ## 本轮未自动化场景
 
 ### 1. 真实 Jenkins 触发

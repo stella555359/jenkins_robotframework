@@ -17,8 +17,8 @@ Cursor 重启或新会话后，先按下面顺序恢复上下文：
 - 当前计划：8 天全项目收口计划
 - 当前天数：Day 1
 - 当前模块：`platform-api`
-- 当前小 step：Step 10：冻结 executor-agnostic run contract
-- 当前状态：Step 10 已按 review 调整字段边界，顶层 `scenario` / `workflow_name` 不再作为 create contract 字段，验证命令等待用户在服务器上执行
+- 当前小 step：Step 11：打通 Jenkins trigger / callback 最小闭环
+- 当前状态：Step 11 已补 callback 不存在 `run_id` 的 pytest、学习版说明和 testing-automation 记录，验证命令等待用户在服务器上执行
 - 当前重要约定：AI 不主动执行 pytest / Allure / Postman / JMeter / 前端测试等验证命令，只提供验证步骤和预期结果
 
 ## 总目标
@@ -45,7 +45,7 @@ automation-portal
 - `automation-portal`
   - 完成 React 门户，包括 run submission、workflow builder、run list、run detail、KPI summary、artifact/detector 报告入口。
 - 测试流程
-  - 覆盖需求拆解、用例设计、API 自动化、DB 校验、接口联调、前端测试、JMeter smoke、回归清单。
+  - 覆盖需求拆解、用例设计、API 自动化、DB 校验、接口联调、前端测试、JMeter smoke、Allure HTML 报告展示、回归清单。
 - AI 辅助自动化测试
   - 用于测试点生成、pytest/Playwright 用例草稿、Postman 断言审查、SQL 校验设计、日志/失败分析、测试报告总结。
 
@@ -131,8 +131,9 @@ python -m pytest tests/test_runs.py --alluredir=allure-results
   - `docs/modules/platform-api/steps/step-10-executor-agnostic-run-contract.md`
 - 已新增 Step 10 testing-automation 记录：
   - `docs/modules/platform-api/testing-automation/step-10-test-automation.md`
-- 待办：
-  - 等用户在服务器运行验证命令后再标记 Step 10 验证通过。
+- 已由用户在服务器验证通过。
+- Step 10 只要求 `allure-results` 原始目录产出。
+- Jenkins 中展示 Allure HTML 报告放入后续 Jenkins / 测试流程收口。
 
 ## Day 2：Jenkins KPI Platform 执行层
 
@@ -156,6 +157,10 @@ python -m pytest tests/test_runs.py --alluredir=allure-results
 - Robot workspace、case path、variables、outputdir
 - run_id、callback URL、artifact archive path
 - `dry_run` 和 `jenkins_robot` 两种执行模式
+- Jenkins Allure Publisher 配置：
+  - pytest 产出 `allure-results`
+  - Jenkins job 归档并展示 Allure HTML 报告
+  - Robot 原生 `log.html` / `report.html` 作为 artifact 链接展示
 
 ## Day 3：真实 Jenkins/Robot 回写闭环
 
@@ -258,6 +263,7 @@ AI 辅助测试范围：
   -> callback 回写
   -> portal 查看详情 / KPI / artifact
   -> 用户执行 pytest / Postman / SQL / JMeter / 前端测试回归
+  -> Jenkins 展示 Allure HTML 报告
 ```
 
 ## 后续维护约定

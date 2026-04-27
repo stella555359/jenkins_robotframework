@@ -69,6 +69,11 @@ def _get_required_record(run_id: str) -> dict[str, Any]:
 def _validate_run_create_request(request: RunCreateRequest) -> None:
     if request.executor_type == "robot" and not _normalize_optional_text(request.robotcase_path):
         raise HTTPException(status_code=400, detail="robotcase_path is required when executor_type is robot.")
+    if (
+        request.executor_type == "robot"
+        and (request.enable_kpi_generator or request.enable_kpi_anomaly_detector or request.kpi_config is not None)
+    ):
+        raise HTTPException(status_code=400, detail="KPI options are only supported when executor_type is python_orchestrator.")
     if request.executor_type == "python_orchestrator" and request.workflow_spec is None:
         raise HTTPException(status_code=400, detail="workflow_spec is required when executor_type is python_orchestrator.")
 
@@ -79,8 +84,7 @@ def run_create(request: RunCreateRequest) -> RunCreateResponse:
     now = datetime.now(ZoneInfo("Asia/Shanghai"))
     timestamp = now.strftime("%Y%m%d%H%M%S%f")[:-3]
     workflow_name = (
-        _normalize_optional_text(request.workflow_name)
-        or (request.workflow_spec.name if request.workflow_spec else None)
+        (request.workflow_spec.name if request.workflow_spec else None)
         or _normalize_optional_text(request.robotcase_path)
     )
     record = {
@@ -89,7 +93,7 @@ def run_create(request: RunCreateRequest) -> RunCreateResponse:
         "testline": request.testline,
         "robotcase_path": _normalize_optional_text(request.robotcase_path) or "",
         "build": _normalize_optional_text(request.build) or "",
-        "scenario": _normalize_optional_text(request.scenario) or "",
+        "scenario": "",
         "status": "created",
         "message": "Run request accepted.",
         "enable_kpi_generator": request.enable_kpi_generator,

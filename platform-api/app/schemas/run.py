@@ -59,10 +59,8 @@ class RunCreateRequest(BaseModel):
     testline: str = Field(min_length=1)
     robotcase_path: str | None = None
     executor_type: ExecutorType = "robot"
-    workflow_name: str | None = None
     workflow_spec: WorkflowSpec | None = None
     build: str | None = None
-    scenario: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
     enable_kpi_generator: bool = False
     enable_kpi_anomaly_detector: bool = False
@@ -79,11 +77,9 @@ class RunCreateResponse(BaseModel):
 class RunListItem(BaseModel):
     run_id: str
     executor_type: ExecutorType
-    workflow_name: str | None = None
     testline: str
     robotcase_path: str | None = None
     build: str | None = None
-    scenario: str | None = None
     status: str
     message: str
     enable_kpi_generator: bool
@@ -102,12 +98,10 @@ class RunListResponse(BaseModel):
 class RunDetailResponse(BaseModel):
     run_id: str
     executor_type: ExecutorType
-    workflow_name: str | None = None
     workflow_spec: WorkflowSpec | None = None
     testline: str
     robotcase_path: str | None = None
     build: str | None = None
-    scenario: str | None = None
     status: str
     message: str
     metadata: dict[str, Any] = Field(default_factory=dict)

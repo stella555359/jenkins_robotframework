@@ -77,7 +77,6 @@ def test_create_python_orchestrator_run_persists_workflow_spec(client, fetch_run
         json={
             "testline": "T813",
             "executor_type": "python_orchestrator",
-            "workflow_name": "Attach Operate Detach",
             "workflow_spec": {
                 "name": "Attach Operate Detach",
                 "stages": [
@@ -296,6 +295,43 @@ def test_create_python_orchestrator_run_requires_workflow_spec(client) -> None:
 
     assert response.status_code == 400
     assert response.json()["detail"] == "workflow_spec is required when executor_type is python_orchestrator."
+
+
+@allure.feature("Run API")
+@allure.story("Workflow validation")
+@allure.title("POST /api/runs rejects robot runs without robotcase_path")
+def test_create_robot_run_requires_robotcase_path(client) -> None:
+    response = client.post(
+        "/api/runs",
+        json={
+            "testline": "smoke",
+            "executor_type": "robot",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "robotcase_path is required when executor_type is robot."
+
+
+@allure.feature("Run API")
+@allure.story("Workflow validation")
+@allure.title("POST /api/runs rejects KPI options in robot mode")
+def test_create_robot_run_rejects_kpi_options(client) -> None:
+    response = client.post(
+        "/api/runs",
+        json={
+            "testline": "smoke",
+            "executor_type": "robot",
+            "robotcase_path": "cases/login.robot",
+            "enable_kpi_generator": True,
+            "kpi_config": {
+                "scenario": "7UE_DL_Burst",
+            },
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "KPI options are only supported when executor_type is python_orchestrator."
 
 
 @allure.feature("Run API")

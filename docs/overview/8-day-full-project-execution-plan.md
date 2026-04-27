@@ -17,8 +17,8 @@ Cursor 重启或新会话后，先按下面顺序恢复上下文：
 - 当前计划：8 天全项目收口计划
 - 当前天数：Day 1
 - 当前模块：`platform-api`
-- 当前小 step：Step 11：打通 Jenkins trigger / callback 最小闭环
-- 当前状态：Step 11 已补 callback 不存在 `run_id` 的 pytest、学习版说明和 testing-automation 记录，验证命令等待用户在服务器上执行
+- 当前小 step：Step 12：补齐 artifact / KPI / detector metadata 查询面
+- 当前状态：Step 12 已补 artifacts/kpi 不存在 `run_id` 的 pytest、学习版说明和 testing-automation 记录，验证命令等待用户在服务器上执行
 - 当前重要约定：AI 不主动执行 pytest / Allure / Postman / JMeter / 前端测试等验证命令，只提供验证步骤和预期结果
 
 ## 总目标

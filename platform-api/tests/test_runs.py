@@ -424,3 +424,23 @@ def test_jenkins_callback_returns_404_for_missing_run(client) -> None:
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Run not found."}
+
+
+@allure.feature("Run API")
+@allure.story("Run metadata")
+@allure.title("GET /api/runs/{run_id}/artifacts returns 404 for a missing run")
+def test_get_run_artifacts_returns_404_for_missing_run(client) -> None:
+    response = client.get("/api/runs/run-unknown/artifacts")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Run not found."}
+
+
+@allure.feature("Run API")
+@allure.story("Run metadata")
+@allure.title("GET /api/runs/{run_id}/kpi returns 404 for a missing run")
+def test_get_run_kpi_returns_404_for_missing_run(client) -> None:
+    response = client.get("/api/runs/run-unknown/kpi")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Run not found."}

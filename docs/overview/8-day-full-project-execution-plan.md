@@ -40,7 +40,7 @@ automation-portal
 
 - `platform-api`
   - 完成 run contract、Jenkins callback、artifact/KPI 查询、execution-ready detail。
-- `jenkins-kpi-platform`
+- `test-workflow-runner`
   - 完成 runner dry-run、真实 Jenkins/Robot/UTE 触发参数、result/timeline/artifact manifest、generator/detector 内部接入验证。
 - `automation-portal`
   - 完成 React 门户，包括 run submission、workflow builder、run list、run detail、KPI summary、artifact/detector 报告入口。
@@ -135,7 +135,7 @@ python -m pytest tests/test_runs.py --alluredir=allure-results
 - Step 10 只要求 `allure-results` 原始目录产出。
 - Jenkins 中展示 Allure HTML 报告放入后续 Jenkins / 测试流程收口。
 
-## Day 2：Jenkins KPI Platform 执行层
+## Day 2：Test Workflow Runner 执行层
 
 目标：
 
@@ -143,12 +143,12 @@ python -m pytest tests/test_runs.py --alluredir=allure-results
 
 重点文件：
 
-- `jenkins-kpi-platform/gnb_kpi_orchestrator/models.py`
-- `jenkins-kpi-platform/gnb_kpi_orchestrator/request_loader.py`
-- `jenkins-kpi-platform/gnb_kpi_orchestrator/runner.py`
-- `jenkins-kpi-platform/gnb_kpi_orchestrator/result_builder.py`
-- `jenkins-kpi-platform/gnb_kpi_orchestrator/handlers/kpi_generator.py`
-- `jenkins-kpi-platform/gnb_kpi_orchestrator/handlers/kpi_detector.py`
+- `test-workflow-runner/test_workflow_runner/models.py`
+- `test-workflow-runner/test_workflow_runner/request_loader.py`
+- `test-workflow-runner/test_workflow_runner/runner.py`
+- `test-workflow-runner/test_workflow_runner/result_builder.py`
+- `test-workflow-runner/test_workflow_runner/handlers/kpi_generator.py`
+- `test-workflow-runner/test_workflow_runner/handlers/kpi_detector.py`
 
 需要固定：
 

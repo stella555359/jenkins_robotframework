@@ -43,7 +43,7 @@ archive = 历史 / 参考材料
 当前已落地的模块入口：
 
 - [Platform API Docs](modules/platform-api/README.md)
-- [Jenkins KPI Platform Docs](modules/jenkins-kpi-platform/README.md)
+- [Test Workflow Runner Docs](modules/test-workflow-runner/README.md)
 - [Automation Portal Docs](modules/automation-portal/README.md)
 
 进入模块后，再按模块自己的 `README.md -> index.md -> guides / steps / testing` 顺序看。
@@ -88,14 +88,14 @@ docs/modules/<module>/
 当前已落地模块：
 
 - `platform-api`
-- `jenkins-kpi-platform`
+- `test-workflow-runner`
 - `automation-portal`
 
 当前入口：
 
 - [Platform API Docs](modules/platform-api/README.md)
 - [Platform API 学习总索引](modules/platform-api/index.md)
-- [Jenkins KPI Platform Docs](modules/jenkins-kpi-platform/README.md)
+- [Test Workflow Runner Docs](modules/test-workflow-runner/README.md)
 - [Automation Portal Docs](modules/automation-portal/README.md)
 
 ### `archive/`
@@ -131,7 +131,7 @@ docs/modules/<module>/
 后面如果新增：
 
 - `automation-portal`
-- `jenkins-kpi-platform`
+- `test-workflow-runner`
 
 默认都放到：
 

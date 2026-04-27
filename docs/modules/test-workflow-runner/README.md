@@ -1,4 +1,4 @@
-# Jenkins KPI Platform Docs
+# Test Workflow Runner Docs
 
 ## 模块定位
 
@@ -58,6 +58,6 @@
 
 当前 `generator / detector` 的推荐接入方式已经固定为：
 
-- 收编到 `jenkins-kpi-platform/internal_tools/`
+- 收编到 `test-workflow-runner/internal_tools/`
 - 由 orchestrator handler 直接走内部 API
 - 不再以 `params.command` 作为默认主线

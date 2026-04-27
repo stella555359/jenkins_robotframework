@@ -178,7 +178,7 @@ python -m pytest tests/test_runs.py --alluredir=allure-results
 未自动化原因：
 
 - 当前只验证 `workflow_spec` 可以保存。
-- 具体并行执行语义属于 `jenkins-kpi-platform` runner 和后续 portal workflow builder 的范围。
+- 具体并行执行语义属于 `test-workflow-runner` runner 和后续 portal workflow builder 的范围。
 
 ## 当前结论
 

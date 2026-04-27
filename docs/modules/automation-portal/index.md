@@ -14,7 +14,7 @@
 但当前推荐顺序仍然是：
 
 1. 先推进 `platform-api`
-2. 再推进 `jenkins-kpi-platform`
+2. 再推进 `test-workflow-runner`
 3. 最后再详细展开 `automation-portal`
 
 ## 预留的后续 step 方向
@@ -36,4 +36,4 @@
 如果你现在要真正开始实现，先回到：
 
 - `docs/modules/platform-api/`
-- `docs/modules/jenkins-kpi-platform/`
+- `docs/modules/test-workflow-runner/`

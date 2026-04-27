@@ -57,12 +57,12 @@ DryRun --> Result["result.json / console summary"]
 ## 开发侧验收步骤（服务器侧执行）
 
 ```bash
-cd /path/to/jenkins_robotframework/jenkins-kpi-platform
+cd /path/to/jenkins_robotframework/test-workflow-runner
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pytest tests
-python -m gnb_kpi_orchestrator.cli configs/sample_request.json --dry-run
+python -m test_workflow_runner.cli configs/sample_request.json --dry-run
 ```
 
 ## 开发侧验收结果

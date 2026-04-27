@@ -5,4 +5,4 @@
 当前先不展开详细 step，等下面两条主线更稳后再进入：
 
 1. `docs/modules/platform-api/`
-2. `docs/modules/jenkins-kpi-platform/`
+2. `docs/modules/test-workflow-runner/`

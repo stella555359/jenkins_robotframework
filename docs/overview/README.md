@@ -31,7 +31,7 @@
 
 1. 先走 `platform-api`
    - 先把执行器无关的 run contract、Jenkins callback、artifact/KPI metadata 查询面打稳
-2. 再走 `jenkins-kpi-platform`
+2. 再走 `test-workflow-runner`
    - 单独推进 runner、generator、detector 的执行层实现
 3. 最后再走 `automation-portal`
    - 当前先预留独立 step 轨，等 backend 和 execution 主线更稳后再细化
@@ -39,7 +39,7 @@
 对应入口：
 
 - `docs/modules/platform-api/`
-- `docs/modules/jenkins-kpi-platform/`
+- `docs/modules/test-workflow-runner/`
 - `docs/modules/automation-portal/`
 
 ## 怎么区分 overview 和 modules

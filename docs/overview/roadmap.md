@@ -14,7 +14,7 @@
 
 当前统一方案的核心结构是：
 
-- `jenkins-kpi-platform`：Jenkins 配置、Pipeline、部署编排
+- `test-workflow-runner`：Jenkins 配置、Pipeline、部署编排
 - `platform-api`：FastAPI 后端，统一 API、任务记录、结果聚合
 - `automation-portal`：React 门户层，负责触发、查看、分析
 
@@ -51,7 +51,7 @@
   - 负责系统级架构、跨模块执行链、总推进顺序
 - `docs/modules/platform-api/`
   - 负责 `platform-api` 自己的 step 主线
-- `docs/modules/jenkins-kpi-platform/`
+- `docs/modules/test-workflow-runner/`
   - 负责 runner / generator / detector 的 execution 主线
 - `docs/modules/automation-portal/`
   - 先预留独立 step 轨，后续再详细展开
@@ -61,7 +61,7 @@
 1. 先推进 `platform-api`
    - 先打稳执行器无关的 run contract 和状态面
    - 再打稳 Jenkins trigger / callback / artifact / KPI metadata 闭环
-2. 再推进 `jenkins-kpi-platform`
+2. 再推进 `test-workflow-runner`
    - 单独承接 runner、generator、detector 的执行层 step
 3. 最后再推进 `automation-portal`
    - 在 backend 和 execution 主线稳定后，再展开 workflow builder 和结果展示
@@ -192,7 +192,7 @@ module index 决定该模块下一步做什么。
 
 ### 5.2 三块代码的新职责
 
-#### `jenkins-kpi-platform`
+#### `test-workflow-runner`
 
 - JCasC
 - Jenkinsfile / Groovy Pipeline
@@ -220,7 +220,7 @@ module index 决定该模块下一步做什么。
 
 ```text
 jenkins_robotframework/
-├── jenkins-kpi-platform/
+├── test-workflow-runner/
 │   ├── jcasc/
 │   ├── jobs/
 │   ├── pipelines/
@@ -539,9 +539,9 @@ which npm
 
 ```bash
 sudo mkdir -p /opt/jenkins_robotframework
-sudo mkdir -p /var/lib/jenkins-kpi-platform/{logs,backups,data}
+sudo mkdir -p /var/lib/test-workflow-runner/{logs,backups,data}
 sudo chown -R ute:ute /opt/jenkins_robotframework
-sudo chown -R ute:ute /var/lib/jenkins-kpi-platform
+sudo chown -R ute:ute /var/lib/test-workflow-runner
 ```
 
 允许手工创建的内容：
@@ -723,8 +723,8 @@ Jenkins 不负责：
 
 ```bash
 sudo openssl req -x509 -nodes -days 365 -newkey rsa:4096 \
-  -keyout /etc/ssl/private/jenkins-kpi-platform.key \
-  -out /etc/ssl/certs/jenkins-kpi-platform.crt \
+  -keyout /etc/ssl/private/test-workflow-runner.key \
+  -out /etc/ssl/certs/test-workflow-runner.crt \
   -subj "/CN=10.71.210.104"
 ```
 
@@ -735,7 +735,7 @@ sudo openssl req -x509 -nodes -days 365 -newkey rsa:4096 \
 仓库中维护：
 
 ```text
-deploy/nginx/jenkins-kpi-platform.conf
+deploy/nginx/test-workflow-runner.conf
 ```
 
 建议内容：
@@ -752,8 +752,8 @@ server {
     listen 443 ssl;
     server_name 10.71.210.104;
 
-    ssl_certificate /etc/ssl/certs/jenkins-kpi-platform.crt;
-    ssl_certificate_key /etc/ssl/private/jenkins-kpi-platform.key;
+    ssl_certificate /etc/ssl/certs/test-workflow-runner.crt;
+    ssl_certificate_key /etc/ssl/private/test-workflow-runner.key;
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_prefer_server_ciphers on;
 
@@ -773,8 +773,8 @@ server {
 启用配置：
 
 ```bash
-sudo cp /opt/jenkins_robotframework/deploy/nginx/jenkins-kpi-platform.conf /etc/nginx/sites-available/jenkins-kpi-platform.conf
-sudo ln -sf /etc/nginx/sites-available/jenkins-kpi-platform.conf /etc/nginx/sites-enabled/jenkins-kpi-platform.conf
+sudo cp /opt/jenkins_robotframework/deploy/nginx/test-workflow-runner.conf /etc/nginx/sites-available/test-workflow-runner.conf
+sudo ln -sf /etc/nginx/sites-available/test-workflow-runner.conf /etc/nginx/sites-enabled/test-workflow-runner.conf
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t
 sudo systemctl restart nginx
@@ -1717,7 +1717,7 @@ flowchart LR
 
 建议职责归属：
 
-- 执行编排：`jenkins-kpi-platform`
+- 执行编排：`test-workflow-runner`
 - 任务记录与结果接口：`platform-api`
 - 配置页面与结果展示：`automation-portal`
 
@@ -1810,7 +1810,7 @@ flowchart TB
 - `compass_build`
 - `scenario`
 
-#### `jenkins-kpi-platform`
+#### `test-workflow-runner`
 
 建议在测试 Pipeline 中新增两个可选 stage：
 
@@ -1922,7 +1922,7 @@ Stage 6  Publish artifacts and callback platform-api
 为了让这一章后续可以直接落地，建议按下面三块拆开推进：
 
 1. `platform-api` 先补 API 与数据模型
-2. `jenkins-kpi-platform` 再补 Pipeline stage
+2. `test-workflow-runner` 再补 Pipeline stage
 3. `automation-portal` 最后补页面、字段与结果展示
 
 最推荐的执行顺序是：
@@ -2175,7 +2175,7 @@ Stage 6  Publish artifacts and callback platform-api
 - 当前已经补上 `GET /api/runs/{run_id}`
 - 然后再准备 `app/services/jenkins_service.py`
 
-#### `jenkins-kpi-platform`
+#### `test-workflow-runner`
 
 - 在 `pipelines/` 下新增一份测试执行 Pipeline
 - 让这份 Pipeline 支持 KPI 相关参数
@@ -2210,8 +2210,8 @@ server {
     listen 443 ssl;
     server_name 10.71.210.104;
 
-    ssl_certificate /etc/ssl/certs/jenkins-kpi-platform.crt;
-    ssl_certificate_key /etc/ssl/private/jenkins-kpi-platform.key;
+    ssl_certificate /etc/ssl/certs/test-workflow-runner.crt;
+    ssl_certificate_key /etc/ssl/private/test-workflow-runner.key;
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_prefer_server_ciphers on;
 
@@ -2240,8 +2240,8 @@ server {
 启用方式：
 
 ```bash
-sudo cp /opt/jenkins_robotframework/deploy/nginx/jenkins-kpi-platform.conf /etc/nginx/sites-available/jenkins-kpi-platform.conf
-sudo ln -sf /etc/nginx/sites-available/jenkins-kpi-platform.conf /etc/nginx/sites-enabled/jenkins-kpi-platform.conf
+sudo cp /opt/jenkins_robotframework/deploy/nginx/test-workflow-runner.conf /etc/nginx/sites-available/test-workflow-runner.conf
+sudo ln -sf /etc/nginx/sites-available/test-workflow-runner.conf /etc/nginx/sites-enabled/test-workflow-runner.conf
 sudo nginx -t
 sudo systemctl restart nginx
 ```

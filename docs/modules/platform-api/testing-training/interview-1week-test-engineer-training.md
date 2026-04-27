@@ -29,7 +29,7 @@ platform-api -> Jenkins -> Robot -> callback -> SQLite
 - 主任务：`platform-api -> Jenkins -> Robot -> callback -> DB`
 - 必做辅助：`Postman + SQL + JMeter` 最小训练
 - 可选加分：`automation-portal` 超薄展示层
-- 先放后面：`jenkins-kpi-platform`
+- 先放后面：`test-workflow-runner`
 
 ## 这份 JD 真正在要什么
 
@@ -200,7 +200,7 @@ platform-api -> Jenkins -> Robot -> callback -> SQLite
 
 ## 当前仓库里最适合拿来练什么
 
-这一周不建议你把重点放在 `jenkins-kpi-platform`。
+这一周不建议你把重点放在 `test-workflow-runner`。
 
 对这次面试准备来说，当前更适合重点使用：
 

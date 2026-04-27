@@ -10,7 +10,7 @@
 - run list / detail / KPI summary 页面
 - artifact / detector 报告入口展示
 
-但从当前开始，这条模块线先只做占位，不抢 `platform-api` 和 `jenkins-kpi-platform` 的主线顺序。
+但从当前开始，这条模块线先只做占位，不抢 `platform-api` 和 `test-workflow-runner` 的主线顺序。
 
 ## 推荐阅读顺序
 

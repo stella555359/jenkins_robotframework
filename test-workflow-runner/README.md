@@ -1,10 +1,10 @@
-# jenkins-kpi-platform
+# test-workflow-runner
 
 这里放 `Jenkins + Agent` 侧的执行编排资源。
 
 当前已经补上的内容包括：
 
-- `gnb_kpi_orchestrator/`
+- `test_workflow_runner/`
   - GNB KPI workflow 的 Python orchestrator
 - `tests/`
   - orchestrator 的最小单元测试
@@ -25,5 +25,5 @@
 
 ```text
 platform-api 负责收请求和聚合状态
-jenkins-kpi-platform 负责真正执行 workflow
+test-workflow-runner 负责真正执行 workflow
 ```

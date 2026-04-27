@@ -16,7 +16,7 @@
 run 创建后，平台具备把 run_id 交给 Jenkins 的稳定 contract。
 ```
 
-真实 Jenkins 触发、Job 参数、UTE 节点和 Robot 命令会在后续 `jenkins-kpi-platform` 执行层步骤中完成。
+真实 Jenkins 触发、Job 参数、UTE 节点和 Robot 命令会在后续 `test-workflow-runner` 执行层步骤中完成。
 
 ## 预期结果
 
@@ -195,7 +195,7 @@ Step 11 解决的是 Jenkins 执行完以后，平台如何接收执行结果的
 
 在 Step 10 里，`platform-api` 已经能创建一条稳定的 run。Step 11 则补上后半段：Jenkins 或执行层拿到 `run_id` 后，执行完长任务，再通过 callback 把状态、时间、产物和 KPI 摘要回写到同一条 run。
 
-这一轮不做真实 Jenkins trigger。真实 Job 触发、UTE 节点、Robot workspace 和 Pipeline stage 都属于后续 `jenkins-kpi-platform` 执行层。
+这一轮不做真实 Jenkins trigger。真实 Job 触发、UTE 节点、Robot workspace 和 Pipeline stage 都属于后续 `test-workflow-runner` 执行层。
 
 ### 改了哪些文件
 

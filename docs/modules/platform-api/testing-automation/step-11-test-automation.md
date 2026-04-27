@@ -120,7 +120,7 @@ python -m pytest tests/test_runs.py --alluredir=allure-results
 未自动化原因：
 
 - Step 11 只冻结 `platform-api` callback contract。
-- 真实 Jenkins job、UTE 节点、Robot 命令放到 `jenkins-kpi-platform` 执行层。
+- 真实 Jenkins job、UTE 节点、Robot 命令放到 `test-workflow-runner` 执行层。
 
 ### 2. Jenkins callback 鉴权
 

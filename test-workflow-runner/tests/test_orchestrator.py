@@ -8,10 +8,10 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from gnb_kpi_orchestrator.config_resolver import EnvConfigResolver
-from gnb_kpi_orchestrator.models import OrchestratorState
-from gnb_kpi_orchestrator.request_loader import RequestLoader, RequestValidationError
-from gnb_kpi_orchestrator.runner import OrchestratorRunner
+from test_workflow_runner.config_resolver import EnvConfigResolver
+from test_workflow_runner.models import OrchestratorState
+from test_workflow_runner.request_loader import RequestLoader, RequestValidationError
+from test_workflow_runner.runner import OrchestratorRunner
 
 
 @pytest.fixture

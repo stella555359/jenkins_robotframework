@@ -40,6 +40,19 @@
 
 如果你现在正在做接口、测试、fixture、Allure 相关工作，通常优先进入这里。
 
+### `jenkins-integration/`
+
+Jenkins 公共集成层骨架。
+
+这里放：
+
+- `jcasc/`
+- `jobs/`
+- `pipelines/`
+- `scripts/`
+
+如果你现在正在收口 Jenkins trigger、Pipeline、workspace bootstrap、checkout `robotws / testline_configuration`、callback 这些公共逻辑，优先进入这里。
+
 ### `automation-portal/`
 
 后续的前端门户层。
@@ -71,9 +84,10 @@
 
 1. 先看 `docs/README.md`
 2. 如果想看项目总路线，进 `docs/overview/roadmap.md`
-3. 如果想看当前模块，进 `docs/modules/platform-api/`
-4. 然后去 `platform-api/` 看代码和测试
-5. 如果当前是在推进 GNB KPI 新主线，再补看 `docs/modules/platform-api/guides/gnb-kpi-regression-architecture.md`
+3. 如果想看 Jenkins 公共集成层，进 `docs/modules/jenkins-integration/`
+4. 如果想看当前模块，进 `docs/modules/platform-api/`
+5. 然后去对应模块目录看代码和测试
+6. 如果当前是在推进 GNB KPI 新主线，再补看 `docs/modules/platform-api/guides/gnb-kpi-regression-architecture.md`
 
 ### 如果你想回看测试 workflow
 
@@ -98,6 +112,7 @@
 docs 管入口和知识
 overview 管项目总览
 modules 管模块文档
+jenkins-integration 管公共 Jenkins 层
 platform-api 管当前主代码
 automation-portal 管后续前端
 issue 管历史问题归档

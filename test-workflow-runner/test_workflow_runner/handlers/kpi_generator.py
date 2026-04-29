@@ -11,12 +11,16 @@ class KpiGeneratorHandler(BaseHandler):
 
     def run(self, context: HandlerContext):
         params = dict(context.item.params)
+        params.setdefault("environment", context.testline_context.resolved_config.config_id)
+        params.setdefault("test_line", context.request.testline)
         if context.request.runtime_options.dry_run:
             return self.build_success(
                 context,
                 summary={
                     "implementation_mode": "internal_api_dry_run",
                     "action": "kpi_generator",
+                    "environment": params["environment"],
+                    "test_line": params["test_line"],
                     "requested_output_dir": params.get("output_dir"),
                 },
             )

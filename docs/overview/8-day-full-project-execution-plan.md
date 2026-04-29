@@ -15,10 +15,10 @@ Cursor 重启或新会话后，先按下面顺序恢复上下文：
 ## 当前执行状态
 
 - 当前计划：8 天全项目收口计划
-- 当前天数：Day 1
-- 当前模块：`platform-api`
-- 当前小 step：Step 13：把 run detail 升级为 execution-ready 详情入口
-- 当前状态：Step 13 已补 execution-ready detail 字段断言、学习版说明和 testing-automation 记录，验证命令等待用户在服务器上执行
+- 当前天数：Day 2
+- 当前模块：`test-workflow-runner`
+- 当前小 step：Step 3：接入 testline_configuration / robotws / TAF gateway 的运行时契约
+- 当前状态：Day 1 / Step 13 已由用户验证通过；执行层模块已完成 Step 1 / 2 / 4 / 5 的代码与文档收口，当前开始收口 Step 3 的真实运行时契约。
 - 当前重要约定：AI 不主动执行 pytest / Allure / Postman / JMeter / 前端测试等验证命令，只提供验证步骤和预期结果
 
 ## 总目标
@@ -135,6 +135,14 @@ python -m pytest tests/test_runs.py --alluredir=allure-results
 - Step 10 只要求 `allure-results` 原始目录产出。
 - Jenkins 中展示 Allure HTML 报告放入后续 Jenkins / 测试流程收口。
 
+
+Day 1 完成摘要：
+
+- Step 10 已完成并由用户验证通过：冻结 `robot` / `python_orchestrator` run create contract，移除顶层 `scenario` / `workflow_name`，并限制 KPI 后处理字段只属于 `python_orchestrator`。
+- Step 11 已完成并由用户验证通过：固定 Jenkins callback 最小闭环，明确真实 Jenkins trigger 放到执行层。
+- Step 12 已完成并由用户验证通过：固定两个查询面，`/artifacts` 返回 artifact 清单，`/kpi` 返回 kpi_generator 执行摘要和 kpi_anomaly_detector 执行摘要。
+- Step 13 已完成并由用户验证通过：把 `GET /api/runs/{run_id}` 升级为 execution-ready detail，能承接 workflow、artifact、kpi_generator 和 detector 结果。
+- 执行层模块已从 `jenkins-kpi-platform` 重命名为 `test-workflow-runner`，内部 Python 包名已迁移为 `test_workflow_runner`。
 ## Day 2：Test Workflow Runner 执行层
 
 目标：

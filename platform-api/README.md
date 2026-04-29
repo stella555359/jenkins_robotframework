@@ -13,7 +13,7 @@
 
 - `GET /api/runs`
 - `GET /api/runs/{run_id}`
-- Jenkins 集成
+- Jenkins handoff / callback contract
 - 更完整的 SQLite 持久化
 
 当前 `POST /api/runs` 已经会把最小 run 元数据写入 `SQLite`，默认数据库路径为：
@@ -81,4 +81,9 @@ allure serve allure-results
 
 - 先用 API 契约层把接口行为测稳
 - 再用少量持久化验证层确保不是“假接口”
-- 等接 Jenkins 后，再逐步加系统测试层
+- 等接 `jenkins-integration` 后，再逐步加系统测试层
+
+当前边界说明：
+
+- `platform-api` 负责 run contract、callback 和查询接口
+- 通用 Jenkins job / pipeline / checkout / bridge 逻辑放在 `jenkins-integration/`

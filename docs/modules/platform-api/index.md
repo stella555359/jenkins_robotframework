@@ -64,7 +64,7 @@
 - [x] Step 8：实现 `GET /api/runs`
 - [x] Step 9：实现 `GET /api/runs/{run_id}`
 - [ ] Step 10：冻结 executor-agnostic run contract
-- [ ] Step 11：打通 Jenkins trigger / callback 最小闭环
+- [ ] Step 11：冻结 Jenkins handoff / callback 最小闭环
 - [ ] Step 12：补齐 artifact / KPI / detector metadata 查询面
 - [ ] Step 13：把 run detail 升级为 execution-ready 详情入口
 
@@ -78,7 +78,7 @@
 ## 当前规划中的后续 4 个 step
 
 - [Step 10：冻结 executor-agnostic run contract](steps/step-10-executor-agnostic-run-contract.md)
-- [Step 11：打通 Jenkins trigger / callback 最小闭环](steps/step-11-jenkins-trigger-and-callback.md)
+- [Step 11：冻结 Jenkins handoff / callback 最小闭环](steps/step-11-jenkins-trigger-and-callback.md)
 - [Step 12：补齐 artifact / KPI / detector metadata 查询面](steps/step-12-artifact-and-kpi-metadata-query-surface.md)
 - [Step 13：把 run detail 升级为 execution-ready 详情入口](steps/step-13-execution-ready-run-detail.md)
 
@@ -98,7 +98,7 @@
 1. [Testing Workflow](guides/testing-workflow.md)
 2. [API 设计与调用链](guides/api-design-and-flow.md)
 3. [Step 10：executor-agnostic run contract](steps/step-10-executor-agnostic-run-contract.md)
-4. [Step 11：Jenkins trigger / callback](steps/step-11-jenkins-trigger-and-callback.md)
+4. [Step 11：Jenkins handoff / callback](steps/step-11-jenkins-trigger-and-callback.md)
 5. [Step 12：artifact / KPI metadata](steps/step-12-artifact-and-kpi-metadata-query-surface.md)
 
 ## 当前协作约定

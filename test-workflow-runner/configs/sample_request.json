@@ -1,0 +1,99 @@
+{
+  "testline": "7_5_UTE5G402T813",
+  "ue_selection": {
+    "selected_ues": [
+      {
+        "ue_index": 1,
+        "ue_type": "phone",
+        "label": "ue-1",
+        "ue_ip": "10.0.0.1"
+      },
+      {
+        "ue_index": 2,
+        "ue_type": "phone",
+        "label": "ue-2",
+        "ue_ip": "10.0.0.2"
+      }
+    ]
+  },
+  "traffic_plan": {
+    "stages": [
+      {
+        "stage_id": 1,
+        "stage_name": "attach_and_observe",
+        "execution_mode": "serial",
+        "items": [
+          {
+            "item_id": "attach-1",
+            "model": "attach",
+            "enabled": true,
+            "order": 10,
+            "execution_mode": "serial",
+            "continue_on_failure": false,
+            "ue_scope": {
+              "mode": "all_selected_ues"
+            },
+            "params": {
+              "attach_timeout_seconds": 120
+            }
+          },
+          {
+            "item_id": "syslog-1",
+            "model": "syslog_check",
+            "enabled": true,
+            "order": 20,
+            "execution_mode": "serial",
+            "continue_on_failure": false,
+            "ue_scope": {
+              "mode": "all_selected_ues"
+            },
+            "params": {
+              "mode": "post_window_syslog_scan"
+            }
+          }
+        ]
+      },
+      {
+        "stage_id": 2,
+        "stage_name": "traffic",
+        "execution_mode": "parallel",
+        "items": [
+          {
+            "item_id": "dl-1",
+            "model": "dl_traffic",
+            "enabled": true,
+            "order": 10,
+            "execution_mode": "parallel",
+            "continue_on_failure": false,
+            "ue_scope": {
+              "mode": "all_selected_ues"
+            },
+            "params": {
+              "script_path": "scripts/traffic/dl.py"
+            }
+          },
+          {
+            "item_id": "ul-1",
+            "model": "ul_traffic",
+            "enabled": true,
+            "order": 20,
+            "execution_mode": "parallel",
+            "continue_on_failure": false,
+            "ue_scope": {
+              "mode": "all_selected_ues"
+            },
+            "params": {
+              "script_path": "scripts/traffic/ul.py"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "runtime_options": {
+    "dry_run": true,
+    "stop_on_failure": true,
+    "max_parallel_workers": 4,
+    "log_level": "INFO"
+  }
+}

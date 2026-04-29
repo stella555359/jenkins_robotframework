@@ -22,6 +22,7 @@
 ## 当前文档
 
 - [项目路线图](roadmap.md)
+- [四模块边界与最终流程图](four-module-boundaries-and-flow.md)
 - [GNB KPI Regression Architecture](gnb-kpi-regression-architecture.md)
 - [GNB KPI System Runtime](gnb-kpi-system-runtime.md)
 
@@ -30,14 +31,17 @@
 从当前这轮架构冻结开始，默认按下面这条主线推进：
 
 1. 先走 `platform-api`
-   - 先把执行器无关的 run contract、Jenkins callback、artifact/KPI metadata 查询面打稳
-2. 再走 `test-workflow-runner`
+   - 先把执行器无关的 run contract、callback contract、artifact/KPI metadata 查询面打稳
+2. 再走 `jenkins-integration`
+   - 把公共 Jenkins bootstrap、pipeline、checkout、callback bridge 收口
+3. 再走 `test-workflow-runner`
    - 单独推进 runner、generator、detector 的执行层实现
-3. 最后再走 `automation-portal`
+4. 最后再走 `automation-portal`
    - 当前先预留独立 step 轨，等 backend 和 execution 主线更稳后再细化
 
 对应入口：
 
+- `docs/modules/jenkins-integration/`
 - `docs/modules/platform-api/`
 - `docs/modules/test-workflow-runner/`
 - `docs/modules/automation-portal/`
@@ -48,7 +52,7 @@
 
 - 系统级 runtime 架构
 - 跨模块执行链路
-- `React / FastAPI / Jenkins / UTE / Robot / runner / TAF` 的职责关系
+- `automation-portal / platform-api / jenkins-integration / test-workflow-runner` 的职责关系
 - 公共 bootstrap / 公共前置层
 - 整个平台的端到端流程图
 

@@ -1,0 +1,75 @@
+# Draft JCasC example for the robot execution path.
+# Real secrets should come from the controller environment or an external secret source.
+# This example uses a static inbound agent because the YAML shape is stable across environments.
+# If the real controller uses SSH agents or a cloud plugin, export that launcher block from Jenkins and replace it here.
+
+jenkins:
+  systemMessage: "Managed by Jenkins Configuration as Code for jenkins-integration."
+  numExecutors: 0
+  mode: EXCLUSIVE
+  scmCheckoutRetryCount: 2
+  slaveAgentPort: 50000
+  globalNodeProperties:
+    - envVars:
+        env:
+          - key: ROBOTWS_REPO_URL
+            value: "${ROBOTWS_REPO_URL}"
+          - key: TESTLINE_CONFIGURATION_REPO_URL
+            value: "${TESTLINE_CONFIGURATION_REPO_URL}"
+          - key: ROBOTWS_CREDENTIALS_ID
+            value: "robotws-ssh"
+          - key: TESTLINE_CONFIGURATION_CREDENTIALS_ID
+            value: "testline-config-ssh"
+  nodes:
+    - permanent:
+        name: "robot-linux-01"
+        nodeDescription: "Example Linux robot executor for robotws and testline_configuration jobs."
+        remoteFS: "/home/jenkins"
+        labelString: "robot linux ute"
+        numExecutors: 1
+        mode: EXCLUSIVE
+        launcher:
+          inbound:
+            workDirSettings:
+              disabled: true
+              failIfWorkDirIsMissing: false
+              internalDir: "remoting"
+              workDirPath: "/home/jenkins/remoting"
+        nodeProperties:
+          - envVars:
+              env:
+                - key: ROBOT_AGENT_HOME
+                  value: "/home/ute"
+                - key: PYTHON_BIN
+                  value: "/usr/bin/python3"
+
+unclassified:
+  location:
+    url: "${JENKINS_URL}"
+    adminAddress: "${JENKINS_ADMIN_EMAIL}"
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - basicSSHUserPrivateKey:
+              scope: GLOBAL
+              id: "robotws-ssh"
+              username: "${ROBOTWS_GIT_SSH_USER}"
+              description: "SSH key for robotws checkout"
+              privateKeySource:
+                directEntry:
+                  privateKey: "${ROBOTWS_GIT_SSH_PRIVATE_KEY}"
+          - basicSSHUserPrivateKey:
+              scope: GLOBAL
+              id: "testline-config-ssh"
+              username: "${TESTLINE_CONFIGURATION_GIT_SSH_USER}"
+              description: "SSH key for testline_configuration checkout"
+              privateKeySource:
+                directEntry:
+                  privateKey: "${TESTLINE_CONFIGURATION_GIT_SSH_PRIVATE_KEY}"
+
+# Intentionally not defined here:
+# - ROBOTWS_GIT_REF
+# - TESTLINE_CONFIGURATION_GIT_REF
+# Those stay job-level configurable. The current recommended job default for both is master.

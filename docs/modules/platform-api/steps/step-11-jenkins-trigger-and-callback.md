@@ -1,22 +1,22 @@
-# Step 11：打通 Jenkins callback 最小闭环
+# Step 11：冻结 Jenkins handoff / callback 最小闭环
 
 ## 这一步的目标
 
-把 `platform-api` 在 Jenkins 集成里的职责冻结清楚：
+把 `platform-api` 在四模块架构里的职责冻结清楚：
 
 - `platform-api` 负责创建 `run`
-- Jenkins 负责执行长任务
+- `jenkins-integration` 负责公共 Jenkins 调度和桥接
 - Jenkins 执行完后通过 callback 回写 `run` 状态、时间戳和产物摘要
 
 这一轮先站稳“平台侧 callback 语义”，不把真实 Jenkins Pipeline 触发细节塞进 `platform-api` 模块文档里。
 
-标题里的“trigger”在这一轮只表示：
+标题里的“handoff”在这一轮表示：
 
 ```text
-run 创建后，平台具备把 run_id 交给 Jenkins 的稳定 contract。
+run 创建后，平台具备把 run_id 和执行语义交给 jenkins-integration 的稳定 contract。
 ```
 
-真实 Jenkins 触发、Job 参数、UTE 节点和 Robot 命令会在后续 `test-workflow-runner` 执行层步骤中完成。
+真实 Jenkins 触发、Job 参数、UTE 节点、checkout、Robot 命令和 runner 启动，统一在 `jenkins-integration` 模块完成。
 
 ## 预期结果
 
@@ -73,7 +73,8 @@ jenkins_callback() -> apply_run_callback() -> update_run_record()
 flowchart TD
 Portal["调用方创建 run"] --> Create["router: create_run(request)"]
 Create --> RunCreated["run_id created"]
-RunCreated --> Jenkins["Jenkins 执行外部长任务"]
+RunCreated --> Handoff["handoff to jenkins-integration"]
+Handoff --> Jenkins["Jenkins 执行外部长任务"]
 Jenkins --> Callback["router: jenkins_callback(run_id, request)"]
 Callback --> Service["service: apply_run_callback(run_id, request)"]
 Service --> Repo["repository: update_run_record(run_id, updates)"]
@@ -191,11 +192,11 @@ python -m pytest tests/test_runs.py --alluredir=allure-results
 
 ### 这一步解决了什么问题
 
-Step 11 解决的是 Jenkins 执行完以后，平台如何接收执行结果的问题。
+Step 11 解决的是：平台把 run 交给公共 Jenkins 层之后，如何稳定接收执行结果。
 
 在 Step 10 里，`platform-api` 已经能创建一条稳定的 run。Step 11 则补上后半段：Jenkins 或执行层拿到 `run_id` 后，执行完长任务，再通过 callback 把状态、时间、产物和 KPI 摘要回写到同一条 run。
 
-这一轮不做真实 Jenkins trigger。真实 Job 触发、UTE 节点、Robot workspace 和 Pipeline stage 都属于后续 `test-workflow-runner` 执行层。
+这一轮不做真实 Jenkins trigger。真实 Job 触发、UTE 节点、Robot workspace、runner request 物化和 Pipeline stage 都属于 `jenkins-integration` 公共层。
 
 ### 改了哪些文件
 

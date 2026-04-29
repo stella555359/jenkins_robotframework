@@ -59,7 +59,11 @@ class OrchestratorRunner:
         stages = request.traffic_stages()
         selected_ues_by_index = {ue.ue_index: ue for ue in self._selected_ues(request, context)}
         gateway = TafGateway(request.runtime_options.bindings_module)
-        stdout(f"[runner] start env={request.env} stages={len(stages)} dry_run={request.runtime_options.dry_run}\n")
+        stdout(
+            f"[runner] start testline={request.testline} "
+            f"alias={context.resolved_config.config_id} "
+            f"stages={len(stages)} dry_run={request.runtime_options.dry_run}\n"
+        )
 
         for stage in stages:
             warnings = validate_parallel_stage(stage)
@@ -226,13 +230,15 @@ class OrchestratorRunner:
         raise ValueError(f"Unsupported ue_scope.mode for runner: {item.ue_scope.mode}")
 
     def _append_result(self, state: OrchestratorState, result: HandlerResult) -> None:
-        if result.model == "apply_preconditions":
+        handler = self.handler_registry.get(result.model)
+        bucket = getattr(handler, "result_bucket", "traffic")
+        if bucket == "preconditions":
             state.precondition_results.append(result)
             return
-        if result.model == "syslog_check":
+        if bucket == "sidecars":
             state.sidecar_results.append(result)
             return
-        if result.model in {"kpi_generator", "kpi_detector"}:
+        if bucket == "followups":
             state.followup_results.append(result)
             return
         state.traffic_results.append(result)

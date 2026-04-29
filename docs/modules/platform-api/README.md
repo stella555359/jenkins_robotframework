@@ -18,6 +18,17 @@
 
 - `docs/overview/gnb-kpi-regression-architecture.md`
 - `docs/overview/gnb-kpi-system-runtime.md`
+- `docs/overview/four-module-boundaries-and-flow.md`
+
+如果你要看：
+
+- Jenkins job / pipeline
+- workspace / checkout / callback bridge
+- `workflow_spec -> request.json` 物化
+
+请先转到：
+
+- `docs/modules/jenkins-integration/`
 
 ## 当前目录怎么理解
 
@@ -31,6 +42,10 @@
   - 测试设计训练材料
 - `testing-automation/`
   - 测试自动化交付记录
+
+## 当前边界一句话
+
+`platform-api` 负责 run contract、持久化、callback 消费和查询面，不负责公共 Jenkins 调度实现。
 
 ## 后续 step 文档默认结构
 

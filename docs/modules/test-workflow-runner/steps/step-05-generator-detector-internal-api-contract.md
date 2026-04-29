@@ -42,6 +42,19 @@ traffic item params -> orchestrator handler -> internal_tools service -> result 
 - 额外 subprocess 包装脚本
 - 旧项目目录结构下的脚本入口
 
+## 通用上下文字段注入
+
+当前两个 followup handler 都会先对 `params` 做一层上下文补全：
+
+- 如果没有显式传 `environment`，默认注入 `context.testline_context.resolved_config.config_id`，例如 `T813`
+- 如果没有显式传 `test_line`，默认注入本次 request 的完整 `testline`
+- 如果调用方已经显式传值，handler 保留调用方提供的值，不会强制覆盖
+
+这意味着：
+
+- 从 workflow 作者视角，`environment` / `test_line` 不一定需要每次都手工填写
+- 但如果你要和历史脚本、外部平台或特殊目录约定精确对齐，仍然可以在 `params` 里显式覆盖
+
 ## 函数调用流程图
 
 ```mermaid
@@ -60,7 +73,6 @@ flowchart LR
 ### 最小必填字段
 
 - `build`
-- `environment`
 - `scenario`
 - `report_timestamps_list`
 - `template_set_name` 或 `template_names`
@@ -69,9 +81,12 @@ flowchart LR
 
 - `template_set_name` 适合沿用模板集合名
 - `template_names` 适合显式指定模板列表
+- `environment` 如未显式传值，当前 handler 会默认使用当前 testline 的 `config_id`
+- `test_line` 如未显式传值，当前 handler 会默认使用本次 request 的完整 `testline`
 
 ### 常用可选字段
 
+- `environment`
 - `timestamp_delta_minutes`
 - `test_line`
 - `output_dir`
@@ -86,12 +101,12 @@ flowchart LR
 
 - 业务输入
   - `build`
-  - `environment`
   - `scenario`
   - `template_set_name`
   - `template_names`
   - `report_timestamps_list`
   - `timestamp_delta_minutes`
+  - `environment`
   - `test_line`
 - 执行控制
   - `output_dir`
@@ -143,6 +158,7 @@ flowchart LR
 
 - handler 不会真的调用 Compass
 - 返回的 summary 会标记 `implementation_mode=internal_api_dry_run`
+- dry-run summary 会带上最终生效的 `environment` / `test_line`
 - 主要用于先验证 workflow 结构和参数面
 
 ## `kpi_detector` params 约定
@@ -155,6 +171,8 @@ flowchart LR
 
 ### 常用可选字段
 
+- `environment`
+- `test_line`
 - `runtime_root`
 - `reports_dir`
 - `docs_dir`
@@ -218,6 +236,7 @@ flowchart LR
 
 - handler 不会真的读取 Excel 文件
 - 返回的 summary 会标记 `implementation_mode=internal_api_dry_run`
+- dry-run summary 会带上最终生效的 `environment` / `test_line`
 - 可以先验证 followup 链路是否挂接正确
 
 ## 推荐的 followup stage 组织方式
@@ -271,15 +290,17 @@ flowchart LR
 - detector 再消费 Excel
 - 不把两者做成互相独立且无序的并行项
 
+补充说明：这不只是风格建议。当前 safety 规则里，`kpi_generator` / `kpi_detector` 都属于 `followup` 保护域；如果把多个 followup item 放进并行 stage，标准 CLI 主路径会在 `RequestLoader` 阶段直接拒绝这类请求。
+
 ## 开发侧验收步骤（服务器侧执行）
 
 ```bash
-cd /path/to/jenkins_robotframework/test-workflow-runner
+cd /opt/jenkins_robotframework/test-workflow-runner
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pytest tests/test_orchestrator.py
-python -m test_workflow_runner.cli configs/sample_request.json --dry-run
+python -m test_workflow_runner.cli configs/sample_request.json --dry-run --result-json artifacts/day2-step5-result.json
 ```
 
 ## 开发侧验收结果

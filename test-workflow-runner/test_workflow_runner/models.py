@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Optional
@@ -20,9 +21,19 @@ SUPPORTED_TRAFFIC_MODELS = (
 )
 
 
+def normalize_testline(testline: str) -> str:
+    return str(testline or "").strip()
+
+
+def derive_testline_alias(testline: str) -> str:
+    cleaned = normalize_testline(testline)
+    aliases = re.findall(r"T\d+", cleaned.upper())
+    return aliases[-1] if aliases else cleaned.upper()
+
+
 @dataclass
 class ResolvedConfig:
-    env: str
+    testline: str
     config_id: str
     config_path: Path
     department: Optional[str] = None
@@ -46,9 +57,10 @@ class NormalizedUe:
 
 @dataclass
 class TestlineContext:
-    env: str
+    testline: str
     resolved_config: ResolvedConfig
     tl: Any
+    repository_root: Path | None = None
     ues: list[NormalizedUe] = field(default_factory=list)
     gnbs: list[Any] = field(default_factory=list)
     enbs: list[Any] = field(default_factory=list)
@@ -124,7 +136,7 @@ class OrchestratorState:
 @dataclass
 class KpiTestModelRequest:
     payload: dict[str, Any]
-    env: str
+    testline: str
     runtime_options: RuntimeOptions
     testline_resolution: Optional[ResolvedConfig] = None
 
@@ -167,7 +179,7 @@ class KpiTestModelRequest:
 
     @classmethod
     def from_dict(cls, payload: dict[str, Any]) -> "KpiTestModelRequest":
-        env = str(payload.get("env") or "").strip().upper()
+        testline = normalize_testline(payload.get("testline") or "")
         runtime_payload = payload.get("runtime_options") or {}
         runtime_options = RuntimeOptions(
             dry_run=bool(runtime_payload.get("dry_run")),
@@ -181,7 +193,7 @@ class KpiTestModelRequest:
         resolved_config = None
         if resolved_payload:
             resolved_config = ResolvedConfig(
-                env=env,
+                testline=testline,
                 config_id=str(resolved_payload.get("config_id") or ""),
                 config_path=Path(str(resolved_payload.get("config_path") or ".")),
                 department=resolved_payload.get("department"),
@@ -194,7 +206,7 @@ class KpiTestModelRequest:
 
         return cls(
             payload=payload,
-            env=env,
+            testline=testline,
             runtime_options=runtime_options,
             testline_resolution=resolved_config,
         )

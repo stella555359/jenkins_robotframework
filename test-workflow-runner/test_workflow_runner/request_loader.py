@@ -5,7 +5,14 @@ from pathlib import Path
 from typing import Any
 
 from .config_resolver import EnvConfigResolver
-from .models import KpiTestModelRequest, RuntimeOptions, SUPPORTED_TRAFFIC_MODELS, ResolvedConfig
+from .models import (
+    KpiTestModelRequest,
+    ResolvedConfig,
+    RuntimeOptions,
+    SUPPORTED_TRAFFIC_MODELS,
+    derive_testline_alias,
+    normalize_testline,
+)
 from .safety import validate_parallel_stage
 
 
@@ -14,8 +21,9 @@ class RequestValidationError(ValueError):
 
 
 class RequestLoader:
-    def __init__(self, repository_root: Path | None = None):
+    def __init__(self, repository_root: Path | None = None, *, require_env_map: bool = True):
         self.repository_root = repository_root or Path(__file__).resolve().parents[1]
+        self.require_env_map = require_env_map
         self.config_resolver = EnvConfigResolver(self.repository_root)
 
     def load_json_file(self, path: Path) -> KpiTestModelRequest:
@@ -29,11 +37,12 @@ class RequestLoader:
         return request
 
     def validate_payload(self, payload: dict[str, Any]) -> None:
-        env = str(payload.get("env") or "").strip().upper()
-        if not env:
-            raise RequestValidationError("env is required.")
+        testline = normalize_testline(payload.get("testline") or "")
+        if not testline:
+            raise RequestValidationError("testline is required.")
 
-        self.config_resolver.resolve_env(env)
+        if self.require_env_map:
+            self.config_resolver.resolve_testline(testline)
 
         ue_selection = payload.get("ue_selection") or {}
         if not isinstance(ue_selection, dict):
@@ -103,8 +112,8 @@ class RequestLoader:
                 if model_name in {"dl_traffic", "ul_traffic"}:
                     params = item.get("params") or {}
                     script_path = str(params.get("script_path") or "").strip()
-                    if script_path:
-                        self.config_resolver.validate_script_path(env, script_path)
+                    if script_path and self.require_env_map:
+                        self.config_resolver.validate_script_path(testline, script_path)
 
         request = KpiTestModelRequest.from_dict(payload)
         warnings: list[str] = []
@@ -124,9 +133,22 @@ class RequestLoader:
             raise RequestValidationError("max_parallel_workers must be greater than 0.")
 
     def _load_resolved_config(self, payload: dict[str, Any]) -> ResolvedConfig:
-        env = str(payload["env"]).strip().upper()
+        testline = normalize_testline(payload["testline"])
+        testline_alias = derive_testline_alias(testline)
         provided = payload.get("testline_resolution") or {}
-        resolved = self.config_resolver.resolve_env(env)
+        if not self.require_env_map:
+            return ResolvedConfig(
+                testline=testline,
+                config_id=str(provided.get("config_id") or testline_alias),
+                config_path=self.repository_root / Path(str(provided.get("config_path") or ".")),
+                department=provided.get("department"),
+                site=provided.get("site"),
+                topology_id=provided.get("topology_id"),
+                match_type=str(provided.get("match_type") or "dry_run_request"),
+                confidence=str(provided.get("confidence") or "low"),
+                allowed_script_roots=list(provided.get("allowed_script_roots") or []),
+            )
+        resolved = self.config_resolver.resolve_testline(testline)
         if provided:
             config_id = str(provided.get("config_id") or "")
             if config_id and config_id != resolved.config_id:

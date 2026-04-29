@@ -6,14 +6,22 @@
 
 它主要解释：
 
-- Jenkins 公共 bootstrap
 - Python runner 的 request / workflow / stage / item 执行语义
 - `generator / detector` 如何作为 execution 后处理能力接入
+
+如果你要看：
+
+- Jenkins 公共 bootstrap
+- Jenkins Pipeline
+- checkout / workspace / callback 公共流程
+
+请先看：
+
+- `docs/modules/jenkins-integration/`
 
 如果你当前在推进：
 
 - runner
-- Jenkins Pipeline
 - generator / detector 接入
 
 优先从这里进入。
@@ -61,3 +69,4 @@
 - 收编到 `test-workflow-runner/internal_tools/`
 - 由 orchestrator handler 直接走内部 API
 - 不再以 `params.command` 作为默认主线
+- followup stage 默认按串行组织；这不只是风格建议，标准 CLI 主路径下 followup 域并行会被 safety 校验拦截

@@ -42,6 +42,7 @@ archive = 历史 / 参考材料
 
 当前已落地的模块入口：
 
+- [Jenkins Integration Docs](modules/jenkins-integration/README.md)
 - [Platform API Docs](modules/platform-api/README.md)
 - [Test Workflow Runner Docs](modules/test-workflow-runner/README.md)
 - [Automation Portal Docs](modules/automation-portal/README.md)
@@ -87,12 +88,14 @@ docs/modules/<module>/
 
 当前已落地模块：
 
+- `jenkins-integration`
 - `platform-api`
 - `test-workflow-runner`
 - `automation-portal`
 
 当前入口：
 
+- [Jenkins Integration Docs](modules/jenkins-integration/README.md)
 - [Platform API Docs](modules/platform-api/README.md)
 - [Platform API 学习总索引](modules/platform-api/index.md)
 - [Test Workflow Runner Docs](modules/test-workflow-runner/README.md)
@@ -128,12 +131,7 @@ docs/modules/<module>/
 
 ## 后续新模块怎么接入
 
-后面如果新增：
-
-- `automation-portal`
-- `test-workflow-runner`
-
-默认都放到：
+后面如果新增模块，默认都放到：
 
 - `docs/modules/<module>/`
 

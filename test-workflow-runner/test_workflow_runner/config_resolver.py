@@ -4,7 +4,7 @@ import importlib.util
 import json
 from pathlib import Path
 
-from .models import ResolvedConfig, TestlineContext
+from .models import ResolvedConfig, TestlineContext, derive_testline_alias, normalize_testline
 from .ue_extractor import UeExtractor
 
 
@@ -21,21 +21,22 @@ class EnvConfigResolver:
             raise FileNotFoundError(f"env_map.json not found: {env_map_path}")
         return json.loads(env_map_path.read_text(encoding="utf-8"))
 
-    def resolve_env(self, env: str) -> ResolvedConfig:
-        cleaned_env = str(env or "").strip().upper()
-        if not cleaned_env:
-            raise ValueError("env is required.")
+    def resolve_testline(self, testline: str) -> ResolvedConfig:
+        cleaned_testline = normalize_testline(testline)
+        if not cleaned_testline:
+            raise ValueError("testline is required.")
 
+        testline_alias = derive_testline_alias(cleaned_testline)
         env_map = self.load_env_map()
-        if cleaned_env not in env_map:
-            raise ValueError(f"env is not defined in env_map.json: {cleaned_env}")
+        if testline_alias not in env_map:
+            raise ValueError(f"testline alias is not defined in env_map.json: {testline_alias}")
 
-        entry = env_map[cleaned_env]
+        entry = env_map[testline_alias]
         config_path = self.repository_root / Path(str(entry["config_path"]))
         if not config_path.exists():
-            raise FileNotFoundError(f"testline configuration file not found for {cleaned_env}: {config_path}")
+            raise FileNotFoundError(f"testline configuration file not found for {testline_alias}: {config_path}")
         return ResolvedConfig(
-            env=cleaned_env,
+            testline=cleaned_testline,
             config_id=str(entry["config_id"]),
             config_path=config_path,
             department=entry.get("department"),
@@ -46,8 +47,8 @@ class EnvConfigResolver:
             allowed_script_roots=list(entry.get("allowed_script_roots") or []),
         )
 
-    def load_tl_module(self, env: str):
-        resolved = self.resolve_env(env)
+    def load_tl_module(self, testline: str):
+        resolved = self.resolve_testline(testline)
         module_name = f"gnb_kpi_tl_{resolved.config_id.lower()}"
         spec = importlib.util.spec_from_file_location(module_name, resolved.config_path)
         if spec is None or spec.loader is None:
@@ -56,18 +57,19 @@ class EnvConfigResolver:
         spec.loader.exec_module(module)
         return module
 
-    def load_testline_context(self, env: str) -> TestlineContext:
-        resolved = self.resolve_env(env)
-        module = self.load_tl_module(env)
+    def load_testline_context(self, testline: str) -> TestlineContext:
+        resolved = self.resolve_testline(testline)
+        module = self.load_tl_module(testline)
         tl = getattr(module, "tl", None)
         if tl is None:
             raise ValueError(f"Testline config does not define tl: {resolved.config_path}")
 
         extractor = UeExtractor()
         return TestlineContext(
-            env=resolved.env,
+            testline=resolved.testline,
             resolved_config=resolved,
             tl=tl,
+            repository_root=self.repository_root,
             ues=extractor.extract(tl),
             gnbs=list(getattr(tl, "gnbs", []) or []),
             enbs=list(getattr(tl, "enbs", []) or []),
@@ -76,8 +78,8 @@ class EnvConfigResolver:
             raw_summary=extractor.extract_summary(tl),
         )
 
-    def validate_script_path(self, env: str, script_path: str) -> None:
-        resolved = self.resolve_env(env)
+    def validate_script_path(self, testline: str, script_path: str) -> None:
+        resolved = self.resolve_testline(testline)
         normalized_script = str(script_path or "").replace("\\", "/").strip().lstrip("./")
         if not normalized_script:
             raise ValueError("script_path is required.")
@@ -88,4 +90,4 @@ class EnvConfigResolver:
             for root in resolved.allowed_script_roots
         ):
             allowed_text = ", ".join(resolved.allowed_script_roots) or "<empty>"
-            raise ValueError(f"script_path must match allowed_script_roots for {env}: {allowed_text}")
+            raise ValueError(f"script_path must match allowed_script_roots for {testline}: {allowed_text}")

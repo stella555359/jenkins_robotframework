@@ -125,8 +125,26 @@ class BaseHandler:
             raise ValueError("command is required.")
         return parts
 
-    def resolve_working_directory(self, path_text: str | None) -> str | None:
+    def resolve_repository_path(self, context: HandlerContext, path_text: str | None) -> str | None:
         if not path_text:
             return None
         path = Path(path_text)
+        if path.is_absolute():
+            return str(path)
+        repository_root = context.testline_context.repository_root
+        if repository_root is None:
+            return str(path)
+        return str((repository_root / path).resolve())
+
+    def resolve_working_directory(self, context: HandlerContext, path_text: str | None) -> str | None:
+        if not path_text:
+            repository_root = context.testline_context.repository_root
+            return str(repository_root) if repository_root is not None else None
+        path = Path(path_text)
+        if path.is_absolute():
+            return str(path)
+        repository_root = context.testline_context.repository_root
+        if repository_root is None:
+            return str(path)
+        path = repository_root / path
         return str(path)

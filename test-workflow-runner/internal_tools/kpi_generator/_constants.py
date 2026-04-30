@@ -1,0 +1,40 @@
+"""Static configuration and regex constants for kpi_generator."""
+
+from __future__ import annotations
+
+import re
+
+import urllib3
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+DEFAULT_USERNAME = None
+DEFAULT_PASSWORD = None
+TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S"
+TEMPLATE_NAME_DELIMITER_PATTERN = re.compile(r"[;,|]+")
+TEMPLATE_NAME_LINEBREAK_PATTERN = re.compile(r"[\r\n]+")
+TEMPLATE_NAME_MULTI_SPACE_PATTERN = re.compile(r"\s{2,}|\t+")
+EXCEL_SHEET_NAME_INVALID_PATTERN = re.compile(r"[\\/*?:\[\]]+")
+PROGRESS_PREFIX = "__KPI_PROGRESS__ "
+DEFAULT_TEST_LINE_PREFIX = "7_5_UTE5G402"
+COMPASS_LOGIN_TIMEOUT_SECONDS = 30
+COMPASS_LOGIN_RETRIES = 3
+COMPASS_LOGIN_RETRY_DELAY_SECONDS = 5
+GENERATE_REPORT_RETRY_DELAY_SECONDS = 5
+FINAL_REPORT_RETRIES = 3
+FINAL_REPORT_RETRY_DELAY_SECONDS = 5
+SCOUT_REPORT_SHEET_NAME = "Chart Data"
+COMPASS_REPORT_SHEET_NAME = "KPI Report"
+ENVIRONMENT_CODE_PATTERN = re.compile(r"(^|[._])(T\d{3,4})(?=$|[._])", re.IGNORECASE)
+DETECTOR_DATA_COLUMN_PATTERN = re.compile(r"(^|[._])(T\d{3,4})\.(\d{8}_\d{6})(?=$|[._])", re.IGNORECASE)
+ENVIRONMENT_TEST_LINE_MAP = {
+    "T284": "7_5_UTE402T284",
+    "T080": "7_5_UTE5G402T080",
+    "T073": "7_5_CLOUD402T073",
+    "T283": "7_5_UTE5G402T283",
+    "T813": "7_5_UTE5G402T813",
+    "T816": "7_5_UTE5G402T816",
+}
+
+DEFAULT_MAX_INTERVAL_WORKERS = 4
+MAX_INTERVAL_WORKERS_CAP = 16

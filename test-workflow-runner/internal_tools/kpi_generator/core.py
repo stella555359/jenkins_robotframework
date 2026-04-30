@@ -14,160 +14,49 @@ from typing import Any, Optional, Sequence
 
 import pandas as pd
 import requests
-import urllib3
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 
-
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-
-DEFAULT_USERNAME = None
-DEFAULT_PASSWORD = None
-TIMESTAMP_FORMAT = '%Y-%m-%d %H:%M:%S'
-TEMPLATE_NAME_DELIMITER_PATTERN = re.compile(r"[;,|]+")
-TEMPLATE_NAME_LINEBREAK_PATTERN = re.compile(r'[\r\n]+')
-TEMPLATE_NAME_MULTI_SPACE_PATTERN = re.compile(r'\s{2,}|\t+')
-EXCEL_SHEET_NAME_INVALID_PATTERN = re.compile(r'[\\/*?:\[\]]+')
-PROGRESS_PREFIX = '__KPI_PROGRESS__ '
-DEFAULT_TEST_LINE_PREFIX = '7_5_UTE5G402'
-COMPASS_LOGIN_TIMEOUT_SECONDS = 30
-COMPASS_LOGIN_RETRIES = 3
-COMPASS_LOGIN_RETRY_DELAY_SECONDS = 5
-GENERATE_REPORT_RETRY_DELAY_SECONDS = 5
-FINAL_REPORT_RETRIES = 3
-FINAL_REPORT_RETRY_DELAY_SECONDS = 5
-SCOUT_REPORT_SHEET_NAME = 'Chart Data'
-COMPASS_REPORT_SHEET_NAME = 'KPI Report'
-ENVIRONMENT_CODE_PATTERN = re.compile(r'(^|[._])(T\d{3,4})(?=$|[._])', re.IGNORECASE)
-DETECTOR_DATA_COLUMN_PATTERN = re.compile(r'(^|[._])(T\d{3,4})\.(\d{8}_\d{6})(?=$|[._])', re.IGNORECASE)
-ENVIRONMENT_TEST_LINE_MAP = {
-    'T284': '7_5_UTE402T284',
-    'T080': '7_5_UTE5G402T080',
-    'T073': '7_5_CLOUD402T073',
-    'T283': '7_5_UTE5G402T283',
-    'T813': '7_5_UTE5G402T813',
-    'T816': '7_5_UTE5G402T816',
-}
-
-
-def configure_logging(verbose: bool = False) -> logging.Logger:
-    logging.basicConfig(
-        level=logging.DEBUG if verbose else logging.INFO,
-        format='[kpi-generator] %(asctime)s %(levelname)s %(message)s',
-    )
-    return logging.getLogger('kpi_generator')
-
-
-def sanitize_filename_token(value: str, fallback: str) -> str:
-    cleaned = re.sub(r'[^A-Za-z0-9._-]+', '_', (value or '').strip()).strip('._-')
-    return cleaned or fallback
-
-
-def parse_timestamp(value: str) -> datetime:
-    return datetime.strptime(value.strip(), TIMESTAMP_FORMAT)
-
-
-def normalize_dot_joined_token(value: str) -> str:
-    parts = [re.sub(r'[^A-Za-z0-9-]+', '', part) for part in re.split(r'[._]+', str(value or '').strip())]
-    normalized_parts = [part for part in parts if part]
-    return '.'.join(normalized_parts)
-
-
-def normalize_build(value: str) -> str:
-    return normalize_dot_joined_token(value)
-
-
-def normalize_environment(value: str) -> str:
-    return normalize_dot_joined_token(value)
-
-
-def extract_environment_code(value: str) -> str:
-    normalized_environment = normalize_environment(value)
-    match = ENVIRONMENT_CODE_PATTERN.search(normalized_environment)
-    if match:
-        return match.group(2).upper()
-    raise ValueError('environment must contain a Txxx or Txxxx code, for example T813, T282, or T1234.CB0099.xxxx.')
-
-
-def format_environment_filename_token(value: str) -> str:
-    normalized_environment = normalize_environment(value)
-    environment_code = extract_environment_code(normalized_environment)
-    if normalized_environment.upper() == environment_code:
-        return f'{environment_code}.SCF'
-    return normalized_environment
-
-
-def normalize_template_name(value: str) -> str:
-    return str(value or '').strip()
-
-
-def split_template_name_tokens(value: Any) -> list[str]:
-    if isinstance(value, list):
-        split_items: list[str] = []
-        for item in value:
-            split_items.extend(split_template_name_tokens(item))
-        return split_items
-
-    text = str(value or '').strip()
-    if not text:
-        return []
-
-    if TEMPLATE_NAME_DELIMITER_PATTERN.search(text):
-        return [part for part in TEMPLATE_NAME_DELIMITER_PATTERN.split(text) if part]
-    if TEMPLATE_NAME_LINEBREAK_PATTERN.search(text):
-        return [part for part in TEMPLATE_NAME_LINEBREAK_PATTERN.split(text) if part]
-    if TEMPLATE_NAME_MULTI_SPACE_PATTERN.search(text):
-        return [part for part in TEMPLATE_NAME_MULTI_SPACE_PATTERN.split(text) if part]
-    return [text]
-
-
-def parse_template_name_tokens(value: Any) -> list[str]:
-    normalized_items: list[str] = []
-    seen: set[str] = set()
-    for item in split_template_name_tokens(value):
-        normalized = normalize_template_name(item)
-        lowered = normalized.lower()
-        if not normalized or lowered in seen:
-            continue
-        seen.add(lowered)
-        normalized_items.append(normalized)
-    return normalized_items
-
-
-def parse_dist_name_filter_tokens(value: Any) -> list[str]:
-    normalized_items: list[str] = []
-    seen: set[str] = set()
-    for item in split_template_name_tokens(value):
-        normalized = str(item or '').strip()
-        lowered = normalized.lower()
-        if not normalized or lowered in seen:
-            continue
-        seen.add(lowered)
-        normalized_items.append(normalized)
-    return normalized_items
-
-
-def resolve_test_line(environment: str) -> str:
-    environment_code = extract_environment_code(environment)
-    if environment_code in ENVIRONMENT_TEST_LINE_MAP:
-        return ENVIRONMENT_TEST_LINE_MAP[environment_code]
-    if re.fullmatch(r'T\d{3,4}', environment_code):
-        return f'{DEFAULT_TEST_LINE_PREFIX}{environment_code}'
-    valid_examples = ', '.join(sorted(ENVIRONMENT_TEST_LINE_MAP))
-    raise ValueError(f'environment must match Txxx or Txxxx format, for example T812 or T1234. Known mappings include: {valid_examples}.')
-
-
-def emit_progress(stage: str, message: str, **extra: Any) -> None:
-    event = {
-        'stage': stage,
-        'message': message,
-        'timestamp': datetime.now().strftime(TIMESTAMP_FORMAT),
-    }
-    for key, value in extra.items():
-        if value is not None:
-            event[key] = value
-    print(f'{PROGRESS_PREFIX}{json.dumps(event, ensure_ascii=False)}', flush=True)
+from ._constants import (
+    COMPASS_LOGIN_RETRY_DELAY_SECONDS,
+    COMPASS_LOGIN_RETRIES,
+    COMPASS_LOGIN_TIMEOUT_SECONDS,
+    COMPASS_REPORT_SHEET_NAME,
+    DEFAULT_MAX_INTERVAL_WORKERS,
+    DEFAULT_PASSWORD,
+    DEFAULT_TEST_LINE_PREFIX,
+    DEFAULT_USERNAME,
+    DETECTOR_DATA_COLUMN_PATTERN,
+    ENVIRONMENT_CODE_PATTERN,
+    ENVIRONMENT_TEST_LINE_MAP,
+    EXCEL_SHEET_NAME_INVALID_PATTERN,
+    FINAL_REPORT_RETRIES,
+    FINAL_REPORT_RETRY_DELAY_SECONDS,
+    GENERATE_REPORT_RETRY_DELAY_SECONDS,
+    MAX_INTERVAL_WORKERS_CAP,
+    PROGRESS_PREFIX,
+    SCOUT_REPORT_SHEET_NAME,
+    TIMESTAMP_FORMAT,
+    TEMPLATE_NAME_DELIMITER_PATTERN,
+    TEMPLATE_NAME_LINEBREAK_PATTERN,
+    TEMPLATE_NAME_MULTI_SPACE_PATTERN,
+)
+from ._text import (
+    configure_logging,
+    emit_progress,
+    extract_environment_code,
+    format_environment_filename_token,
+    normalize_build,
+    normalize_environment,
+    normalize_template_name,
+    parse_dist_name_filter_tokens,
+    parse_template_name_tokens,
+    parse_timestamp,
+    resolve_test_line,
+    sanitize_filename_token,
+    split_template_name_tokens,
+)
 
 
 @dataclass(frozen=True)
@@ -189,6 +78,7 @@ class KpiGeneratorRequest:
     report_timestamps_list: list[TimeRange]
     timestamp_delta_minutes: Optional[int] = None
     test_line: str = ''
+    max_interval_workers: Optional[int] = None
 
     @classmethod
     def from_payload(cls, payload: dict[str, Any]) -> 'KpiGeneratorRequest':
@@ -229,6 +119,17 @@ class KpiGeneratorRequest:
         resolved_test_line = resolve_test_line(environment)
         test_line = str(payload.get('test_line') or resolved_test_line).strip() or resolved_test_line
 
+        raw_workers = payload.get('max_interval_workers')
+        max_interval_workers: Optional[int] = None
+        if raw_workers not in (None, '',):
+            try:
+                max_interval_workers = int(raw_workers)
+            except (TypeError, ValueError) as exc:
+                raise ValueError('max_interval_workers must be an integer.') from exc
+            if max_interval_workers < 1:
+                raise ValueError('max_interval_workers must be >= 1.')
+            max_interval_workers = min(max_interval_workers, MAX_INTERVAL_WORKERS_CAP)
+
         return cls(
             template_set_name=template_set_name,
             template_names=template_names,
@@ -238,6 +139,7 @@ class KpiGeneratorRequest:
             report_timestamps_list=report_timestamps_list,
             timestamp_delta_minutes=timestamp_delta_minutes,
             test_line=test_line,
+            max_interval_workers=max_interval_workers,
         )
 
 
@@ -1415,20 +1317,72 @@ class KpiGeneratorService:
         failed_intervals: list[dict[str, Any]] = []
         interval_details: list[dict[str, Any]] = []
 
-        for index, interval in enumerate(expanded_intervals, start=1):
-            combined_id, generated_ids, interval_failures, interval_detail = self._generate_interval_bundle(request, interval, template_names, index)
-            interval_report_ids.extend(generated_ids)
-            failed_templates.extend(interval_failures)
-            interval_details.append(interval_detail)
-            if combined_id is None:
-                failed_intervals.append({
-                    'interval_index': index,
-                    'interval_start': interval.start.strftime(TIMESTAMP_FORMAT),
-                    'interval_end': interval.end.strftime(TIMESTAMP_FORMAT),
-                    'reason': 'All template report generations failed for this interval.',
-                })
-                continue
-            combined_report_ids.append(combined_id)
+        n_intervals = len(expanded_intervals)
+        workers = effective_interval_worker_count(request, n_intervals)
+        use_parallel = n_intervals > 1 and workers > 1
+        if use_parallel:
+            username, password = self.client.username, self.client.password
+            if not username or not password:
+                self.logger.warning(
+                    "Parallel interval execution requires Compass credentials; falling back to serial intervals."
+                )
+                use_parallel = False
+
+        if use_parallel:
+            emit_progress(
+                "interval_parallel_plan",
+                f"Running {n_intervals} interval(s) with up to {workers} parallel Compass session(s).",
+                interval_workers=workers,
+                interval_count=n_intervals,
+            )
+            tasks: list[tuple[Any, Any, logging.Logger, KpiGeneratorRequest, TimeRange, tuple[str, ...], int]] = []
+            for index, interval in enumerate(expanded_intervals, start=1):
+                tasks.append(
+                    (username, password, self.logger, request, interval, tuple(template_names), index),
+                )
+            results_by_index: dict[
+                int, tuple[Optional[str], list[str], list[dict[str, Any]], dict[str, Any]]
+            ] = {}
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                futures = [pool.submit(_interval_worker_entry, task) for task in tasks]
+                for fut in as_completed(futures):
+                    idx, payload = fut.result()
+                    results_by_index[idx] = payload
+            for index in sorted(results_by_index):
+                combined_id, generated_ids, interval_failures, interval_detail = results_by_index[index]
+                interval_report_ids.extend(generated_ids)
+                failed_templates.extend(interval_failures)
+                interval_details.append(interval_detail)
+                if combined_id is None:
+                    failed_intervals.append(
+                        {
+                            "interval_index": index,
+                            "interval_start": interval_detail.get("interval_start", ""),
+                            "interval_end": interval_detail.get("interval_end", ""),
+                            "reason": "All template report generations failed for this interval.",
+                        }
+                    )
+                    continue
+                combined_report_ids.append(combined_id)
+        else:
+            for index, interval in enumerate(expanded_intervals, start=1):
+                combined_id, generated_ids, interval_failures, interval_detail = self._generate_interval_bundle(
+                    request, interval, template_names, index
+                )
+                interval_report_ids.extend(generated_ids)
+                failed_templates.extend(interval_failures)
+                interval_details.append(interval_detail)
+                if combined_id is None:
+                    failed_intervals.append(
+                        {
+                            "interval_index": index,
+                            "interval_start": interval.start.strftime(TIMESTAMP_FORMAT),
+                            "interval_end": interval.end.strftime(TIMESTAMP_FORMAT),
+                            "reason": "All template report generations failed for this interval.",
+                        }
+                    )
+                    continue
+                combined_report_ids.append(combined_id)
 
         if not combined_report_ids:
             raise RuntimeError('No combined report could be produced because all template generations failed across all intervals.')
@@ -1593,100 +1547,7 @@ class KpiGeneratorService:
         template_names: Sequence[str],
         interval_index: int,
     ) -> tuple[Optional[str], list[str], list[dict[str, Any]], dict[str, Any]]:
-        base_report_name = build_interval_report_name(request, interval, interval_index)
-        interval_package_version = build_interval_package_version(request, interval)
-        self.logger.info('Processing interval %s: %s -> %s', interval_index, interval.start.strftime(TIMESTAMP_FORMAT), interval.end.strftime(TIMESTAMP_FORMAT))
-        emit_progress(
-            'interval_started',
-            f'Processing interval {interval_index}: {interval.start.strftime(TIMESTAMP_FORMAT)} -> {interval.end.strftime(TIMESTAMP_FORMAT)}',
-            interval_index=interval_index,
-            interval_start=interval.start.strftime(TIMESTAMP_FORMAT),
-            interval_end=interval.end.strftime(TIMESTAMP_FORMAT),
-            template_total=len(template_names),
-        )
-
-        report_ids: list[str] = []
-        failed_templates: list[dict[str, Any]] = []
-        for template_index, template_name in enumerate(template_names, start=1):
-            full_report_name = f'{base_report_name}_{sanitize_filename_token(template_name, "template")}'
-            emit_progress(
-                'template_generating',
-                f'Generating template {template_index}/{len(template_names)} for interval {interval_index}: {template_name}',
-                interval_index=interval_index,
-                template_index=template_index,
-                template_total=len(template_names),
-                template_name=template_name,
-            )
-            try:
-                report_id = self.client.generate_new_report(
-                    report_name=full_report_name,
-                    template_name=template_name,
-                    start_time=interval.start.strftime(TIMESTAMP_FORMAT),
-                    end_time=interval.end.strftime(TIMESTAMP_FORMAT),
-                    test_line=request.test_line,
-                    package_version=interval_package_version,
-                    logger=self.logger,
-                )
-            except Exception as exc:  # noqa: BLE001
-                failure = {
-                    'interval_index': interval_index,
-                    'interval_start': interval.start.strftime(TIMESTAMP_FORMAT),
-                    'interval_end': interval.end.strftime(TIMESTAMP_FORMAT),
-                    'template_index': template_index,
-                    'template_name': template_name,
-                    'error': str(exc),
-                }
-                failed_templates.append(failure)
-                self.logger.warning('Skipping failed template %s/%s for interval %s: %s', template_index, len(template_names), interval_index, exc)
-                emit_progress(
-                    'template_failed',
-                    f'Failed template {template_index}/{len(template_names)} for interval {interval_index}: {template_name}',
-                    interval_index=interval_index,
-                    template_index=template_index,
-                    template_total=len(template_names),
-                    template_name=template_name,
-                    failed_template_count=len(failed_templates),
-                    error=str(exc),
-                )
-                continue
-
-            report_ids.append(report_id)
-            emit_progress(
-                'template_generated',
-                f'Generated template {template_index}/{len(template_names)} for interval {interval_index}: report_id={report_id}',
-                interval_index=interval_index,
-                template_index=template_index,
-                template_total=len(template_names),
-                template_name=template_name,
-                report_id=report_id,
-                successful_template_count=len(report_ids),
-            )
-
-        if not report_ids:
-            emit_progress('interval_skipped', f'Interval {interval_index} skipped because all template generations failed.', interval_index=interval_index, failed_template_count=len(failed_templates))
-            return None, [], failed_templates, {
-                'interval_index': interval_index,
-                'interval_start': interval.start.strftime(TIMESTAMP_FORMAT),
-                'interval_end': interval.end.strftime(TIMESTAMP_FORMAT),
-                'status': 'failed',
-                'successful_template_count': 0,
-                'failed_template_count': len(failed_templates),
-                'combined_report_id': None,
-            }
-
-        emit_progress('interval_combining', f'Combining {len(report_ids)} report ids for interval {interval_index}.', interval_index=interval_index, generated_report_count=len(report_ids))
-        combined_id = self.client.combine_kpi_report(report_ids)
-        self.logger.info('Combined interval %s report id: %s', interval_index, combined_id)
-        emit_progress('interval_combined', f'Combined interval {interval_index} into report_id={combined_id}.', interval_index=interval_index, combined_report_id=combined_id)
-        return combined_id, report_ids, failed_templates, {
-            'interval_index': interval_index,
-            'interval_start': interval.start.strftime(TIMESTAMP_FORMAT),
-            'interval_end': interval.end.strftime(TIMESTAMP_FORMAT),
-            'status': 'completed',
-            'successful_template_count': len(report_ids),
-            'failed_template_count': len(failed_templates),
-            'combined_report_id': combined_id,
-        }
+        return generate_interval_bundle(self.client, self.logger, request, interval, template_names, interval_index)
 
 
 def build_interval_report_name(request: KpiGeneratorRequest, interval: TimeRange, interval_index: int) -> str:
@@ -1697,6 +1558,162 @@ def build_interval_report_name(request: KpiGeneratorRequest, interval: TimeRange
     start_token = interval.start.strftime('%Y%m%d.%H%M%S')
     end_token = interval.end.strftime('%Y%m%d.%H%M%S')
     return f'{template_source_token}_{build_token}_{environment_token}_{scenario_token}_slot{interval_index}_{start_token}_{end_token}'
+
+
+def effective_interval_worker_count(request: KpiGeneratorRequest, interval_count: int) -> int:
+    """How many parallel Compass sessions to use for interval bundles (each worker uses its own Session)."""
+    if interval_count <= 1:
+        return 1
+    if request.max_interval_workers == 1:
+        return 1
+    if request.max_interval_workers is not None:
+        return max(1, min(request.max_interval_workers, interval_count, MAX_INTERVAL_WORKERS_CAP))
+    env_val = os.getenv("KPI_GENERATOR_MAX_INTERVAL_WORKERS", str(DEFAULT_MAX_INTERVAL_WORKERS))
+    try:
+        w = int(env_val)
+    except ValueError:
+        w = DEFAULT_MAX_INTERVAL_WORKERS
+    w = max(1, min(w, MAX_INTERVAL_WORKERS_CAP))
+    return max(1, min(w, interval_count))
+
+
+def generate_interval_bundle(
+    client: CompassClient,
+    logger: logging.Logger,
+    request: KpiGeneratorRequest,
+    interval: TimeRange,
+    template_names: Sequence[str],
+    interval_index: int,
+) -> tuple[Optional[str], list[str], list[dict[str, Any]], dict[str, Any]]:
+    base_report_name = build_interval_report_name(request, interval, interval_index)
+    interval_package_version = build_interval_package_version(request, interval)
+    logger.info(
+        "Processing interval %s: %s -> %s",
+        interval_index,
+        interval.start.strftime(TIMESTAMP_FORMAT),
+        interval.end.strftime(TIMESTAMP_FORMAT),
+    )
+    emit_progress(
+        "interval_started",
+        f"Processing interval {interval_index}: {interval.start.strftime(TIMESTAMP_FORMAT)} -> {interval.end.strftime(TIMESTAMP_FORMAT)}",
+        interval_index=interval_index,
+        interval_start=interval.start.strftime(TIMESTAMP_FORMAT),
+        interval_end=interval.end.strftime(TIMESTAMP_FORMAT),
+        template_total=len(template_names),
+    )
+
+    report_ids: list[str] = []
+    failed_templates: list[dict[str, Any]] = []
+    for template_index, template_name in enumerate(template_names, start=1):
+        full_report_name = f'{base_report_name}_{sanitize_filename_token(template_name, "template")}'
+        emit_progress(
+            "template_generating",
+            f"Generating template {template_index}/{len(template_names)} for interval {interval_index}: {template_name}",
+            interval_index=interval_index,
+            template_index=template_index,
+            template_total=len(template_names),
+            template_name=template_name,
+        )
+        try:
+            report_id = client.generate_new_report(
+                report_name=full_report_name,
+                template_name=template_name,
+                start_time=interval.start.strftime(TIMESTAMP_FORMAT),
+                end_time=interval.end.strftime(TIMESTAMP_FORMAT),
+                test_line=request.test_line,
+                package_version=interval_package_version,
+                logger=logger,
+            )
+        except Exception as exc:  # noqa: BLE001
+            failure = {
+                "interval_index": interval_index,
+                "interval_start": interval.start.strftime(TIMESTAMP_FORMAT),
+                "interval_end": interval.end.strftime(TIMESTAMP_FORMAT),
+                "template_index": template_index,
+                "template_name": template_name,
+                "error": str(exc),
+            }
+            failed_templates.append(failure)
+            logger.warning(
+                "Skipping failed template %s/%s for interval %s: %s",
+                template_index,
+                len(template_names),
+                interval_index,
+                exc,
+            )
+            emit_progress(
+                "template_failed",
+                f"Failed template {template_index}/{len(template_names)} for interval {interval_index}: {template_name}",
+                interval_index=interval_index,
+                template_index=template_index,
+                template_total=len(template_names),
+                template_name=template_name,
+                failed_template_count=len(failed_templates),
+                error=str(exc),
+            )
+            continue
+
+        report_ids.append(report_id)
+        emit_progress(
+            "template_generated",
+            f"Generated template {template_index}/{len(template_names)} for interval {interval_index}: report_id={report_id}",
+            interval_index=interval_index,
+            template_index=template_index,
+            template_total=len(template_names),
+            template_name=template_name,
+            report_id=report_id,
+            successful_template_count=len(report_ids),
+        )
+
+    if not report_ids:
+        emit_progress(
+            "interval_skipped",
+            f"Interval {interval_index} skipped because all template generations failed.",
+            interval_index=interval_index,
+            failed_template_count=len(failed_templates),
+        )
+        return None, [], failed_templates, {
+            "interval_index": interval_index,
+            "interval_start": interval.start.strftime(TIMESTAMP_FORMAT),
+            "interval_end": interval.end.strftime(TIMESTAMP_FORMAT),
+            "status": "failed",
+            "successful_template_count": 0,
+            "failed_template_count": len(failed_templates),
+            "combined_report_id": None,
+        }
+
+    emit_progress(
+        "interval_combining",
+        f"Combining {len(report_ids)} report ids for interval {interval_index}.",
+        interval_index=interval_index,
+        generated_report_count=len(report_ids),
+    )
+    combined_id = client.combine_kpi_report(report_ids)
+    logger.info("Combined interval %s report id: %s", interval_index, combined_id)
+    emit_progress(
+        "interval_combined",
+        f"Combined interval {interval_index} into report_id={combined_id}.",
+        interval_index=interval_index,
+        combined_report_id=combined_id,
+    )
+    return combined_id, report_ids, failed_templates, {
+        "interval_index": interval_index,
+        "interval_start": interval.start.strftime(TIMESTAMP_FORMAT),
+        "interval_end": interval.end.strftime(TIMESTAMP_FORMAT),
+        "status": "completed",
+        "successful_template_count": len(report_ids),
+        "failed_template_count": len(failed_templates),
+        "combined_report_id": combined_id,
+    }
+
+
+def _interval_worker_entry(
+    args: tuple[Any, Any, logging.Logger, KpiGeneratorRequest, TimeRange, tuple[str, ...], int],
+) -> tuple[int, tuple[Optional[str], list[str], list[dict[str, Any]], dict[str, Any]]]:
+    username, password, logger, request, interval, templates_t, interval_index = args
+    client = CompassClient(username=username, password=password)
+    bundle = generate_interval_bundle(client, logger, request, interval, list(templates_t), interval_index)
+    return interval_index, bundle
 
 
 def build_final_filename(

@@ -2,6 +2,8 @@
 
 这里放 `python_orchestrator` 执行器本体和 runner-specific 资源。
 
+**架构、分层、流程图与改代码落点**见 **[ARCHITECTURE.md](ARCHITECTURE.md)**（模块内权威文档）。
+
 公共 Jenkins / Agent 集成层现在单独放在：
 
 - `../jenkins-integration/`

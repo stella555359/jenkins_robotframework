@@ -2,21 +2,19 @@
 
 `platform-api` 是当前轻量化自动化平台的 FastAPI 后端。
 
-第一轮先从最小骨架开始，只打通：
+**架构、分层、全部路由与实现流程图**见同目录 **[ARCHITECTURE.md](ARCHITECTURE.md)**（模块内权威文档）。
+
+当前已提供的路由包括：
 
 - `GET /api/health`
 - `POST /api/runs`
 - `GET /api/runs`
 - `GET /api/runs/{run_id}`
+- `GET /api/runs/{run_id}/artifacts`
+- `GET /api/runs/{run_id}/kpi`
+- `POST /api/runs/{run_id}/callbacks/jenkins`
 
-后续再逐步扩展：
-
-- `GET /api/runs`
-- `GET /api/runs/{run_id}`
-- Jenkins handoff / callback contract
-- 更完整的 SQLite 持久化
-
-当前 `POST /api/runs` 已经会把最小 run 元数据写入 `SQLite`，默认数据库路径为：
+Run 相关接口将元数据写入 **SQLite**。默认数据库路径为：
 
 - `data/results/automation_platform.db`
 

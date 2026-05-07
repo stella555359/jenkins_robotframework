@@ -265,6 +265,121 @@ def test_orchestrator_runner_supports_internal_followup_handlers_in_dry_run(orch
     assert all(result.summary.get("test_line") == "7_5_UTE5G402T813" for result in state.followup_results)
 
 
+def test_internal_tool_runner_dispatches_generator(monkeypatch, tmp_path: Path) -> None:
+    from internal_tools import tool_runner
+
+    calls: list[dict] = []
+
+    def fake_generator(*, payload: dict, item_id: str | None = None) -> dict:
+        calls.append({"payload": payload, "item_id": item_id})
+        return {
+            "summary": {"final_filename": "kpi.xlsx"},
+            "artifacts": [{"kind": "generator_report", "label": "KPI Report", "path": "kpi.xlsx"}],
+            "generator_result": {"combined_report_ids": ["101"]},
+        }
+
+    monkeypatch.setitem(tool_runner.TOOL_FUNCTIONS, "kpi_generator", fake_generator)
+
+    result = tool_runner.run_tool_from_request(
+        {
+            "tool_kind": "kpi_generator",
+            "item_id": "generator-standalone",
+            "output_dir": str(tmp_path / "generator"),
+            "payload": {"build": "SBTS26R3"},
+        }
+    )
+
+    assert result["status"] == "completed"
+    assert result["tool_kind"] == "kpi_generator"
+    assert result["kpi_summary"]["combined_report_ids"] == ["101"]
+    assert result["artifact_manifest"][0]["source"] == "kpi_generator"
+    assert calls[0]["item_id"] == "generator-standalone"
+    assert calls[0]["payload"]["output_dir"] == str(tmp_path / "generator")
+
+
+def test_internal_tool_runner_cli_writes_failure_result(tmp_path: Path) -> None:
+    from internal_tools import tool_runner
+
+    request_path = tmp_path / "tool-request.json"
+    result_path = tmp_path / "tool-result.json"
+    request_path.write_text(json.dumps({"tool_kind": "unknown", "payload": {"x": 1}}), encoding="utf-8")
+
+    exit_code = tool_runner.main(["--request-json", str(request_path), "--result-json", str(result_path)])
+    result = json.loads(result_path.read_text(encoding="utf-8"))
+
+    assert exit_code == 1
+    assert result["status"] == "failed"
+    assert result["tool_kind"] == "unknown"
+    assert "Unsupported tool_kind" in result["error_message"]
+
+
+def test_internal_tool_worker_builds_tool_request_from_run_detail(tmp_path: Path) -> None:
+    from internal_tools.worker import build_tool_request_from_run_detail
+
+    request = build_tool_request_from_run_detail(
+        {
+            "run_id": "run-1",
+            "executor_type": "internal_tool",
+            "metadata": {
+                "tool_kind": "kpi_detector",
+                "tool_payload": {"source_file": "input.xlsx"},
+            },
+        },
+        output_root=tmp_path,
+    )
+
+    assert request["run_id"] == "run-1"
+    assert request["tool_kind"] == "kpi_detector"
+    assert request["payload"]["source_file"] == "input.xlsx"
+    assert request["output_dir"] == str((tmp_path / "kpi_detector" / "run-1").resolve())
+
+
+def test_internal_tool_worker_processes_run_with_callbacks(monkeypatch, tmp_path: Path) -> None:
+    from internal_tools import worker
+
+    callbacks: list[dict] = []
+
+    def fake_fetch_detail(**_: object) -> dict:
+        return {
+            "run_id": "run-1",
+            "executor_type": "internal_tool",
+            "metadata": {
+                "tool_kind": "kpi_generator",
+                "tool_payload": {"build": "SBTS26R3"},
+            },
+        }
+
+    def fake_send_callback(**kwargs: object) -> dict:
+        callbacks.append(kwargs["payload"])  # type: ignore[index]
+        return {"status": "ok"}
+
+    def fake_run_tool(request_payload: dict) -> dict:
+        assert request_payload["tool_kind"] == "kpi_generator"
+        return {
+            "status": "completed",
+            "tool_kind": "kpi_generator",
+            "artifact_manifest": [{"kind": "generator_report", "label": "KPI", "path": "kpi.xlsx"}],
+            "kpi_summary": {"combined_report_ids": ["101"]},
+            "detector_summary": {},
+        }
+
+    monkeypatch.setattr(worker, "run_tool_from_request", fake_run_tool)
+
+    result = worker.process_tool_run(
+        base_url="http://127.0.0.1:8000",
+        run_summary={"run_id": "run-1"},
+        output_root=tmp_path,
+        fetch_detail=fake_fetch_detail,
+        send_callback=fake_send_callback,
+    )
+
+    assert result["status"] == "completed"
+    assert callbacks[0]["status"] == "running"
+    assert callbacks[1]["status"] == "passed"
+    assert callbacks[1]["artifact_manifest"][0]["kind"] == "generator_report"
+    assert callbacks[1]["kpi_summary"]["combined_report_ids"] == ["101"]
+
+
 def test_cli_dry_run_writes_result_without_env_map(tmp_path: Path) -> None:
     request_path = tmp_path / "request.json"
     result_path = tmp_path / "result.json"

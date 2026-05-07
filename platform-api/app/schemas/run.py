@@ -3,8 +3,9 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 
-ExecutorType = Literal["robot", "python_orchestrator"]
+ExecutorType = Literal["robot", "python_orchestrator", "internal_tool"]
 ExecutionMode = Literal["serial", "parallel"]
+ToolKind = Literal["kpi_generator", "kpi_detector"]
 
 
 class ArtifactDescriptor(BaseModel):
@@ -72,6 +73,32 @@ class RunCreateResponse(BaseModel):
     executor_type: ExecutorType
     status: str
     message: str
+
+
+class ToolExecutionHandoff(BaseModel):
+    run_id: str
+    tool_kind: ToolKind
+    detail_url: str
+    callback_url: str
+
+
+class ToolRunCreateRequest(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    tool_kind: ToolKind
+    payload: dict[str, Any] = Field(default_factory=dict)
+    testline: str | None = None
+    build: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ToolRunCreateResponse(BaseModel):
+    run_id: str
+    executor_type: ExecutorType
+    tool_kind: ToolKind
+    status: str
+    message: str
+    handoff: ToolExecutionHandoff
 
 
 class RunListItem(BaseModel):

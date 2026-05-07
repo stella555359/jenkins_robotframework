@@ -72,7 +72,7 @@ flowchart LR
 安全校验层          safety.py（并行 stage 资源域）
 执行编排层          runner.py, taf_gateway.py
 单步能力层          handlers/*.py, handlers/base.py
-后处理 / 内部工具   internal_tools/kpi_generator, internal_tools/kpi_detector
+后处理 / 内部工具   internal_tools/kpi_generator, internal_tools/kpi_detector, internal_tools/tool_runner.py
 结果落盘            result_builder.py
 测试                tests/
 配置样例            configs/
@@ -84,7 +84,7 @@ flowchart LR
 |------|------|
 | `test_workflow_runner/` | 可 import 的 Python 包：CLI、loader、resolver、runner、handlers、结果构建。 |
 | `test_workflow_runner/handlers/` | 每种 `traffic_plan` item 的 **`model`** 对应一个 Handler 类。 |
-| `internal_tools/` | 随仓库携带的 kpi_generator / kpi_detector；**尽量经 handler 调用**，避免协议散落。 |
+| `internal_tools/` | 随仓库携带的 kpi_generator / kpi_detector；workflow 内经 handler 调用，Portal 独立工具 run 经 `worker.py` + `tool_runner.py` 调用同一套 service，避免协议散落。 |
 | `configs/` | 样例：`sample_request.json`、`env_map.example.json` 等。 |
 | `tests/` | pytest：loader、runner、CLI 等。 |
 
@@ -131,8 +131,10 @@ flowchart LR
 
 | 路径 | 职责 |
 |------|------|
-| `internal_tools/kpi_generator/` | KPI 报告生成（API 见 `service.py` / `core.py`），经 handler 注入 payload。 |
-| `internal_tools/kpi_detector/` | KPI 检测与报表等，经 handler 调用。 |
+| `internal_tools/kpi_generator/` | KPI 报告生成（API 见 `service.py` / `core.py`），经 handler 或 standalone tool runner 注入 payload。 |
+| `internal_tools/kpi_detector/` | KPI 检测与报表等，经 handler 或 standalone tool runner 调用。 |
+| `internal_tools/tool_runner.py` | standalone 工具执行入口：读取 tool request，按 `tool_kind` 调用 generator / detector service，输出统一 tool result。 |
+| `internal_tools/worker.py` | standalone internal tool worker：轮询 platform-api created 工具 run，调用 `tool_runner.py`，通过 `/callbacks/worker` 回写结果。 |
 | `internal_tools/__init__.py` | vendored 工具包说明即可。 |
 
 ### 4.6 结果

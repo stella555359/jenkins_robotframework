@@ -10,7 +10,7 @@
 
 - 通过 **Compass** HTTP API：**登录**、拉 **KPI template set**、**按模板与时间窗生成报告**、**合并同一 interval 的多模板报告**、最终 **单报告分析 / 多报告 compare / 多 interval horizontal_merge**，产出 **`.xlsx` KPI 报告**。
 - 将 **Scout** 导出的 **`Chart Data`** 表转换为 **Compass 风格** 多 sheet 工作簿（**`convert_scout_report_to_compass_format`**），列名对齐下游 **kpi_detector** 的 **Txxx.YYYYMMDD_HHMMSS** 等约定。
-- 通过 **`run_generator_from_payload`** 供 **`test_workflow_runner.handlers.kpi_generator`** 调用；可选 **`core.main`** CLI（`--request-json` / `--scout-report` 等）。
+- 通过 **`run_generator_from_payload`** 供 **`test_workflow_runner.handlers.kpi_generator`** 调用；也可由 **`internal_tools.worker`** 经 **`internal_tools.tool_runner`** 作为 Portal 独立工具 run 调用；可选 **`core.main`** CLI（`--request-json` / `--scout-report` 等）。
 
 ### 1.2 不负责什么
 
@@ -23,6 +23,8 @@
 flowchart LR
   subgraph twr [test-workflow-runner]
     H[KpiGeneratorHandler]
+    W[worker.py]
+    TR[tool_runner.py]
   end
   subgraph pkg [internal_tools.kpi_generator]
     SVC[service.run_generator_from_payload]
@@ -32,6 +34,8 @@ flowchart LR
     CP[Compass HTTP API]
   end
   H --> SVC
+  W --> TR
+  TR --> SVC
   SVC --> CORE
   CORE --> CP
 ```
@@ -131,7 +135,7 @@ flowchart LR
 
 | 项目 | 说明 |
 |------|------|
-| **调用方** | `handlers/kpi_generator.py` → **`run_generator_from_payload`** |
+| **调用方** | `handlers/kpi_generator.py` 或 `internal_tools/tool_runner.py` → **`run_generator_from_payload`** |
 | **默认注入** | **`environment`** ← `config_id`，**`test_line`** ← `request.testline` |
 | **输出目录** | 默认 **`cwd/kpi-artifacts/kpi_generator/<item_id>`** |
 | **dry-run** | handler 不调用本包。 |

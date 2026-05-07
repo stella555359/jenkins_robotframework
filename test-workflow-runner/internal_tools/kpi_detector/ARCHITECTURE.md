@@ -10,7 +10,7 @@
 
 - 对 **KPI 报告 Excel**（通常为 Compass / generator 产出的 **`KPI Report`** 表结构）做 **一致性（CV）**、**与历史对比（t-test 等）**、**按 KPI 类型的异常策略**、**Guard Rails**、**Shewhart / 策略检测器** 等分析。
 - 生成 **Excel / HTML** 报告（汇总与明细），并将当前运行摘要写入 **`kpi_history_records.json`**（或 Scout 模式下的 **`kpi_history_records_scout.json`**），便于后续运行匹配历史。
-- 通过 **`run_detector_from_payload`** 供 **`test_workflow_runner.handlers.kpi_detector`** 调用。
+- 通过 **`run_detector_from_payload`** 供 **`test_workflow_runner.handlers.kpi_detector`** 调用；也可由 **`internal_tools.worker`** 经 **`internal_tools.tool_runner`** 作为 Portal 独立工具 run 调用。
 
 ### 1.2 不负责什么
 
@@ -23,6 +23,8 @@
 flowchart LR
   subgraph twr [test-workflow-runner]
     H[KpiDetectorHandler]
+    W[worker.py]
+    TR[tool_runner.py]
   end
   subgraph pkg [internal_tools.kpi_detector]
     SVC[service.run_detector_from_payload]
@@ -30,6 +32,8 @@ flowchart LR
     RPT[html_report /\nexcel_report]
   end
   H --> SVC
+  W --> TR
+  TR --> SVC
   SVC --> DET
   DET --> RPT
 ```
@@ -136,7 +140,7 @@ flowchart LR
 
 | 项目 | 说明 |
 |------|------|
-| **调用方** | `handlers/kpi_detector.py` → **`run_detector_from_payload(payload=params, item_id=...)`** |
+| **调用方** | `handlers/kpi_detector.py` 或 `internal_tools/tool_runner.py` → **`run_detector_from_payload(payload=params, item_id=...)`** |
 | **默认注入** | **`environment`** ← `resolved_config.config_id`，**`test_line`** ← `request.testline`（与 generator handler 一致） |
 | **dry-run** | handler 不调用本包。 |
 | **失败** | handler 捕获异常 → **`build_failure`**。 |

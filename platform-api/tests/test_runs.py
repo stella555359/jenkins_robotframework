@@ -298,6 +298,166 @@ def test_create_python_orchestrator_run_requires_workflow_spec(client) -> None:
 
 
 @allure.feature("Run API")
+@allure.story("Internal tool runs")
+@allure.title("POST /api/kpi/tool-runs persists a kpi_generator tool run")
+def test_create_kpi_generator_tool_run_persists_handoff(client, fetch_run_record) -> None:
+    response = client.post(
+        "/api/kpi/tool-runs",
+        json={
+            "tool_kind": "kpi_generator",
+            "testline": "T813",
+            "payload": {
+                "build": "SBTS26R3.ENB.9999.260319.000005",
+                "environment": "T813.SCF.T813.gNB.25R3.20260224",
+                "scenario": "7UE_DL_Burst",
+                "template_names": ["Throughput"],
+                "report_timestamps_list": [["2026-04-22 10:00:00", "2026-04-22 10:30:00"]],
+            },
+            "metadata": {"requested_by": "portal"},
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["executor_type"] == "internal_tool"
+    assert payload["tool_kind"] == "kpi_generator"
+    assert payload["status"] == "created"
+    assert payload["handoff"]["detail_url"] == f"/api/runs/{payload['run_id']}"
+    assert payload["handoff"]["callback_url"] == f"/api/runs/{payload['run_id']}/callbacks/worker"
+
+    row = fetch_run_record(payload["run_id"])
+    assert row is not None
+    assert row["executor_type"] == "internal_tool"
+    assert row["workflow_name"] == "kpi_generator"
+    assert row["testline"] == "T813"
+    assert row["build"] == "SBTS26R3.ENB.9999.260319.000005"
+    assert row["enable_kpi_generator"] is True
+    assert row["enable_kpi_anomaly_detector"] is False
+    assert row["run_metadata_json"]["tool_kind"] == "kpi_generator"
+    assert row["run_metadata_json"]["tool_payload"]["scenario"] == "7UE_DL_Burst"
+
+
+@allure.feature("Run API")
+@allure.story("Internal tool runs")
+@allure.title("GET /api/kpi/tool-runs lists only internal tool runs")
+def test_list_tool_runs_filters_internal_tool_runs(client, create_run_via_api) -> None:
+    robot_run = create_run_via_api("smoke", "cases/login.robot")
+    tool_response = client.post(
+        "/api/kpi/tool-runs",
+        json={
+            "tool_kind": "kpi_detector",
+            "payload": {
+                "source_file": "artifacts/generated.xlsx",
+                "generate_html": True,
+            },
+        },
+    )
+    assert tool_response.status_code == 200
+    tool_run_id = tool_response.json()["run_id"]
+
+    list_response = client.get("/api/kpi/tool-runs")
+
+    assert list_response.status_code == 200
+    items = list_response.json()["items"]
+    assert [item["run_id"] for item in items] == [tool_run_id]
+    assert items[0]["executor_type"] == "internal_tool"
+    assert items[0]["enable_kpi_anomaly_detector"] is True
+    assert all(item["run_id"] != robot_run["run_id"] for item in items)
+
+    created_response = client.get("/api/kpi/tool-runs?status=created")
+    assert created_response.status_code == 200
+    assert [item["run_id"] for item in created_response.json()["items"]] == [tool_run_id]
+
+    running_response = client.get("/api/kpi/tool-runs?status=running")
+    assert running_response.status_code == 200
+    assert running_response.json()["items"] == []
+
+
+@allure.feature("Run API")
+@allure.story("Internal tool runs")
+@allure.title("Internal tool callback updates artifacts and detector summary")
+def test_internal_tool_callback_updates_summary_and_artifacts(client) -> None:
+    tool_response = client.post(
+        "/api/kpi/tool-runs",
+        json={
+            "tool_kind": "kpi_detector",
+            "payload": {
+                "source_file": "artifacts/generated.xlsx",
+                "generate_html": True,
+            },
+        },
+    )
+    assert tool_response.status_code == 200
+    run_id = tool_response.json()["run_id"]
+
+    callback_response = client.post(
+        f"/api/runs/{run_id}/callbacks/worker",
+        json={
+            "status": "passed",
+            "message": "Internal tool execution completed.",
+            "artifact_manifest": [
+                {
+                    "kind": "detector_html_report",
+                    "label": "Detector HTML Report",
+                    "path": "artifacts/detector/report.html",
+                    "source": "kpi_detector",
+                }
+            ],
+            "detector_summary": {
+                "portal_summary": {"status": "pass"},
+                "stats": {"anomaly_count": 0},
+            },
+            "metadata": {"tool_status": "completed"},
+        },
+    )
+
+    assert callback_response.status_code == 200
+    detail_response = client.get(f"/api/runs/{run_id}")
+    kpi_response = client.get(f"/api/runs/{run_id}/kpi")
+
+    assert detail_response.status_code == 200
+    assert kpi_response.status_code == 200
+    detail_payload = detail_response.json()
+    kpi_payload = kpi_response.json()
+    assert detail_payload["status"] == "passed"
+    assert detail_payload["artifact_manifest"][0]["kind"] == "detector_html_report"
+    assert detail_payload["metadata"]["tool_status"] == "completed"
+    assert kpi_payload["detector_summary"]["stats"]["anomaly_count"] == 0
+
+
+@allure.feature("Run API")
+@allure.story("Internal tool runs")
+@allure.title("POST /api/runs rejects internal_tool executor_type")
+def test_create_run_rejects_internal_tool_executor_type(client) -> None:
+    response = client.post(
+        "/api/runs",
+        json={
+            "testline": "standalone",
+            "executor_type": "internal_tool",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Use /api/kpi/tool-runs to create internal tool runs."
+
+
+@allure.feature("Run API")
+@allure.story("Internal tool runs")
+@allure.title("POST /api/kpi/tool-runs rejects empty payload")
+def test_create_tool_run_requires_payload(client) -> None:
+    response = client.post(
+        "/api/kpi/tool-runs",
+        json={
+            "tool_kind": "kpi_generator",
+            "payload": {},
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "payload is required for internal tool runs."
+
+
+@allure.feature("Run API")
 @allure.story("Workflow validation")
 @allure.title("POST /api/runs rejects robot runs without robotcase_path")
 def test_create_robot_run_requires_robotcase_path(client) -> None:

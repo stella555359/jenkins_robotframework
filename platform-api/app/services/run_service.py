@@ -21,6 +21,9 @@ from app.schemas.run import (
     RunKpiResponse,
     RunListItem,
     RunListResponse,
+    ToolExecutionHandoff,
+    ToolRunCreateRequest,
+    ToolRunCreateResponse,
 )
 
 
@@ -33,6 +36,18 @@ def _build_run_id(timestamp: str, sequence: int) -> str:
 def _normalize_optional_text(value: Any) -> str | None:
     cleaned = str(value or "").strip()
     return cleaned or None
+
+
+def _insert_record_with_generated_run_id(record: dict[str, Any], timestamp: str) -> dict[str, Any]:
+    for sequence in range(0, 1000):
+        candidate = dict(record)
+        candidate["run_id"] = _build_run_id(timestamp, sequence)
+        try:
+            insert_run_record(candidate)
+            return candidate
+        except sqlite3.IntegrityError:
+            continue
+    raise RuntimeError("Failed to generate a unique run_id.")
 
 
 def _normalize_record(record: dict[str, Any]) -> dict[str, Any]:
@@ -67,6 +82,8 @@ def _get_required_record(run_id: str) -> dict[str, Any]:
 
 
 def _validate_run_create_request(request: RunCreateRequest) -> None:
+    if request.executor_type == "internal_tool":
+        raise HTTPException(status_code=400, detail="Use /api/kpi/tool-runs to create internal tool runs.")
     if request.executor_type == "robot" and not _normalize_optional_text(request.robotcase_path):
         raise HTTPException(status_code=400, detail="robotcase_path is required when executor_type is robot.")
     if (
@@ -111,15 +128,7 @@ def run_create(request: RunCreateRequest) -> RunCreateResponse:
         "updated_at": now.isoformat(),
     }
 
-    for sequence in range(0, 1000):
-        record["run_id"] = _build_run_id(timestamp, sequence)
-        try:
-            insert_run_record(record)
-            break
-        except sqlite3.IntegrityError:
-            continue
-    else:
-        raise RuntimeError("Failed to generate a unique run_id.")
+    record = _insert_record_with_generated_run_id(record, timestamp)
 
     return RunCreateResponse(
         run_id=record["run_id"],
@@ -129,8 +138,79 @@ def run_create(request: RunCreateRequest) -> RunCreateResponse:
     )
 
 
+def tool_run_create(request: ToolRunCreateRequest) -> ToolRunCreateResponse:
+    if not request.payload:
+        raise HTTPException(status_code=400, detail="payload is required for internal tool runs.")
+
+    now = datetime.now(ZoneInfo("Asia/Shanghai"))
+    timestamp = now.strftime("%Y%m%d%H%M%S%f")[:-3]
+    tool_payload = dict(request.payload)
+    metadata = dict(request.metadata)
+    metadata.update(
+        {
+            "tool_kind": request.tool_kind,
+            "tool_payload": tool_payload,
+        }
+    )
+
+    testline = _normalize_optional_text(request.testline) or _normalize_optional_text(tool_payload.get("test_line")) or "standalone"
+    build = _normalize_optional_text(request.build) or _normalize_optional_text(tool_payload.get("build")) or ""
+    generator_enabled = request.tool_kind == "kpi_generator"
+    detector_enabled = request.tool_kind == "kpi_detector"
+    record = {
+        "executor_type": "internal_tool",
+        "workflow_name": request.tool_kind,
+        "testline": testline,
+        "robotcase_path": "",
+        "build": build,
+        "scenario": _normalize_optional_text(tool_payload.get("scenario")) or "",
+        "status": "created",
+        "message": "Internal tool run request accepted.",
+        "enable_kpi_generator": generator_enabled,
+        "enable_kpi_anomaly_detector": detector_enabled,
+        "workflow_spec_json": {},
+        "run_metadata_json": metadata,
+        "artifact_manifest_json": [],
+        "kpi_config_json": tool_payload if generator_enabled else {},
+        "kpi_summary_json": {},
+        "detector_summary_json": {},
+        "jenkins_build_ref": "",
+        "started_at": "",
+        "finished_at": "",
+        "created_at": now.isoformat(),
+        "updated_at": now.isoformat(),
+    }
+    record = _insert_record_with_generated_run_id(record, timestamp)
+    run_id = record["run_id"]
+    handoff = ToolExecutionHandoff(
+        run_id=run_id,
+        tool_kind=request.tool_kind,
+        detail_url=f"/api/runs/{run_id}",
+        callback_url=f"/api/runs/{run_id}/callbacks/worker",
+    )
+    return ToolRunCreateResponse(
+        run_id=run_id,
+        executor_type="internal_tool",
+        tool_kind=request.tool_kind,
+        status=record["status"],
+        message=record["message"],
+        handoff=handoff,
+    )
+
+
 def get_run_list() -> RunListResponse:
     records = [_normalize_record(record) for record in list_run_records()]
+    return RunListResponse(items=[RunListItem(**record) for record in records])
+
+
+def get_tool_run_list(status: str | None = None) -> RunListResponse:
+    normalized_status = _normalize_optional_text(status)
+    records = [
+        _normalize_record(record)
+        for record in list_run_records()
+        if record.get("executor_type") == "internal_tool"
+        and (normalized_status is None or record.get("status") == normalized_status)
+    ]
     return RunListResponse(items=[RunListItem(**record) for record in records])
 
 

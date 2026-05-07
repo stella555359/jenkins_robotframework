@@ -18,6 +18,7 @@
 ### 2.1 负责
 
 - 对 **Portal**、**jenkins-integration** 等调用方暴露 **run 维度** 的 **HTTP API**。
+- 为 **kpi_generator / kpi_detector** 提供独立 **internal tool run** 创建入口，让它们既能作为 workflow followup，也能从 Portal 独立触发。
 - **SQLite** 持久化：run 元数据、`workflow_spec`、artifact 清单、KPI / detector 摘要字段等。
 - **Jenkins 回调**：接收执行结束后的状态与产物描述，**合并写回**数据库。
 - **查询**：列表、详情、artifact 列表、KPI 聚合读模型（`GET .../artifacts`、`GET .../kpi`）。
@@ -107,12 +108,15 @@ flowchart TB
 | 方法 | 路径 | Service | 说明 |
 |------|------|---------|------|
 | `GET` | `/api/health` | `health_service.get_health_payload` | 健康检查 |
-| `POST` | `/api/runs` | `run_service.run_create` | 创建 run，生成 `run_id` 并插入 DB |
+| `POST` | `/api/runs` | `run_service.run_create` | 创建 robot / python_orchestrator run，生成 `run_id` 并插入 DB |
+| `POST` | `/api/kpi/tool-runs` | `run_service.tool_run_create` | 创建 standalone internal tool run（kpi_generator / kpi_detector），不在 API 进程内同步执行。 |
+| `GET` | `/api/kpi/tool-runs` | `run_service.get_tool_run_list` | 列出 `executor_type == "internal_tool"` 的工具 run。 |
 | `GET` | `/api/runs` | `run_service.get_run_list` | 列表，按 `created_at` 倒序 |
 | `GET` | `/api/runs/{run_id}` | `run_service.get_run_detail` | 详情；不存在则 404 |
 | `GET` | `/api/runs/{run_id}/artifacts` | `run_service.get_run_artifacts` | artifact 清单 |
 | `GET` | `/api/runs/{run_id}/kpi` | `run_service.get_run_kpi` | KPI 开关、配置、摘要、detector、manifest |
 | `POST` | `/api/runs/{run_id}/callbacks/jenkins` | `run_service.apply_run_callback` | Jenkins 回写状态与产物元数据 |
+| `POST` | `/api/runs/{run_id}/callbacks/worker` | `run_service.apply_run_callback` | standalone internal tool worker 回写状态与产物元数据 |
 
 路由定义见：`platform-api/app/api/v1/router.py`。
 
@@ -154,6 +158,21 @@ flowchart TD
 
 - `executor_type == "robot"`：**必须**有 `robotcase_path`；**不允许** `enable_kpi_generator` / `enable_kpi_anomaly_detector` / `kpi_config`（KPI 能力仅对 `python_orchestrator` 开放）。
 - `executor_type == "python_orchestrator"`：**必须**提供 `workflow_spec`。
+- `executor_type == "internal_tool"`：不从 `/api/runs` 创建，必须走 **`POST /api/kpi/tool-runs`**，避免 Portal standalone 工具与普通 workflow run 混用入口。
+
+### 5.2.1 创建 Internal Tool Run：`POST /api/kpi/tool-runs`
+
+```mermaid
+flowchart TD
+  TREQ[ToolRunCreateRequest] --> VAL{payload empty?}
+  VAL -->|yes| ERR[400]
+  VAL -->|no| META[metadata.tool_kind +\nmetadata.tool_payload]
+  META --> REC[executor_type=internal_tool]
+  REC --> INS[insert_run_record]
+  INS --> RESP[ToolRunCreateResponse\nhandoff detail/callback URL]
+```
+
+该接口只负责**创建和持久化**工具 run，不在 FastAPI 进程内同步调用 Compass 或 Excel 处理。真实执行由 **`internal_tools.worker`** 轮询 `GET /api/kpi/tool-runs?status=created`，读取 run detail 后执行并回写 **`/callbacks/worker`**。
 
 ### 5.3 读路径：列表 / 详情 / Artifacts / KPI
 
@@ -169,6 +188,7 @@ flowchart LR
 ```
 
 - **`_normalize_record`**：把库里的 `*_json` 列解析为 Python 对象，并映射为 API 对外字段名（如 `workflow_spec`、`metadata`、`artifact_manifest`、`kpi_summary`、`detector_summary`）。
+- **`GET /api/kpi/tool-runs?status=created`**：worker 消费入口，只返回 standalone internal tool run；Portal 页面也可不带 status 查询全部工具 run。
 
 ### 5.4 Jenkins 回调：`POST /api/runs/{run_id}/callbacks/jenkins`
 
@@ -184,6 +204,10 @@ flowchart TD
 - **metadata**：在已有 `metadata` 上 **`update`** 请求中的键。
 - **kpi_summary / detector_summary**：请求有值则采用请求值，否则保留原值。
 
+### 5.5 Worker 回调：`POST /api/runs/{run_id}/callbacks/worker`
+
+该路由与 Jenkins callback 复用同一套 `RunCallbackRequest` / `apply_run_callback` 合并逻辑。区别只在调用方：`/callbacks/worker` 专供 standalone `internal_tool` worker 使用，避免把 Portal 工具任务混入 Jenkins 调度主线。
+
 ---
 
 ## 6. 数据层要点（`run_repository`）
@@ -198,8 +222,9 @@ flowchart TD
 
 ## 7. 契约与模型（`schemas/run.py`）
 
-- **`ExecutorType`**：`"robot"` | `"python_orchestrator"`。
+- **`ExecutorType`**：`"robot"` | `"python_orchestrator"` | `"internal_tool"`。
 - **`WorkflowSpec` / `WorkflowStage` / `WorkflowItem`**：与 orchestrator 侧 traffic 结构对齐的**平台契约**子集（字段以代码与 Step 文档为准）。
+- **`ToolRunCreateRequest`**：Portal 独立工具入口，`tool_kind` 为 `"kpi_generator"` 或 `"kpi_detector"`，`payload` 原样保存到 `metadata.tool_payload`，由 `internal_tools.worker` 后续执行。
 - **回调**：`RunCallbackRequest` 含 `status`、`message`、`jenkins_build_ref`、`started_at`、`finished_at`、`metadata`、`artifact_manifest`、`kpi_summary`、`detector_summary`。
 
 契约变更时建议同步：**`app/schemas/run.py`**、**`app/services/run_service.py`**、**`platform-api/tests/test_runs.py`**、**`docs/modules/platform-api/steps/`** 中相关 Step。
@@ -211,7 +236,7 @@ flowchart TD
 | 边界 | 说明 |
 |------|------|
 | **与 jenkins-integration** | **非** Python import；通过 **run contract**（创建响应中的 `run_id`、详情中的字段）、**handoff**（Jenkins 侧拉详情或带参数触发）、**callback contract**（`POST .../callbacks/jenkins` 的请求体）协作。 |
-| **与 test-workflow-runner** | 无直接 import；orchestrator 消费的是 **落盘后的 workflow JSON 语义**，应与 `workflow_spec` 及 Portal 约定一致；执行结果经 Jenkins 回调回到 **本平台**。 |
+| **与 test-workflow-runner** | workflow orchestrator 消费的是 **落盘后的 workflow JSON 语义**；standalone internal tool run 由 `test-workflow-runner/internal_tools/worker.py` 轮询 API 并通过 `/callbacks/worker` 回写。 |
 
 任一方契约变更：**`schemas/run.py` + 测试 + Step 文档** 一起改。
 

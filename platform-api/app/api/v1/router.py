@@ -7,7 +7,9 @@ from app.services.run_service import (
     get_run_detail,
     get_run_kpi,
     get_run_list,
+    get_tool_run_list,
     run_create,
+    tool_run_create,
 )
 from app.services.health_service import get_health_payload
 from app.schemas.run import (
@@ -19,6 +21,8 @@ from app.schemas.run import (
     RunDetailResponse,
     RunKpiResponse,
     RunListResponse,
+    ToolRunCreateRequest,
+    ToolRunCreateResponse,
 )
 
 router = APIRouter()
@@ -31,6 +35,16 @@ def get_health() -> HealthResponse:
 @router.post("/runs", response_model=RunCreateResponse, tags=["run"])
 def create_run(request: RunCreateRequest) -> RunCreateResponse:
     return run_create(request)
+
+
+@router.post("/kpi/tool-runs", response_model=ToolRunCreateResponse, tags=["kpi"])
+def create_tool_run(request: ToolRunCreateRequest) -> ToolRunCreateResponse:
+    return tool_run_create(request)
+
+
+@router.get("/kpi/tool-runs", response_model=RunListResponse, tags=["kpi"])
+def list_tool_runs(status: str | None = None) -> RunListResponse:
+    return get_tool_run_list(status=status)
 
 
 @router.get("/runs", response_model=RunListResponse, tags=["run"])
@@ -55,5 +69,10 @@ def get_run_kpi_summary(run_id: str) -> RunKpiResponse:
 
 @router.post("/runs/{run_id}/callbacks/jenkins", response_model=RunCallbackResponse, tags=["run"])
 def jenkins_callback(run_id: str, request: RunCallbackRequest) -> RunCallbackResponse:
+    return apply_run_callback(run_id, request)
+
+
+@router.post("/runs/{run_id}/callbacks/worker", response_model=RunCallbackResponse, tags=["run"])
+def worker_callback(run_id: str, request: RunCallbackRequest) -> RunCallbackResponse:
     return apply_run_callback(run_id, request)
 

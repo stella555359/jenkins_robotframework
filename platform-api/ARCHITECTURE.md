@@ -18,6 +18,7 @@
 ### 2.1 负责
 
 - 对 **Portal**、**jenkins-integration** 等调用方暴露 **run 维度** 的 **HTTP API**。
+- 为 Robot run 提供 **B1 create/trigger 分离**：`POST /api/runs` 只创建记录，`POST /api/runs/{run_id}/trigger` 才调 Jenkins。
 - 为 **kpi_generator / kpi_detector** 提供独立 **internal tool run** 创建入口，让它们既能作为 workflow followup，也能从 Portal 独立触发。
 - **SQLite** 持久化：run 元数据、`workflow_spec`、artifact 清单、KPI / detector 摘要字段等。
 - **Jenkins 回调**：接收执行结束后的状态与产物描述，**合并写回**数据库。
@@ -109,6 +110,7 @@ flowchart TB
 |------|------|---------|------|
 | `GET` | `/api/health` | `health_service.get_health_payload` | 健康检查 |
 | `POST` | `/api/runs` | `run_service.run_create` | 创建 robot / python_orchestrator run，生成 `run_id` 并插入 DB |
+| `POST` | `/api/runs/{run_id}/trigger` | `run_service.trigger_run` | 触发已创建的 robot run 到 Jenkins；成功写 `triggered`，失败写 `trigger_failed` |
 | `POST` | `/api/kpi/tool-runs` | `run_service.tool_run_create` | 创建 standalone internal tool run（kpi_generator / kpi_detector），不在 API 进程内同步执行。 |
 | `GET` | `/api/kpi/tool-runs` | `run_service.get_tool_run_list` | 列出 `executor_type == "internal_tool"` 的工具 run。 |
 | `GET` | `/api/runs` | `run_service.get_run_list` | 列表，按 `created_at` 倒序 |
@@ -160,7 +162,33 @@ flowchart TD
 - `executor_type == "python_orchestrator"`：**必须**提供 `workflow_spec`。
 - `executor_type == "internal_tool"`：不从 `/api/runs` 创建，必须走 **`POST /api/kpi/tool-runs`**，避免 Portal standalone 工具与普通 workflow run 混用入口。
 
-### 5.2.1 创建 Internal Tool Run：`POST /api/kpi/tool-runs`
+### 5.2.1 触发 Robot Run：`POST /api/runs/{run_id}/trigger`
+
+```mermaid
+flowchart TD
+  TRIG[POST /runs/id/trigger] --> LOAD[_get_required_record]
+  LOAD --> TYPE{executor_type}
+  TYPE -->|robot| STATE{status}
+  TYPE -->|internal_tool| ERR1[400 worker handles it]
+  TYPE -->|python_orchestrator| ERR2[400 not direct trigger]
+  STATE -->|created / trigger_failed| PARAMS[build_robot_jenkins_parameters]
+  STATE -->|other| ERR3[409]
+  PARAMS --> JENKINS[trigger_jenkins_job\nbuildWithParameters]
+  JENKINS -->|success| OK[status=triggered\njenkins_build_ref=queue_url]
+  JENKINS -->|error| FAIL[status=trigger_failed]
+```
+
+B1 方案下，Portal 对用户仍表现为一个 **Run** 按钮，但内部连续调用：
+
+```text
+POST /api/runs
+POST /api/runs/{run_id}/trigger
+GET /api/runs/{run_id}
+```
+
+Robot trigger 参数由 `services/jenkins_service.py` 生成，核心字段包括 `RUN_ID`、`TESTLINE`、`ROBOTCASE_PATH`、`CASE_NAME`、`ROBOT_SELECTED_TESTS`、`ROBOT_VARIABLES_JSON`、`PLATFORM_API_BASE_URL` 以及源码 checkout override 参数。`internal_tool` 不允许走该 trigger，继续由 worker 轮询执行。
+
+### 5.2.2 创建 Internal Tool Run：`POST /api/kpi/tool-runs`
 
 ```mermaid
 flowchart TD

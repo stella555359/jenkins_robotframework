@@ -8,11 +8,15 @@
 
 - `GET /api/health`
 - `POST /api/runs`
+- `POST /api/runs/{run_id}/trigger`
 - `GET /api/runs`
 - `GET /api/runs/{run_id}`
 - `GET /api/runs/{run_id}/artifacts`
 - `GET /api/runs/{run_id}/kpi`
 - `POST /api/runs/{run_id}/callbacks/jenkins`
+- `POST /api/runs/{run_id}/callbacks/worker`
+- `POST /api/kpi/tool-runs`
+- `GET /api/kpi/tool-runs`
 
 Run 相关接口将元数据写入 **SQLite**。默认数据库路径为：
 
@@ -21,6 +25,12 @@ Run 相关接口将元数据写入 **SQLite**。默认数据库路径为：
 如需覆盖默认值，可在 `.env` 中设置：
 
 - `RUNS_DB_PATH`
+- `PUBLIC_BASE_URL`
+- `JENKINS_BASE_URL`
+- `JENKINS_ROBOT_JOB_PATH`
+- `JENKINS_USERNAME`
+- `JENKINS_API_TOKEN`
+- `JENKINS_TRIGGER_TOKEN`
 
 ## Test Setup
 

@@ -6,17 +6,17 @@
 
 它主要解释：
 
-- workflow builder
+- Robot run submission form
 - run list / detail / KPI summary 页面
 - artifact / detector 报告入口展示
 
-但从当前开始，这条模块线先只做占位，不抢 `platform-api` 和 `test-workflow-runner` 的主线顺序。
+当前已经有一个最小 Vite React TypeScript MVP，位于 `automation-portal/`。它先聚焦 B1 Robot 主线：表单一键 Run，内部调用 create + trigger，然后展示 run detail、artifact 和 KPI 区域。
 
 ## 推荐阅读顺序
 
 1. [模块总索引](index.md)
 2. overview 中的系统级架构文档
-3. 等 backend 和 execution 主线稳定后，再进入当前 step
+3. [Step 1：Robot Portal B1 MVP](steps/step-01-robot-portal-b1-mvp.md)
 
 优先回看的 overview 文档：
 
@@ -25,9 +25,9 @@
 
 ## 当前策略
 
-这一轮先只固定 4 个事实：
+这一轮先固定 4 个事实：
 
-1. `automation-portal` 会有自己的独立 step 轨
+1. `automation-portal` 有自己的独立 step 轨
 2. 它不再和 `platform-api` step 混写
-3. 当前先不展开大量前端细节
-4. 等 backend 和 execution 主线稳定后，再按 step 往下写
+3. MVP 先服务 Robot case 真实执行链路
+4. standalone `internal_tool` 仍由 worker 路径执行，后续可加独立页面

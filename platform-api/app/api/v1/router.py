@@ -9,6 +9,7 @@ from app.services.run_service import (
     get_run_list,
     get_tool_run_list,
     run_create,
+    trigger_run,
     tool_run_create,
 )
 from app.services.health_service import get_health_payload
@@ -21,6 +22,7 @@ from app.schemas.run import (
     RunDetailResponse,
     RunKpiResponse,
     RunListResponse,
+    RunTriggerResponse,
     ToolRunCreateRequest,
     ToolRunCreateResponse,
 )
@@ -55,6 +57,11 @@ def list_runs() -> RunListResponse:
 @router.get("/runs/{run_id}", response_model=RunDetailResponse, tags=["run"])
 def get_run(run_id: str) -> RunDetailResponse:
     return get_run_detail(run_id)
+
+
+@router.post("/runs/{run_id}/trigger", response_model=RunTriggerResponse, tags=["run"])
+def trigger_existing_run(run_id: str) -> RunTriggerResponse:
+    return trigger_run(run_id)
 
 
 @router.get("/runs/{run_id}/artifacts", response_model=RunArtifactsResponse, tags=["run"])

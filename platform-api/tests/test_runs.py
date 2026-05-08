@@ -42,6 +42,92 @@ def test_create_run_persists_record(client, fetch_run_record) -> None:
 
 
 @allure.feature("Run API")
+@allure.story("Trigger run")
+@allure.title("POST /api/runs/{run_id}/trigger dispatches a robot run to Jenkins")
+def test_trigger_robot_run_dispatches_to_jenkins(client, fetch_run_record, monkeypatch) -> None:
+    captured: dict[str, str] = {}
+
+    def fake_trigger_jenkins_job(*, parameters: dict[str, str]) -> dict[str, object]:
+        captured.update(parameters)
+        return {
+            "url": "https://jenkins.example/job/robot/job/robot-execution/buildWithParameters",
+            "http_status": 201,
+            "queue_url": "https://jenkins.example/queue/item/42/",
+            "parameters": parameters,
+        }
+
+    monkeypatch.setattr("app.services.run_service.trigger_jenkins_job", fake_trigger_jenkins_job)
+
+    create_response = client.post(
+        "/api/runs",
+        json={
+            "testline": "T813",
+            "robotcase_path": "testsuite/Hangzhou/RRM/example.robot",
+            "build": "SBTS26R3.ENB.9999",
+            "metadata": {
+                "case_name": "Attach Smoke",
+                "selected_tests": ["Attach UE", "Detach UE"],
+                "robot_variables": {"AF_PATH": "/tmp/af"},
+                "robotws_ref": "feature/robot",
+            },
+        },
+    )
+    run_id = create_response.json()["run_id"]
+
+    trigger_response = client.post(f"/api/runs/{run_id}/trigger")
+
+    assert trigger_response.status_code == 200
+    payload = trigger_response.json()
+    assert payload["status"] == "triggered"
+    assert payload["scheduler"] == "jenkins"
+    assert payload["dispatch"]["queue_url"] == "https://jenkins.example/queue/item/42/"
+    assert captured["RUN_ID"] == run_id
+    assert captured["TESTLINE"] == "T813"
+    assert captured["ROBOTCASE_PATH"] == "testsuite/Hangzhou/RRM/example.robot"
+    assert captured["CASE_NAME"] == "Attach Smoke"
+    assert captured["ROBOT_SELECTED_TESTS"] == "Attach UE\nDetach UE"
+    assert '"AF_PATH": "/tmp/af"' in captured["ROBOT_VARIABLES_JSON"]
+    assert '"BUILD": "SBTS26R3.ENB.9999"' in captured["ROBOT_VARIABLES_JSON"]
+    assert captured["ROBOTWS_GIT_REF"] == "feature/robot"
+
+    row = fetch_run_record(run_id)
+    assert row is not None
+    assert row["status"] == "triggered"
+    assert row["message"] == "Run triggered via Jenkins."
+    assert row["jenkins_build_ref"] == "https://jenkins.example/queue/item/42/"
+
+
+@allure.feature("Run API")
+@allure.story("Trigger run")
+@allure.title("POST /api/runs/{run_id}/trigger stores trigger_failed on Jenkins failure")
+def test_trigger_robot_run_stores_trigger_failed(client, fetch_run_record, monkeypatch) -> None:
+    from app.services.jenkins_service import JenkinsDispatchError
+
+    def fake_trigger_jenkins_job(*, parameters: dict[str, str]) -> dict[str, object]:
+        raise JenkinsDispatchError("Jenkins is unavailable.")
+
+    monkeypatch.setattr("app.services.run_service.trigger_jenkins_job", fake_trigger_jenkins_job)
+
+    create_response = client.post(
+        "/api/runs",
+        json={
+            "testline": "T813",
+            "robotcase_path": "testsuite/Hangzhou/RRM/example.robot",
+        },
+    )
+    run_id = create_response.json()["run_id"]
+
+    trigger_response = client.post(f"/api/runs/{run_id}/trigger")
+
+    assert trigger_response.status_code == 502
+    assert trigger_response.json()["detail"] == "Jenkins is unavailable."
+    row = fetch_run_record(run_id)
+    assert row is not None
+    assert row["status"] == "trigger_failed"
+    assert row["message"] == "Jenkins is unavailable."
+
+
+@allure.feature("Run API")
 @allure.story("Create run")
 @allure.title("run_create retries with a sequence suffix on conflict")
 def test_run_create_retries_with_next_sequence_on_conflict(monkeypatch) -> None:

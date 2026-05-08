@@ -75,6 +75,15 @@ class RunCreateResponse(BaseModel):
     message: str
 
 
+class RunTriggerResponse(BaseModel):
+    run_id: str
+    executor_type: ExecutorType
+    status: str
+    message: str
+    scheduler: str
+    dispatch: dict[str, Any] = Field(default_factory=dict)
+
+
 class ToolExecutionHandoff(BaseModel):
     run_id: str
     tool_kind: ToolKind

@@ -11,6 +11,11 @@ from app.repositories.run_repository import (
     list_run_records,
     update_run_record,
 )
+from app.services.jenkins_service import (
+    JenkinsDispatchError,
+    build_robot_jenkins_parameters,
+    trigger_jenkins_job,
+)
 from app.schemas.run import (
     RunArtifactsResponse,
     RunCallbackRequest,
@@ -21,6 +26,7 @@ from app.schemas.run import (
     RunKpiResponse,
     RunListItem,
     RunListResponse,
+    RunTriggerResponse,
     ToolExecutionHandoff,
     ToolRunCreateRequest,
     ToolRunCreateResponse,
@@ -216,6 +222,53 @@ def get_tool_run_list(status: str | None = None) -> RunListResponse:
 
 def get_run_detail(run_id: str) -> RunDetailResponse:
     return RunDetailResponse(**_get_required_record(run_id))
+
+
+def trigger_run(run_id: str) -> RunTriggerResponse:
+    record = _get_required_record(run_id)
+    if record["executor_type"] == "internal_tool":
+        raise HTTPException(status_code=400, detail="Internal tool runs are executed by the worker.")
+    if record["executor_type"] != "robot":
+        raise HTTPException(status_code=400, detail="Only robot runs can be triggered directly.")
+    if record["status"] not in {"created", "trigger_failed"}:
+        raise HTTPException(status_code=409, detail=f"Run cannot be triggered from status {record['status']}.")
+
+    parameters = build_robot_jenkins_parameters(record)
+    now = datetime.now(ZoneInfo("Asia/Shanghai")).isoformat()
+    try:
+        dispatch = trigger_jenkins_job(parameters=parameters)
+    except JenkinsDispatchError as exc:
+        update_run_record(
+            run_id,
+            {
+                "status": "trigger_failed",
+                "message": str(exc),
+                "updated_at": now,
+            },
+        )
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    queue_url = _normalize_optional_text(dispatch.get("queue_url"))
+    updated = update_run_record(
+        run_id,
+        {
+            "status": "triggered",
+            "message": "Run triggered via Jenkins.",
+            "jenkins_build_ref": queue_url or "",
+            "updated_at": now,
+        },
+    )
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Run not found.")
+    normalized = _normalize_record(updated)
+    return RunTriggerResponse(
+        run_id=run_id,
+        executor_type=normalized["executor_type"],
+        status=normalized["status"],
+        message=normalized["message"],
+        scheduler="jenkins",
+        dispatch=dispatch,
+    )
 
 
 def get_run_artifacts(run_id: str) -> RunArtifactsResponse:

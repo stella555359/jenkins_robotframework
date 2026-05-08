@@ -68,6 +68,7 @@
 - [ ] Step 12：补齐 artifact / KPI / detector metadata 查询面
 - [ ] Step 13：把 run detail 升级为 execution-ready 详情入口
 - [x] Step 14：新增 internal_tool standalone KPI 工具 run contract
+- [x] Step 15：新增 Robot run trigger contract（B1 create/trigger 分离）
 
 ## 最近 4 个 step
 
@@ -83,6 +84,7 @@
 - [Step 12：补齐 artifact / KPI / detector metadata 查询面](steps/step-12-artifact-and-kpi-metadata-query-surface.md)
 - [Step 13：把 run detail 升级为 execution-ready 详情入口](steps/step-13-execution-ready-run-detail.md)
 - [Step 14：internal tool run contract](steps/step-14-internal-tool-run-contract.md)
+- [Step 15：Robot run trigger contract](steps/step-15-robot-trigger-contract.md)
 
 ## 早期步骤简表
 

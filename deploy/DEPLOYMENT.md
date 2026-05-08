@@ -635,6 +635,121 @@ jenkins-integration/jobs/robot-execution-job.groovy
 JENKINS_ROBOT_JOB_PATH=job/robot/job/robot-execution
 ```
 
+注意：这里指的是 Jenkins UI 里的 job 路径，不是 Linux 服务器上的目录路径。
+
+如果你在未登录状态下执行：
+
+```bash
+curl -I http://127.0.0.1:8080/jenkins/job/robot/job/robot-execution/
+```
+
+返回 `403 Forbidden`，只能说明 Jenkins 已启用鉴权，不能单靠这个结果判断 job 一定存在或一定不存在。更可靠的做法是登录 Jenkins 页面后确认，或者在 Jenkins 中直接手工创建这个 job。
+
+### 8.2.1 最短手工创建 `robot/robot-execution` job
+
+如果当前 Jenkins 里还没有 `robot/robot-execution`，第一轮可以直接在 Jenkins 页面手工创建，不必先走 Job DSL。
+
+操作步骤：
+
+1. 打开 Jenkins：
+
+```text
+https://10.71.210.104/jenkins/
+```
+
+2. 登录 Jenkins。
+3. 在首页点击 `New Item`。
+4. 名称填写：
+
+```text
+robot/robot-execution
+```
+
+如果当前 Jenkins 版本不允许直接带 `/` 创建，也可以先：
+
+- 创建一个 Folder：`robot`
+- 再在 `robot` 文件夹内新建一个 Pipeline：`robot-execution`
+
+5. 类型选择：
+
+```text
+Pipeline
+```
+
+6. 进入 job 配置页，在 `Pipeline` 区域按下面设置：
+
+```text
+Definition: Pipeline script from SCM
+SCM: Git
+Repository URL: https://github.com/stella555359/jenkins_robotframework.git
+Credentials: 如果 Jenkins 服务器能直接匿名拉取 GitHub public repo，第一轮可以先留空；如果公司网络或仓库权限有限制，再改成对应的 GitHub PAT / SSH credentials
+Branch Specifier: */feature/jenkins-integration
+Script Path: jenkins-integration/pipelines/robot-execution.Jenkinsfile
+```
+
+当前仓库默认 remote 和分支可按下面理解：
+
+```text
+origin = https://github.com/stella555359/jenkins_robotframework.git
+current branch = feature/jenkins-integration
+```
+
+所以在没有特殊要求时，这一轮推荐直接按上面值填写。
+
+如果你的 Jenkins 服务器上拉的不是 `feature/jenkins-integration`，这里把 `Branch Specifier` 改成服务器当前实际部署分支即可。
+
+`Credentials` 的推荐填法：
+
+1. 如果仓库是 public，且 Jenkins 所在服务器可以直接访问 GitHub，先留空即可。
+2. 如果仓库要鉴权，且你使用 HTTPS，创建一种 Jenkins Credentials：`Username with password` 或 `Secret text`（PAT），然后在这里选择它。
+3. 如果你团队统一使用 SSH，`Repository URL` 改成 SSH 地址，再选择对应的 SSH credentials。
+
+7. 点击 `Save`。
+
+创建完成后，预期 job 页面地址是：
+
+```text
+https://10.71.210.104/jenkins/job/robot/job/robot-execution/
+```
+
+### 8.2.2 创建后立即验证
+
+先在 Jenkins 页面打开 `Build with Parameters`，确认下面这些参数已经出现：
+
+```text
+RUN_ID
+TESTLINE
+ROBOTCASE_PATH
+CASE_NAME
+ROBOT_SELECTED_TESTS
+ROBOT_VARIABLES_JSON
+PYTHON_ENV_ROOT
+ROBOTWS_ROOT
+TESTLINE_VARIABLES_PATH
+PLATFORM_API_BASE_URL
+```
+
+如果这些参数没有出现，通常说明：
+
+1. `Script Path` 不是 `jenkins-integration/pipelines/robot-execution.Jenkinsfile`
+2. 分支不对
+3. Jenkins 还没成功从 SCM 读取到 Jenkinsfile
+
+第一轮建议先手工点一次 `Build with Parameters` 做 smoke，至少填：
+
+```text
+TESTLINE=7_5_UTE5G402T813
+ROBOTCASE_PATH=testsuite/Hangzhou/RRM/example.robot
+PLATFORM_API_BASE_URL=https://10.71.210.104
+```
+
+这样可以先验证：
+
+1. Jenkins job 本身存在
+2. Jenkinsfile 能被正确加载
+3. 参数面正确
+4. Agent、checkout、Python 环境、Robot 基础链路是否可跑
+
 ### 8.3 Jenkins Job 参数
 
 `robot-execution` 至少需要支持：
@@ -1150,6 +1265,31 @@ deactivate
 
 ```text
 /etc/systemd/system/internal-tools-worker.service
+```
+
+如果当前服务器还没有这个 service 文件，可直接创建：
+
+```bash
+sudo tee /etc/systemd/system/internal-tools-worker.service > /dev/null <<'EOF'
+[Unit]
+Description=Internal KPI Tools Worker
+After=network.target platform-api.service
+Requires=platform-api.service
+
+[Service]
+Type=simple
+User=ute
+WorkingDirectory=/opt/jenkins_robotframework/test-workflow-runner
+Environment="PATH=/opt/jenkins_robotframework/test-workflow-runner/venv/bin"
+ExecStart=/opt/jenkins_robotframework/test-workflow-runner/venv/bin/python -m internal_tools.worker --platform-api-base-url http://127.0.0.1:8000 --output-root /var/lib/test-workflow-runner/internal-tools/artifacts --poll-interval-seconds 10 --limit 1
+Restart=always
+RestartSec=5
+StandardOutput=append:/var/lib/test-workflow-runner/internal-tools/logs/worker.log
+StandardError=append:/var/lib/test-workflow-runner/internal-tools/logs/worker.err.log
+
+[Install]
+WantedBy=multi-user.target
+EOF
 ```
 
 内容：

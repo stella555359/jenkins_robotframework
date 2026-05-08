@@ -647,198 +647,39 @@ curl -I http://127.0.0.1:8080/jenkins/job/robot/job/robot-execution/
 
 ### 8.2.1 最短手工创建 `robot/robot-execution` job
 
-如果当前 Jenkins 里还没有 `robot/robot-execution`，第一轮可以直接在 Jenkins 页面手工创建，不必先走 Job DSL。
+这部分详细步骤已经统一收口到 [c:/TA/jenkins_robotframework/docs/overview/automation-portal-robot-case-flow.md](c:/TA/jenkins_robotframework/docs/overview/automation-portal-robot-case-flow.md)。
 
-操作步骤：
+这里仅保留部署角度最关键的结论：
 
-1. 打开 Jenkins：
+1. 如果当前 Jenkins 里还没有 `robot/robot-execution`，第一轮可以直接在 Jenkins 页面手工创建，不必先走 Job DSL。
+2. `Definition` 选择 `Pipeline script from SCM`。
+3. `Repository URL` 默认使用：`https://github.com/stella555359/jenkins_robotframework.git`。
+4. `Script Path` 固定为：`jenkins-integration/pipelines/robot-execution.Jenkinsfile`。
+5. `Branch Specifier` 应填写 Jenkins 当前实际要读取的分支，而不是盲目沿用文档旧值。
+6. 如果仓库访问需要凭据，再按 HTTPS 或 SSH 方式选择对应 Jenkins credentials。
 
-```text
-https://10.71.210.104/jenkins/
-```
+需要以下内容时，直接看 overview 文档，不再在本节重复维护：
 
-2. 登录 Jenkins。
-3. 在首页点击 `New Item`。
-4. 名称填写：
-
-```text
-robot/robot-execution
-```
-
-如果当前 Jenkins 版本不允许直接带 `/` 创建，也可以先：
-
-- 创建一个 Folder：`robot`
-- 再在 `robot` 文件夹内新建一个 Pipeline：`robot-execution`
-
-5. 类型选择：
-
-```text
-Pipeline
-```
-
-6. 进入 job 配置页，在 `Pipeline` 区域按下面设置：
-
-```text
-Definition: Pipeline script from SCM
-SCM: Git
-Repository URL: https://github.com/stella555359/jenkins_robotframework.git
-Credentials: 如果 Jenkins 服务器能直接匿名拉取 GitHub public repo，第一轮可以先留空；如果公司网络或仓库权限有限制，再改成对应的 GitHub PAT / SSH credentials
-Branch Specifier: */feature/jenkins-integration
-Script Path: jenkins-integration/pipelines/robot-execution.Jenkinsfile
-```
-
-如果你想改成 SSH 地址，`Repository URL` 改成：
-
-```text
-git@github.com:stella555359/jenkins_robotframework.git
-```
-
-对应 `Credentials` 不能再留空，而应选择 Jenkins 里的 SSH 凭据，例如：
-
-```text
-Kind: SSH Username with private key
-Username: git
-Private Key: Jenkins 可用于访问 GitHub 的私钥
-```
-
-也就是说，HTTPS 和 SSH 两种常见填法分别是：
-
-```text
-HTTPS:
-Repository URL: https://github.com/stella555359/jenkins_robotframework.git
-Credentials: public repo 可留空；私有或受限网络时使用 PAT / Username with password
-
-SSH:
-Repository URL: git@github.com:stella555359/jenkins_robotframework.git
-Credentials: 选择 SSH Username with private key
-```
-
-如果你的 Jenkins 页面里除了上面这些，还看到了下面几个字段，第一轮推荐这样填：
-
-```text
-Repository browser: Auto / 不填 / GitHub（任选其一，第一轮不影响运行）
-Additional Behaviours: 先留空
-Script Path: jenkins-integration/pipelines/robot-execution.Jenkinsfile
-Lightweight checkout: 第一轮建议不要勾选
-```
-
-说明：
-
-1. `Repository browser` 主要影响 Jenkins 页面里提交记录和仓库链接的展示，不影响这条 Pipeline 能不能跑。第一轮可以直接留空，或者如果页面要求必选，就选 GitHub / Auto。
-2. `Additional Behaviours` 第一轮先留空即可。只有当你当前这个 SCM 页面没有单独的分支输入框时，才需要在这里额外加 branch filter 行为。
-3. `Script Path` 必须填：
-
-```text
-jenkins-integration/pipelines/robot-execution.Jenkinsfile
-```
-
-它不是仓库根目录，也不是 Linux 绝对路径，而是相对于 Git 仓库根目录的文件路径。
-
-4. `Lightweight checkout` 第一轮建议先不要勾选。这样 Jenkins 会按常规方式从 SCM 读取 Jenkinsfile，兼容性更高。等这条链路稳定后，再考虑开启它来减少控制端 checkout 开销。
-
-当前仓库默认 remote 和分支可按下面理解：
-
-```text
-origin = https://github.com/stella555359/jenkins_robotframework.git
-current branch = feature/jenkins-integration
-```
-
-所以在没有特殊要求时，这一轮推荐直接按上面值填写。
-
-如果你的 Jenkins 服务器上拉的不是 `feature/jenkins-integration`，这里把 `Branch Specifier` 改成服务器当前实际部署分支即可。
-
-`Credentials` 的推荐填法：
-
-1. 如果仓库是 public，且 Jenkins 所在服务器可以直接访问 GitHub，先留空即可。
-2. 如果仓库要鉴权，且你使用 HTTPS，创建一种 Jenkins Credentials：`Username with password` 或 `Secret text`（PAT），然后在这里选择它。
-3. 如果你团队统一使用 SSH，`Repository URL` 改成 SSH 地址，再选择对应的 SSH credentials。
-
-7. 点击 `Save`。
-
-创建完成后，预期 job 页面地址是：
-
-```text
-https://10.71.210.104/jenkins/job/robot/job/robot-execution/
-```
+1. Jenkins 页面逐项怎么填。
+2. HTTPS / SSH 两种 SCM 填法。
+3. `Repository browser`、`Additional Behaviours`、`Lightweight checkout` 的建议。
+4. `Build with Parameters` 为什么不出现。
+5. Jenkins workspace 和 `/opt/jenkins_robotframework` 的区别。
 
 ### 8.2.2 创建后立即验证
 
-先在 Jenkins 页面打开 `Build with Parameters`，确认下面这些参数已经出现：
+建议创建后立刻做一次手工 smoke，确认 Jenkinsfile 能被正常读取、参数面出现、Agent 能接任务、checkout 和 Python 环境可用。
 
-```text
-RUN_ID
-TESTLINE
-ROBOTCASE_PATH
-CASE_NAME
-ROBOT_SELECTED_TESTS
-ROBOT_VARIABLES_JSON
-PYTHON_ENV_ROOT
-ROBOTWS_ROOT
-TESTLINE_VARIABLES_PATH
-PLATFORM_API_BASE_URL
-```
-
-如果这些参数没有出现，通常说明：
-
-1. `Script Path` 不是 `jenkins-integration/pipelines/robot-execution.Jenkinsfile`
-2. 分支不对
-3. Jenkins 还没成功从 SCM 读取到 Jenkinsfile
-
-第一轮建议先手工点一次 `Build with Parameters` 做 smoke，至少填：
-
-```text
-TESTLINE=7_5_UTE5G402T813
-ROBOTCASE_PATH=testsuite/Hangzhou/RRM/example.robot
-PLATFORM_API_BASE_URL=https://10.71.210.104
-```
-
-这样可以先验证：
-
-1. Jenkins job 本身存在
-2. Jenkinsfile 能被正确加载
-3. 参数面正确
-4. Agent、checkout、Python 环境、Robot 基础链路是否可跑
+推荐的最小 smoke 参数、参数清单和排查方法也统一放在 [c:/TA/jenkins_robotframework/docs/overview/automation-portal-robot-case-flow.md](c:/TA/jenkins_robotframework/docs/overview/automation-portal-robot-case-flow.md)。
 
 ### 8.3 Jenkins Job 参数
 
-`robot-execution` 至少需要支持：
+`robot-execution` 的详细参数列表、Portal 字段到 Jenkins 参数的映射、以及 `PLATFORM_API_BASE_URL` 的作用，也统一在 [c:/TA/jenkins_robotframework/docs/overview/automation-portal-robot-case-flow.md](c:/TA/jenkins_robotframework/docs/overview/automation-portal-robot-case-flow.md) 维护。
 
-```text
-RUN_ID
-TESTLINE
-ROBOTCASE_PATH
-CASE_NAME
-ROBOT_SELECTED_TESTS
-ROBOT_VARIABLES_JSON
-PYTHON_ENV_ROOT
-ROBOTWS_ROOT
-TESTLINE_VARIABLES_PATH
-ROBOTWS_REPO_URL_OVERRIDE
-ROBOTWS_GIT_REF
-ROBOTWS_CREDENTIALS_ID_OVERRIDE
-TESTLINE_CONFIGURATION_REPO_URL_OVERRIDE
-TESTLINE_CONFIGURATION_GIT_REF
-TESTLINE_CONFIGURATION_CREDENTIALS_ID_OVERRIDE
-ARTIFACT_LABEL
-RETRY_INDEX
-ROBOT_LOG_LEVEL
-PLATFORM_API_BASE_URL
-CALLBACK_MAX_ATTEMPTS
-CALLBACK_BACKOFF_SECONDS
-CALLBACK_IGNORE_FAILURE
-```
+本手册只保留两点部署侧必须确认的结论：
 
-`PLATFORM_API_BASE_URL` 应该是外部 HTTPS 根地址，不带 `/api`：
-
-```text
-https://10.71.210.104
-```
-
-因为 callback 脚本会自行拼：
-
-```text
-{PLATFORM_API_BASE_URL}/api/runs/{run_id}/callbacks/jenkins
-```
+1. `PLATFORM_API_BASE_URL` 必须是外部 HTTPS 根地址，不带 `/api`，例如 `https://10.71.210.104`。
+2. Jenkins callback 会基于它拼出 `/api/runs/{run_id}/callbacks/jenkins`，因此这个地址必须能从 Jenkins Master / Agent 访问。
 
 ## 9. platform-api 部署
 

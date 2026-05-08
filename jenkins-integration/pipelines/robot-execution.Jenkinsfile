@@ -175,7 +175,7 @@ for operation in plan.get('operations', []):
 
 unique_credential_ids = list(dict.fromkeys(credential_ids))
 Path('artifacts/checkout-credential-ids.txt').write_text(
-    '\n'.join(unique_credential_ids),
+    '\\n'.join(unique_credential_ids),
     encoding='utf-8',
 )
 PY

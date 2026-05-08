@@ -1,5 +1,5 @@
 pipeline {
-    agent any
+    agent { label 't813 && robot' }
 
     environment {
         ROBOT_REQUEST_PATH = 'artifacts/robot-request.json'
@@ -48,7 +48,7 @@ pipeline {
                         writeFile(file: 'artifacts/run-request-source.json', text: params.RUN_REQUEST_JSON)
                     } else {
                         sh '''
-                            python - <<'PY'
+                            python3 - <<'PY'
 import json
 import os
 from pathlib import Path
@@ -106,7 +106,7 @@ PY
                 script {
                     if (!params.RUN_REQUEST_JSON?.trim() && params.RUN_ID?.trim() && params.PLATFORM_API_BASE_URL?.trim()) {
                         sh '''
-                            python jenkins-integration/scripts/materialize_run_request.py \
+                            python3 jenkins-integration/scripts/materialize_run_request.py \
                               --run-id "$RUN_ID" \
                               --platform-api-base-url "$PLATFORM_API_BASE_URL" \
                               --workspace-root "$WORKSPACE" \
@@ -114,7 +114,7 @@ PY
                         '''
                     } else {
                         sh '''
-                            python jenkins-integration/scripts/materialize_run_request.py \
+                            python3 jenkins-integration/scripts/materialize_run_request.py \
                               --input-json "$WORKSPACE/artifacts/run-request-source.json" \
                               --platform-api-base-url "$PLATFORM_API_BASE_URL" \
                               --workspace-root "$WORKSPACE" \
@@ -122,7 +122,7 @@ PY
                         '''
                     }
                     sh '''
-                        python - <<'PY'
+                        python3 - <<'PY'
 import json
 from pathlib import Path
 
@@ -141,20 +141,20 @@ PY
         stage('Prepare Workspace') {
             steps {
                 sh '''
-                    python jenkins-integration/scripts/checkout_sources.py \
+                    python3 jenkins-integration/scripts/checkout_sources.py \
                       --request-json "$WORKSPACE/$ROBOT_REQUEST_PATH" \
                       --workspace-root "$WORKSPACE" \
                       --output-json "$WORKSPACE/$CHECKOUT_PLAN_PATH" \
                       --shell-script-output "$WORKSPACE/artifacts/checkout-sources.sh"
 
-                    python jenkins-integration/scripts/prepare_taf_environment.py \
+                    python3 jenkins-integration/scripts/prepare_taf_environment.py \
                       --request-json "$WORKSPACE/$ROBOT_REQUEST_PATH" \
                       --output-json "$WORKSPACE/$PYTHON_ENV_PLAN_PATH" \
                       --shell-script-output "$WORKSPACE/artifacts/prepare-python-env.sh"
                 '''
                 script {
                     sh '''
-                        python - <<'PY'
+                        python3 - <<'PY'
 import json
 import os
 from pathlib import Path
@@ -201,7 +201,7 @@ PY
         stage('Build Robot Command') {
             steps {
                 sh '''
-                    python jenkins-integration/scripts/build_robot_command.py \
+                    python3 jenkins-integration/scripts/build_robot_command.py \
                       --request-json "$WORKSPACE/$ROBOT_REQUEST_PATH" \
                       --workspace-root "$WORKSPACE" \
                       --output-json "$WORKSPACE/$ROBOT_COMMAND_PLAN_PATH"
@@ -212,7 +212,7 @@ PY
         stage('Run Robot Case') {
             steps {
                 sh '''
-                    python - <<'PY'
+                    python3 - <<'PY'
 import json
 from pathlib import Path
 
@@ -236,7 +236,7 @@ PY
                 def callbackMessage = currentBuild.currentResult == 'SUCCESS' ? 'Robot execution completed.' : 'Robot execution failed. See Jenkins artifacts.'
                 if (env.CALLBACK_RUN_ID?.trim() && params.PLATFORM_API_BASE_URL?.trim()) {
                     def callbackArgs = [
-                        'python jenkins-integration/scripts/post_run_callback.py',
+                        'python3 jenkins-integration/scripts/post_run_callback.py',
                         "  --run-id \"${env.CALLBACK_RUN_ID}\"",
                         "  --status \"${callbackStatus}\"",
                         "  --message \"${callbackMessage}\"",

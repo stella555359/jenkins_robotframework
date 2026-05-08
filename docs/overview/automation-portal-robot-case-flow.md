@@ -84,18 +84,18 @@ Robot variables JSON:
 Portal 表单 -> platform-api -> Jenkins job robot/robot-execution -> Jenkins 调度 Agent
 ```
 
-当前 `jenkins-integration/pipelines/robot-execution.Jenkinsfile` 写的是：
+当前 `jenkins-integration/pipelines/robot-execution.Jenkinsfile` 已固定为：
 
 ```groovy
 pipeline {
-    agent any
+  agent { label 't813 && robot' }
     ...
 }
 ```
 
-这表示 Jenkins 会把构建分配给任意可用 executor。它不会根据 Portal 的 `Testline` 自动选择 `t813-agent`。
+这表示 Jenkins 只会把构建分配给同时带有 `t813` 和 `robot` label 的 Agent。它仍然不会根据 Portal 的 `Testline` 动态切换到别的节点。
 
-如果你希望固定用某个 Agent，有两种推荐方式：
+如果后续需要改成别的固定 Agent，常见方式有两种：
 
 ### 3.1 推荐方式：在 Jenkinsfile 中固定 label
 

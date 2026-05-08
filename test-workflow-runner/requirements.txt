@@ -1,0 +1,7 @@
+# Runtime dependencies for test-workflow-runner internal tools and KPI follow-up handlers.
+numpy
+openpyxl
+pandas
+requests
+scipy
+urllib3

@@ -1049,7 +1049,7 @@ Windows 浏览器打开：
 https://10.71.210.104/
 ```
 
-## 11. test-workflow-runner 与 Robot 链路
+## 11. test-workflow-runner 模块定位
 
 ### 11.1 代码目录
 
@@ -1059,27 +1059,48 @@ https://10.71.210.104/
 
 ### 11.2 当前角色
 
-`test-workflow-runner` 当前有两条调用路径：
+`test-workflow-runner` 不是 Portal、platform-api、Jenkins Pipeline 或 Robot case 公共调度层。
+
+它的当前定位是：
 
 ```text
-Robot case 主线:
-Portal -> platform-api -> Jenkins robot/robot-execution -> Agent -> Robot
-
-standalone internal_tool 主线:
-Portal/API -> platform-api -> internal_tools.worker -> kpi_generator/kpi_detector
+一个 Python orchestrator 执行器
 ```
 
-Robot 主线实际执行由 Jenkinsfile 和 `jenkins-integration/scripts/` 负责。
+它负责：
 
-### 11.3 Jenkins 执行时工作目录
+1. 在执行侧读取 workflow JSON。
+2. 加载 `env_map.json` 和 testline configuration。
+3. 编排并执行 attach、handover、dl_traffic、ul_traffic、swap、detach、syslog_check 等 stage handler。
+4. 执行 `kpi_generator`、`kpi_detector` 这类 follow-up / internal tool 能力。
+5. 产出执行结果 JSON，并作为 runner CLI 被上层集成调用。
+6. 提供 standalone internal tool 执行入口，例如 `internal_tools.tool_runner` 和 `internal_tools.worker`。
 
-Jenkins Agent 上建议：
+它不负责：
+
+1. Portal 页面与 API 接口。
+2. Jenkins 公共 Pipeline 编排。
+3. 通用 checkout、workspace bootstrap、callback 回写。
+4. Robot case 主线的公共桥接逻辑。
+
+可以把它理解为：
+
+```text
+与 Robot case 公共链路无关
+但与 standalone internal tool 能力直接相关
+```
+
+这些公共调度和桥接逻辑当前在 `jenkins-integration/`，而 `test-workflow-runner` 更接近“被调用的执行器”以及“standalone internal tool 的执行宿主”，而不是“整个链路本身”。
+
+### 11.3 上层集成调用时的运行环境
+
+当 `test-workflow-runner` 由 Jenkins integration 从 Agent 侧调用时，建议运行环境为：
 
 ```text
 /automation/workspace
 ```
 
-Robot 执行依赖：
+这类调用通常还依赖：
 
 ```text
 robotws
@@ -1087,7 +1108,7 @@ testline_configuration
 Python environment, for example /home/ute/CIENV/<TESTLINE>
 ```
 
-具体 checkout 和命令生成由这些脚本处理：
+具体的 checkout、命令生成和桥接仍由这些脚本处理：
 
 ```text
 jenkins-integration/scripts/materialize_run_request.py
@@ -1110,18 +1131,18 @@ jenkins-integration/scripts/post_run_callback.py
 
 ### 12.2 Python venv
 
-当前 `test-workflow-runner` 目录没有独立 `requirements.txt`。第一轮可以创建 venv 后按实际 internal tool 依赖安装，例如 `pandas`、`openpyxl`、`requests` 等；后续建议把依赖沉淀为正式 requirements 文件。
+当前 `test-workflow-runner` 已补充独立 `requirements.txt`，用于安装 standalone internal tool 与 `kpi_generator` / `kpi_detector` 相关运行依赖。
 
 ```bash
 cd /opt/jenkins_robotframework/test-workflow-runner
 python3 -m venv venv
 source venv/bin/activate
 pip install --upgrade pip
-pip install pandas openpyxl requests urllib3
+pip install -r requirements.txt
 deactivate
 ```
 
-如果 `kpi_detector` 或 `kpi_generator` 还有额外依赖，按运行报错补齐后再固化到依赖文件。
+当前文件已覆盖仓库内明确使用到的运行时第三方依赖：`numpy`、`pandas`、`scipy`、`openpyxl`、`requests`、`urllib3`。如果后续新增依赖，再同步更新该文件。
 
 ### 12.3 worker systemd 服务
 

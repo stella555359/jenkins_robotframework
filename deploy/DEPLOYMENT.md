@@ -934,7 +934,7 @@ https://10.71.210.104/api/...
 
 ```bash
 cat > /opt/jenkins_robotframework/automation-portal/.env <<'EOF'
-VITE_APP_TITLE=Automation Portal
+VITE_APP_TITLE="Automation Portal"
 VITE_API_BASE_URL=/api
 EOF
 ```
@@ -954,6 +954,56 @@ tsc -b && vite build
 ```
 
 所以如果构建失败，既可能是前端依赖没装好，也可能是 TypeScript 编译没通过。
+
+### 10.4.1 服务器本地忽略构建副产物
+
+在服务器上执行 `npm install`、`npm run build` 后，可能会看到类似这些本地文件出现在 `git status`：
+
+```text
+automation-portal/node_modules/
+automation-portal/package-lock.json
+automation-portal/src/*.js
+automation-portal/src/*.d.ts
+automation-portal/*.tsbuildinfo
+automation-portal/vite.config.js
+automation-portal/vite.config.d.ts
+```
+
+这些通常是服务器本地安装和构建产生的副产物，不代表必须 push 回 GitHub。若只是想让这台服务器本地不再显示这些未跟踪文件，推荐写入：
+
+```text
+/opt/jenkins_robotframework/.git/info/exclude
+```
+
+这个文件只对当前服务器生效，不会进入 Git 提交。
+
+执行：
+
+```bash
+cd /opt/jenkins_robotframework
+cat >> .git/info/exclude <<'EOF'
+automation-portal/node_modules/
+automation-portal/package-lock.json
+automation-portal/src/**/*.js
+automation-portal/src/**/*.d.ts
+automation-portal/vite.config.js
+automation-portal/vite.config.d.ts
+automation-portal/*.tsbuildinfo
+EOF
+```
+
+验证：
+
+```bash
+git status
+git status --ignored
+```
+
+说明：
+
+1. 这是服务器本地忽略规则，不会影响其他开发机。
+2. 它只对当前还未被 Git 跟踪的文件有效。
+3. 如果团队后续决定正式提交 `package-lock.json`，再把对应这一行从 `.git/info/exclude` 删除即可。
 
 构建产物：
 

@@ -47,55 +47,60 @@ pipeline {
                     if (params.RUN_REQUEST_JSON?.trim()) {
                         writeFile(file: 'artifacts/run-request-source.json', text: params.RUN_REQUEST_JSON)
                     } else {
-                        def selectedTests = params.ROBOT_SELECTED_TESTS
-                            .readLines()
-                            .collect { it.trim() }
-                            .findAll { it }
-                        def variables = params.ROBOT_VARIABLES_JSON?.trim()
-                            ? new groovy.json.JsonSlurperClassic().parseText(params.ROBOT_VARIABLES_JSON)
-                            : [:]
-                        def requestPayload = [
-                            run_id: params.RUN_ID?.trim(),
-                            executor_type: 'robot',
-                            testline: params.TESTLINE?.trim(),
-                            robotcase_path: params.ROBOTCASE_PATH?.trim(),
-                            robotws_root: params.ROBOTWS_ROOT?.trim(),
-                            testline_variables_path: params.TESTLINE_VARIABLES_PATH?.trim(),
-                            metadata: [
-                                case_name: params.CASE_NAME?.trim(),
-                                selected_tests: selectedTests,
-                                robot_variables: variables,
-                                artifact_label: params.ARTIFACT_LABEL?.trim(),
-                                retry_index: params.RETRY_INDEX?.trim(),
-                                log_level: params.ROBOT_LOG_LEVEL?.trim(),
-                                python_env_root: params.PYTHON_ENV_ROOT?.trim() ?: "/home/ute/CIENV/${params.TESTLINE?.trim()}",
-                                robotws_repo_url: params.ROBOTWS_REPO_URL_OVERRIDE?.trim(),
-                                robotws_ref: params.ROBOTWS_GIT_REF?.trim(),
-                                robotws_credentials_id: params.ROBOTWS_CREDENTIALS_ID_OVERRIDE?.trim(),
-                                testline_configuration_repo_url: params.TESTLINE_CONFIGURATION_REPO_URL_OVERRIDE?.trim(),
-                                testline_configuration_ref: params.TESTLINE_CONFIGURATION_GIT_REF?.trim(),
-                                testline_configuration_credentials_id: params.TESTLINE_CONFIGURATION_CREDENTIALS_ID_OVERRIDE?.trim(),
-                            ].findAll { entry ->
-                                def value = entry.value
-                                if (value == null) {
-                                    return false
-                                }
-                                if (value instanceof String) {
-                                    return value.trim()
-                                }
-                                if (value instanceof Collection) {
-                                    return !value.isEmpty()
-                                }
-                                if (value instanceof Map) {
-                                    return !value.isEmpty()
-                                }
-                                return true
-                            },
-                        ]
-                        writeFile(
-                            file: 'artifacts/run-request-source.json',
-                            text: groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(requestPayload)),
-                        )
+                        sh '''
+                            python - <<'PY'
+import json
+import os
+from pathlib import Path
+
+
+def read_selected_tests(raw_value: str) -> list[str]:
+    return [line.strip() for line in raw_value.splitlines() if line.strip()]
+
+
+def optional(value: str) -> str | None:
+    value = value.strip()
+    return value or None
+
+
+testline = os.environ.get('TESTLINE', '').strip()
+metadata = {
+    'case_name': optional(os.environ.get('CASE_NAME', '')),
+    'selected_tests': read_selected_tests(os.environ.get('ROBOT_SELECTED_TESTS', '')),
+    'robot_variables': json.loads(os.environ.get('ROBOT_VARIABLES_JSON', '').strip() or '{}'),
+    'artifact_label': optional(os.environ.get('ARTIFACT_LABEL', '')),
+    'retry_index': optional(os.environ.get('RETRY_INDEX', '')),
+    'log_level': optional(os.environ.get('ROBOT_LOG_LEVEL', '')),
+    'python_env_root': optional(os.environ.get('PYTHON_ENV_ROOT', '')) or f'/home/ute/CIENV/{testline}',
+    'robotws_repo_url': optional(os.environ.get('ROBOTWS_REPO_URL_OVERRIDE', '')),
+    'robotws_ref': optional(os.environ.get('ROBOTWS_GIT_REF', '')),
+    'robotws_credentials_id': optional(os.environ.get('ROBOTWS_CREDENTIALS_ID_OVERRIDE', '')),
+    'testline_configuration_repo_url': optional(os.environ.get('TESTLINE_CONFIGURATION_REPO_URL_OVERRIDE', '')),
+    'testline_configuration_ref': optional(os.environ.get('TESTLINE_CONFIGURATION_GIT_REF', '')),
+    'testline_configuration_credentials_id': optional(os.environ.get('TESTLINE_CONFIGURATION_CREDENTIALS_ID_OVERRIDE', '')),
+}
+metadata = {
+    key: value
+    for key, value in metadata.items()
+    if value not in (None, '', [], {})
+}
+
+payload = {
+    'run_id': optional(os.environ.get('RUN_ID', '')),
+    'executor_type': 'robot',
+    'testline': optional(testline),
+    'robotcase_path': optional(os.environ.get('ROBOTCASE_PATH', '')),
+    'robotws_root': optional(os.environ.get('ROBOTWS_ROOT', '')),
+    'testline_variables_path': optional(os.environ.get('TESTLINE_VARIABLES_PATH', '')),
+    'metadata': metadata,
+}
+
+Path('artifacts/run-request-source.json').write_text(
+    json.dumps(payload, indent=2, ensure_ascii=False),
+    encoding='utf-8',
+)
+PY
+                        '''
                     }
                 }
                 script {
@@ -116,9 +121,19 @@ pipeline {
                               --output-json "$WORKSPACE/$ROBOT_REQUEST_PATH"
                         '''
                     }
+                    sh '''
+                        python - <<'PY'
+import json
+from pathlib import Path
 
-                    def materializedRequest = new groovy.json.JsonSlurperClassic().parseText(readFile(env.ROBOT_REQUEST_PATH))
-                    env.CALLBACK_RUN_ID = materializedRequest.run_id?.toString()?.trim() ?: env.CALLBACK_RUN_ID
+request = json.loads(Path('artifacts/robot-request.json').read_text(encoding='utf-8'))
+run_id = str(request.get('run_id') or '').strip()
+Path('artifacts/callback-run-id.txt').write_text(run_id, encoding='utf-8')
+PY
+                    '''
+
+                    def callbackRunId = readFile('artifacts/callback-run-id.txt').trim()
+                    env.CALLBACK_RUN_ID = callbackRunId ?: env.CALLBACK_RUN_ID
                 }
             }
         }
@@ -138,18 +153,38 @@ pipeline {
                       --shell-script-output "$WORKSPACE/artifacts/prepare-python-env.sh"
                 '''
                 script {
-                    def checkoutPlan = new groovy.json.JsonSlurperClassic().parseText(readFile(env.CHECKOUT_PLAN_PATH))
-                    def credentialIds = checkoutPlan.operations
-                        .collect { operation ->
-                            def explicitCredentialId = operation.credentials_id?.toString()?.trim()
-                            if (explicitCredentialId) {
-                                return explicitCredentialId
-                            }
-                            def envName = operation.credentials_id_env?.toString()?.trim()
-                            return envName ? env[envName]?.trim() : ''
-                        }
+                    sh '''
+                        python - <<'PY'
+import json
+import os
+from pathlib import Path
+
+plan = json.loads(Path('artifacts/source-checkout.json').read_text(encoding='utf-8'))
+credential_ids = []
+
+for operation in plan.get('operations', []):
+    explicit_credential_id = str(operation.get('credentials_id') or '').strip()
+    if explicit_credential_id:
+        credential_ids.append(explicit_credential_id)
+        continue
+
+    env_name = str(operation.get('credentials_id_env') or '').strip()
+    resolved_credential_id = os.environ.get(env_name, '').strip() if env_name else ''
+    if resolved_credential_id:
+        credential_ids.append(resolved_credential_id)
+
+unique_credential_ids = list(dict.fromkeys(credential_ids))
+Path('artifacts/checkout-credential-ids.txt').write_text(
+    '\n'.join(unique_credential_ids),
+    encoding='utf-8',
+)
+PY
+                    '''
+
+                    def credentialIds = readFile('artifacts/checkout-credential-ids.txt')
+                        .readLines()
+                        .collect { it.trim() }
                         .findAll { it }
-                        .unique()
 
                     if (credentialIds) {
                         sshagent(credentials: credentialIds) {

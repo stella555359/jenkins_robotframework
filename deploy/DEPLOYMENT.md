@@ -687,6 +687,55 @@ Branch Specifier: */feature/jenkins-integration
 Script Path: jenkins-integration/pipelines/robot-execution.Jenkinsfile
 ```
 
+如果你想改成 SSH 地址，`Repository URL` 改成：
+
+```text
+git@github.com:stella555359/jenkins_robotframework.git
+```
+
+对应 `Credentials` 不能再留空，而应选择 Jenkins 里的 SSH 凭据，例如：
+
+```text
+Kind: SSH Username with private key
+Username: git
+Private Key: Jenkins 可用于访问 GitHub 的私钥
+```
+
+也就是说，HTTPS 和 SSH 两种常见填法分别是：
+
+```text
+HTTPS:
+Repository URL: https://github.com/stella555359/jenkins_robotframework.git
+Credentials: public repo 可留空；私有或受限网络时使用 PAT / Username with password
+
+SSH:
+Repository URL: git@github.com:stella555359/jenkins_robotframework.git
+Credentials: 选择 SSH Username with private key
+```
+
+如果你的 Jenkins 页面里除了上面这些，还看到了下面几个字段，第一轮推荐这样填：
+
+```text
+Repository browser: Auto / 不填 / GitHub（任选其一，第一轮不影响运行）
+Additional Behaviours: 先留空
+Script Path: jenkins-integration/pipelines/robot-execution.Jenkinsfile
+Lightweight checkout: 第一轮建议不要勾选
+```
+
+说明：
+
+1. `Repository browser` 主要影响 Jenkins 页面里提交记录和仓库链接的展示，不影响这条 Pipeline 能不能跑。第一轮可以直接留空，或者如果页面要求必选，就选 GitHub / Auto。
+2. `Additional Behaviours` 第一轮先留空即可。只有当你当前这个 SCM 页面没有单独的分支输入框时，才需要在这里额外加 branch filter 行为。
+3. `Script Path` 必须填：
+
+```text
+jenkins-integration/pipelines/robot-execution.Jenkinsfile
+```
+
+它不是仓库根目录，也不是 Linux 绝对路径，而是相对于 Git 仓库根目录的文件路径。
+
+4. `Lightweight checkout` 第一轮建议先不要勾选。这样 Jenkins 会按常规方式从 SCM 读取 Jenkinsfile，兼容性更高。等这条链路稳定后，再考虑开启它来减少控制端 checkout 开销。
+
 当前仓库默认 remote 和分支可按下面理解：
 
 ```text

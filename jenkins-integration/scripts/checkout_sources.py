@@ -125,12 +125,12 @@ def build_checkout_plan(request_payload: dict[str, Any], *, workspace_root: Path
 
         if git_dir.exists():
             shell_lines.append(f'if [ -n "${{{effective_repo_url_var}}}" ]; then git -C {_quote(str(repo_dir))} remote set-url origin "${{{effective_repo_url_var}}}"; fi')
-            shell_lines.append(f"git -C {_quote(str(repo_dir))} fetch --all --tags --prune")
+            shell_lines.append(f"git -C {_quote(str(repo_dir))} fetch --progress --all --tags --prune")
             shell_lines.append(f'if [ -n "${{{effective_ref_var}}}" ]; then git -C {_quote(str(repo_dir))} checkout "${{{effective_ref_var}}}"; fi')
         elif repo_url is not None or repo_url_env is not None:
             shell_lines.append(f"mkdir -p {_quote(str(repo_dir.parent))}")
             shell_lines.append(f'if [ -z "${{{effective_repo_url_var}}}" ]; then echo Missing repo URL for {spec["name"]}. Set {repo_url_env or "an explicit repo_url"}.; exit 1; fi')
-            shell_lines.append(f'if [ -n "${{{effective_ref_var}}}" ]; then git clone --branch "${{{effective_ref_var}}}" "${{{effective_repo_url_var}}}" {_quote(str(repo_dir))}; else git clone "${{{effective_repo_url_var}}}" {_quote(str(repo_dir))}; fi')
+            shell_lines.append(f'if [ -n "${{{effective_ref_var}}}" ]; then git clone --progress --branch "${{{effective_ref_var}}}" "${{{effective_repo_url_var}}}" {_quote(str(repo_dir))}; else git clone --progress "${{{effective_repo_url_var}}}" {_quote(str(repo_dir))}; fi')
         elif repo_dir.exists():
             shell_lines.append(f"echo Reusing existing directory {_quote(str(repo_dir))} without git metadata")
         else:

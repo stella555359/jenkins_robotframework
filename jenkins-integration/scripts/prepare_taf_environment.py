@@ -36,10 +36,12 @@ def build_taf_environment_plan(request_payload: dict[str, Any]) -> dict[str, Any
 
     python_env_root = Path(_clean_text(request_payload.get("python_env_root")) or f"/home/ute/CIENV/{testline}")
     activate_script = python_env_root / "bin" / "activate"
+    robotws_root = Path(_clean_text(request_payload.get("robotws_root")) or "robotws")
     python_executable = _clean_text(taf_config.get("python_executable")) or "python3"
     mode = _clean_text(taf_config.get("mode")) or "reuse"
     requirements_file = _clean_text(taf_config.get("requirements_file"))
     package_specs = _normalize_sequence(taf_config.get("package_specs"))
+    auto_install_from_robotws = mode == "create-venv" and not requirements_file and not package_specs
 
     shell_lines = [
         "#!/usr/bin/env bash",
@@ -65,9 +67,30 @@ def build_taf_environment_plan(request_payload: dict[str, Any]) -> dict[str, Any
 
     will_install = mode == "create-venv" or bool(requirements_file or package_specs)
     if will_install:
+        shell_lines.extend(
+            [
+                'export http_proxy="http://10.144.1.10:8080"',
+                'export https_proxy="http://10.144.1.10:8080"',
+                'export HTTP_PROXY="http://10.144.1.10:8080"',
+                'export HTTPS_PROXY="http://10.144.1.10:8080"',
+            ]
+        )
         shell_lines.append("python -m pip install --upgrade pip")
         if requirements_file is not None:
             shell_lines.append(f"python -m pip install -r {_quote(requirements_file)}")
+        elif auto_install_from_robotws:
+            shell_lines.extend(
+                [
+                    f"ROBOTWS_ROOT={_quote(str(robotws_root))}",
+                    "PYTHON_MM=$(python - <<'PY'",
+                    "import sys",
+                    "print(f\"{sys.version_info.major}{sys.version_info.minor}\")",
+                    "PY",
+                    ")",
+                    'TAF_LOCK_FILE="$ROBOTWS_ROOT/dependencies.py${PYTHON_MM}-rf50.lock"',
+                    'if [ -f "$TAF_LOCK_FILE" ]; then python -m pip install -r "$TAF_LOCK_FILE"; elif [ -f "$ROBOTWS_ROOT/requirements.cfg" ]; then python -m pip install -r "$ROBOTWS_ROOT/requirements.cfg"; else echo "Missing TAF dependency file under $ROBOTWS_ROOT. Expected $TAF_LOCK_FILE or requirements.cfg"; exit 1; fi',
+                ]
+            )
         for package_spec in package_specs:
             shell_lines.append(f"python -m pip install {_quote(package_spec)}")
 
@@ -77,9 +100,11 @@ def build_taf_environment_plan(request_payload: dict[str, Any]) -> dict[str, Any
         "mode": mode,
         "python_env_root": str(python_env_root),
         "activate_script": str(activate_script),
+        "robotws_root": str(robotws_root),
         "python_executable": python_executable,
         "requirements_file": requirements_file,
         "package_specs": package_specs,
+        "auto_install_from_robotws": auto_install_from_robotws,
         "will_install": will_install,
         "shell_script_text": shell_script_text,
     }

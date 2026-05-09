@@ -49,6 +49,15 @@ Manage Jenkins -> System -> Global properties -> Environment variables
 | `ROBOTWS_CREDENTIALS_ID` | checkout `robotws` 时默认使用的 Jenkins credentials ID | `robotws-ssh` |
 | `TESTLINE_CONFIGURATION_CREDENTIALS_ID` | checkout `testline_configuration` 时默认使用的 Jenkins credentials ID | `testline-config-ssh` |
 
+当前环境如果采用 SSH 方式，推荐直接填成：
+
+```text
+ROBOTWS_REPO_URL=git@wrgitlab.ext.net.nokia.com:RAN/robotws.git
+TESTLINE_CONFIGURATION_REPO_URL=git@wrgitlab.ext.net.nokia.com:RAN/configuration-management/testline_configuration.git
+ROBOTWS_CREDENTIALS_ID=robotws-ssh
+TESTLINE_CONFIGURATION_CREDENTIALS_ID=testline-config-ssh
+```
+
 如果你使用的是 JCasC，这几个值也可以通过 [jenkins-integration/jcasc/jenkins.yaml](c:/TA/jenkins_robotframework/jenkins-integration/jcasc/jenkins.yaml) 注入。
 
 ### 2.2 Jenkins 全局凭据
@@ -59,6 +68,138 @@ Manage Jenkins -> System -> Global properties -> Environment variables
 Manage Jenkins -> Credentials -> System -> Global credentials
 ```
 
+如果你的 Jenkins Console Output 报下面这种错误：
+
+```text
+No such DSL method 'sshagent'
+```
+
+说明当前 Jenkins 缺少的是 `SSH Agent` 插件提供的 Pipeline step，而不是 Agent 连接本身没配好。`SSH Build Agents` 用于让 Jenkins Master 连接执行节点，`SSH Agent` 才是 Pipeline 里 `sshagent { ... }` 这一步需要的插件。
+
+#### 2.2.1 安装 `SSH Agent` 插件
+
+路径通常是：
+
+```text
+Manage Jenkins -> Plugins
+```
+
+安装步骤：
+
+1. 打开 `Available plugins`。
+2. 搜索 `SSH Agent`。
+3. 安装 `SSH Agent` 插件。
+4. 安装完成后，如果 Jenkins 要求重启，就执行安全重启。
+
+注意：这里要装的是 `SSH Agent`，不是 `SSH Build Agents`。前者提供 Pipeline 里的 `sshagent { ... }` step，后者负责 Jenkins Master 到 Agent 的 SSH 连接。
+
+#### 2.2.2 创建 `robotws-ssh` 和 `testline-config-ssh`
+
+对于 `robotws-ssh` 和 `testline-config-ssh`，`Kind` 都选择：
+
+```text
+SSH Username with private key
+```
+
+推荐填写方式：
+
+| 字段 | `robotws-ssh` 推荐值 | `testline-config-ssh` 推荐值 |
+|---|---|---|
+| `Kind` | `SSH Username with private key` | `SSH Username with private key` |
+| `Scope` | `Global` | `Global` |
+| `Username` | `git` | `git` |
+| `ID` | `robotws-ssh` | `testline-config-ssh` |
+| `Description` | `SSH key for robotws checkout` | `SSH key for testline_configuration checkout` |
+| `Private Key` | 贴入完整私钥文本 | 贴入完整私钥文本 |
+
+`Private Key` 里需要粘贴的是完整私钥，包括：
+
+```text
+-----BEGIN ... PRIVATE KEY-----
+...
+-----END ... PRIVATE KEY-----
+```
+
+如果同一把私钥同时有权限访问两个仓库，这两个 credentials 可以复用同一把私钥，只是 ID 分开维护更清楚。
+
+#### 2.2.3 这把私钥怎么准备
+
+当前链路里真正执行 `git clone` 的位置在 Agent 上，所以更推荐在 `t813-agent` 上以 Jenkins 执行用户生成 GitLab 访问 key：
+
+```bash
+sudo su - jenkins
+ssh-keygen -t ed25519 -C "jenkins-gitlab" -f ~/.ssh/jenkins_gitlab_rsa -N ""
+```
+
+生成后会得到：
+
+1. 私钥：`~/.ssh/jenkins_gitlab_rsa`
+2. 公钥：`~/.ssh/jenkins_gitlab_rsa.pub`
+
+然后：
+
+1. 把 `cat ~/.ssh/jenkins_gitlab_rsa.pub` 输出的公钥，加到有权限访问这两个仓库的 GitLab 用户账号 `SSH Keys` 页面。
+2. 把 `cat ~/.ssh/jenkins_gitlab_rsa` 输出的完整私钥文本，贴到 Jenkins credentials 的 `Private Key` 字段。
+
+#### 2.2.4 在 `t813-agent` 上手工验证这把 key 能访问两个 GitLab 仓库
+
+建议先直接登录 `t813-agent`，再切到实际执行 Jenkins job 的用户下验证。下面命令假设当前使用的是上面生成的私钥 `~/.ssh/jenkins_gitlab_rsa`。
+
+先切用户：
+
+```bash
+sudo su - jenkins
+```
+
+先验证 SSH 到 GitLab 本身是否打通：
+
+```bash
+ssh -i ~/.ssh/jenkins_gitlab_rsa -T git@wrgitlab.ext.net.nokia.com
+```
+
+第一次连接通常会提示是否接受 host key，输入 `yes`。如果打通，通常会看到类似“Welcome”或“authenticated”之类的提示；即使返回“shell access is not supported”也不代表失败，只要说明认证成功即可。
+
+然后分别验证两个仓库是否可读：
+
+```bash
+GIT_SSH_COMMAND='ssh -i ~/.ssh/jenkins_gitlab_rsa -o IdentitiesOnly=yes' \
+git ls-remote git@wrgitlab.ext.net.nokia.com:RAN/robotws.git
+```
+
+```bash
+GIT_SSH_COMMAND='ssh -i ~/.ssh/jenkins_gitlab_rsa -o IdentitiesOnly=yes' \
+git ls-remote git@wrgitlab.ext.net.nokia.com:RAN/configuration-management/testline_configuration.git
+```
+
+预期结果：
+
+1. 如果命令能打印出 `HEAD` 和若干分支/提交哈希，说明这把 key 对对应仓库有读取权限。
+2. 如果报 `Permission denied (publickey)`，说明 GitLab 侧还没信任这把公钥，或者加错了账号 / Deploy Key。
+3. 如果报 host key 相关错误，先完成第一次 `ssh -T` 的 host key 接受流程。
+4. 如果只一个仓库成功、另一个失败，说明这把 key 还没有同时拿到两个仓库的读取权限。
+
+如果你希望 Jenkins job 运行时默认就使用这把 key，也可以额外写一个临时 `~/.ssh/config` 做本机验证：
+
+```bash
+cat > ~/.ssh/config <<'EOF'
+Host wrgitlab.ext.net.nokia.com
+  User git
+  IdentityFile ~/.ssh/jenkins_gitlab_rsa
+  IdentitiesOnly yes
+EOF
+chmod 600 ~/.ssh/config
+```
+
+然后重新执行：
+
+```bash
+ssh -T git@wrgitlab.ext.net.nokia.com
+git ls-remote git@wrgitlab.ext.net.nokia.com:RAN/robotws.git
+git ls-remote git@wrgitlab.ext.net.nokia.com:RAN/configuration-management/testline_configuration.git
+```
+
+这一步主要用于人工验证。Jenkins Pipeline 里真正使用的还是 Jenkins credentials 注入出来的 key，不依赖你是否长期保留这份 `~/.ssh/config`。
+
 建议至少有两类凭据：
 
 | Credentials ID | 类型 | 用途 |
@@ -68,6 +209,12 @@ Manage Jenkins -> Credentials -> System -> Global credentials
 | `testline-config-ssh` | SSH Username with private key | checkout `testline_configuration` |
 
 如果 `robotws` 和 `testline_configuration` 使用 HTTPS 并允许匿名拉取，可以不配 checkout credentials；但只要仓库需要鉴权，`ROBOTWS_CREDENTIALS_ID` 和 `TESTLINE_CONFIGURATION_CREDENTIALS_ID` 就必须能在 Jenkins 里找到对应 ID。
+
+如果你当前就是想先走最短链路：
+
+1. 仓库支持 HTTPS 匿名拉取时，只配置 `ROBOTWS_REPO_URL` 和 `TESTLINE_CONFIGURATION_REPO_URL` 即可。
+2. 这时不要在 Jenkins 全局环境里设置 `ROBOTWS_CREDENTIALS_ID` 和 `TESTLINE_CONFIGURATION_CREDENTIALS_ID`。
+3. 这样 Pipeline 会直接执行 `git clone`，不会进入 `sshagent { ... }` 这一分支，也就不依赖 `SSH Agent` 插件。
 
 ### 2.3 最短手工创建 `robot/robot-execution` job
 
@@ -155,6 +302,8 @@ Portal 的 `New Robot Run` 表单当前会做两件事：
 | `Robot case path` | 是 | `robotcase_path` / Jenkins `ROBOTCASE_PATH` | Robot suite 文件路径。可以相对 Jenkins workspace，也可以相对 checkout 后的 `robotws` 根目录。 | `testsuite/Hangzhou/RRM/example.robot` |
 | `Case name` | 否 | metadata `case_name` / Jenkins `CASE_NAME` | 单个 Robot test case 名称。最终会转换为 Robot 命令中的 `-t <case name>`。 | `Attach UE` |
 | `Build` | 否 | `build`，并自动进入 `ROBOT_VARIABLES_JSON.BUILD` | 版本号或构建号。platform-api 会把它补成 Robot 变量 `BUILD`，除非 JSON 里已经显式提供 `BUILD`。 | `SBTS26R3.ENB.9999` |
+| `TAF mode` | 否 | metadata `taf_mode` / Jenkins `TAF_MODE` | Python/TAF 环境准备方式。`reuse` 复用已有 CIENV，`create-venv` 新建 CIENV 并从当前 `robotws` checkout 安装 TAF 依赖，`skip-install` 跳过安装步骤。 | `reuse` / `create-venv` |
+| `Robotws git ref` | 否 | metadata `robotws_ref` / Jenkins `ROBOTWS_GIT_REF` | checkout `robotws` 时使用的 branch/tag/commit。默认 `master`。 | `feature/robot` |
 | `Selected tests` | 否 | metadata `selected_tests` / Jenkins `ROBOT_SELECTED_TESTS` | 多个 Robot test case 名称，每行一个。最终每行都会转换为一个 `-t`。 | `Attach UE` 换行 `Detach UE` |
 | `Robot variables JSON` | 否 | metadata `robot_variables` / Jenkins `ROBOT_VARIABLES_JSON` | Robot `-v KEY:VALUE` 变量映射。必须是 JSON object。 | `{ "AF_PATH": "/path/to/af", "UE_COUNT": "7" }` |
 
@@ -162,8 +311,9 @@ Portal 的 `New Robot Run` 表单当前会做两件事：
 
 1. `Case name` 和 `Selected tests` 都会变成 Robot `-t`。如果两边都填，最终会合并去重后一起传给 Robot。
 2. `Build` 不直接变成 Jenkins 参数里的 `BUILD`，而是进入 `ROBOT_VARIABLES_JSON`，最终成为 Robot 变量 `-v BUILD:<value>`。
-3. `Robot variables JSON` 必须是对象，不能是数组或普通字符串。
-4. 如果不确定 testline 的完整名称，应优先使用 Agent 上实际 Python 环境目录和 `testline_configuration` 目录里的名称。
+3. `TAF mode=create-venv` 时，当前实现会新建 CIENV，并优先从当前 `robotws` checkout 里的 `dependencies.py<major><minor>-rf50.lock` 安装 TAF 依赖；如果对应 lock 不存在，再回退到 `requirements.cfg`。
+4. `Robot variables JSON` 必须是对象，不能是数组或普通字符串。
+5. 如果不确定 testline 的完整名称，应优先使用 Agent 上实际 Python 环境目录和 `testline_configuration` 目录里的名称。
 
 一个较完整的示例：
 
@@ -172,6 +322,8 @@ Testline: 7_5_UTE5G402T813
 Robot case path: testsuite/Hangzhou/RRM/example.robot
 Case name: Attach UE
 Build: SBTS26R3.ENB.9999
+TAF mode: create-venv
+Robotws git ref: feature/robot
 Selected tests:
   Attach UE
   Detach UE
@@ -304,7 +456,7 @@ flowchart TD
       DeployCopy[/opt/jenkins_robotframework deployment copy/] -. not used as Jenkins build workspace .-> JenkinsJob
 ```
 
-  ## 6. 关键配置关系
+## 6. 关键配置关系
 
 ### 6.1 platform-api `.env`
 
@@ -339,6 +491,7 @@ platform-api 会把 run record 转成 Jenkins 参数。核心映射如下：
 | `CASE_NAME` | Portal `Case name` | 作为 Robot `-t`。 |
 | `ROBOT_SELECTED_TESTS` | Portal `Selected tests` | 每行一个 Robot `-t`。 |
 | `ROBOT_VARIABLES_JSON` | Portal `Robot variables JSON` + `Build` | 转成 Robot `-v KEY:VALUE`。 |
+| `TAF_MODE` | Portal `TAF mode` | 控制 Python/TAF 环境准备方式。 |
 | `PLATFORM_API_BASE_URL` | `PUBLIC_BASE_URL` 或 metadata override | Jenkins callback 目标根地址。 |
 | `ROBOTWS_GIT_REF` | metadata override，否则 `master` | checkout `robotws` ref。 |
 | `TESTLINE_CONFIGURATION_GIT_REF` | metadata override，否则 `master` | checkout `testline_configuration` ref。 |
@@ -371,6 +524,14 @@ Missing repo URL for testline_configuration. Set TESTLINE_CONFIGURATION_REPO_URL
 | `TESTLINE_CONFIGURATION_CREDENTIALS_ID` | Jenkins Credentials 中的 `testline-config-ssh` 或同类 ID |
 
 如果 workspace 下已经存在非 git 目录 `robotws/` 或 `testline_configuration/`，脚本可以复用目录。但真实部署建议配置 repo URL 和 credentials，让 Jenkins 每次能同步源码。
+
+如果当前已经改成 SSH 地址，但构建日志仍然报：
+
+```text
+No such DSL method 'sshagent'
+```
+
+那不是 repo URL 有问题，而是 Jenkins 还没安装 `SSH Agent` 插件。
 
 ### 6.4 Jenkins workspace 与服务器部署代码的关系
 
@@ -448,6 +609,10 @@ GET /api/runs/{run_id}/kpi
 | 创建成功但 trigger 失败 | Jenkins token、job path、crumb/权限、Jenkins URL 错误 | `journalctl -u platform-api -f` |
 | Jenkins 一直排队 | 没有在线 Agent，或 label / executor 不匹配 | Jenkins Queue、Nodes 页面 |
 | Jenkins checkout 失败 | repo URL 或 credentials 未配置 | Console Output、Jenkins global env / credentials |
+| `No such DSL method 'sshagent'` | Jenkins 缺少 `SSH Agent` 插件，或当前链路本不需要凭据却配置了 `*_CREDENTIALS_ID` | Jenkins Plugins；或先移除 `ROBOTWS_CREDENTIALS_ID` / `TESTLINE_CONFIGURATION_CREDENTIALS_ID` |
+| `fatal: could not read Username for 'https://...'` | 仍在使用需要鉴权的 HTTPS 仓库地址，但当前 checkout 逻辑没有注入 HTTPS 用户名密码 | 把 repo URL 改成 SSH 地址，或扩展 Pipeline 支持 HTTPS credentials |
+| SSH clone 首次连接 GitLab 失败 | GitLab host key 未接受，或 known_hosts 校验失败 | 在 Agent 上先手工 `ssh -T git@wrgitlab.ext.net.nokia.com` 接受 host key；检查 Jenkins Git host key 策略 |
+| SSH clone 权限被拒绝 | 私钥没有仓库读取权限，或公钥还没加到 GitLab 用户/Deploy Key | 在 Agent 上用同一把 key 执行 `git ls-remote` 验证两个仓库 |
 | `source-checkout.json` 里 `repo_url: null` | Jenkins 全局环境未配置 `ROBOTWS_REPO_URL` / `TESTLINE_CONFIGURATION_REPO_URL` | Jenkins System -> Global properties |
 | Missing activate script | `/home/ute/CIENV/<TESTLINE>/bin/activate` 不存在 | Agent 文件系统、`PYTHON_ENV_ROOT` |
 | Robot case path not found | `ROBOTCASE_PATH` 不在 workspace 或 robotws 下 | Jenkins artifacts 中 `robot-request.json`、`robot-command.json` |

@@ -73,8 +73,8 @@ def test_checkout_plan_builds_clone_commands_when_repo_urls_exist(tmp_path: Path
     assert plan["operations"][0]["credentials_id"] == "robotws-ssh-key"
     assert plan["operations"][0]["repo_url_env"] == "ROBOTWS_REPO_URL"
     assert 'ROBOTWS_EFFECTIVE_REPO_URL_DEFAULT=' in plan["shell_script_text"]
-    assert 'git clone --branch "${ROBOTWS_EFFECTIVE_REF}" "${ROBOTWS_EFFECTIVE_REPO_URL}"' in plan["shell_script_text"]
-    assert 'git clone --branch "${TESTLINE_CONFIGURATION_EFFECTIVE_REF}" "${TESTLINE_CONFIGURATION_EFFECTIVE_REPO_URL}"' in plan["shell_script_text"]
+    assert 'git clone --progress --branch "${ROBOTWS_EFFECTIVE_REF}" "${ROBOTWS_EFFECTIVE_REPO_URL}"' in plan["shell_script_text"]
+    assert 'git clone --progress --branch "${TESTLINE_CONFIGURATION_EFFECTIVE_REF}" "${TESTLINE_CONFIGURATION_EFFECTIVE_REPO_URL}"' in plan["shell_script_text"]
 
 
 def test_prepare_taf_environment_plan_supports_create_venv_install_mode() -> None:
@@ -93,9 +93,34 @@ def test_prepare_taf_environment_plan_supports_create_venv_install_mode() -> Non
 
     assert plan["mode"] == "create-venv"
     assert plan["will_install"] is True
-    assert "python3.11 -m venv '/home/ute/CIENV/7_5_UTE5G402T820'" in plan["shell_script_text"]
+    assert "python3.11 -m venv" in plan["shell_script_text"]
+    assert "7_5_UTE5G402T820" in plan["shell_script_text"]
     assert "python -m pip install -r deploy/env/requirements-robot.txt" in plan["shell_script_text"]
     assert "python -m pip install taf-core==1.0" in plan["shell_script_text"]
+
+
+def test_prepare_taf_environment_plan_auto_installs_from_robotws_when_create_venv() -> None:
+    plan = taf_module.build_taf_environment_plan(
+        {
+            "testline": "7_5_UTE5G402T813",
+            "python_env_root": "/home/ute/CIENV/7_5_UTE5G402T813",
+            "robotws_root": "/automation/workspace/workspace/robot/robot-execution/robotws",
+            "taf": {
+                "mode": "create-venv",
+                "python_executable": "python3",
+            },
+        }
+    )
+
+    assert plan["mode"] == "create-venv"
+    assert plan["auto_install_from_robotws"] is True
+    assert "ROBOTWS_ROOT=" in plan["shell_script_text"]
+    assert "robot-execution" in plan["shell_script_text"]
+    assert 'export http_proxy="http://10.144.1.10:8080"' in plan["shell_script_text"]
+    assert 'export HTTPS_PROXY="http://10.144.1.10:8080"' in plan["shell_script_text"]
+    assert 'TAF_LOCK_FILE="$ROBOTWS_ROOT/dependencies.py${PYTHON_MM}-rf50.lock"' in plan["shell_script_text"]
+    assert 'python -m pip install -r "$TAF_LOCK_FILE"' in plan["shell_script_text"]
+    assert 'python -m pip install -r "$ROBOTWS_ROOT/requirements.cfg"' in plan["shell_script_text"]
 
 
 def test_post_run_callback_collects_artifacts_and_builds_payload(tmp_path: Path) -> None:

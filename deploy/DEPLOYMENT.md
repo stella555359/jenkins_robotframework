@@ -1483,3 +1483,122 @@ Portal -> /api/runs -> /api/runs/{run_id}/trigger -> Jenkins robot/robot-executi
 ```
 
 整个过程中，用户不需要直接访问 `:5173`、`:8000`、`:8080`。
+
+## 18. 服务器代码更新后操作集合
+
+这一节针对你已经把代码改好并推到仓库后，服务器侧为了让最新变更真正生效，需要执行哪些动作。
+
+### 18.1 先更新服务器部署副本
+
+```bash
+cd /opt/jenkins_robotframework
+git fetch --all --prune
+git pull --ff-only
+```
+
+如果你当前不是部署分支，先显式切到目标分支再拉：
+
+```bash
+cd /opt/jenkins_robotframework
+git checkout <your-branch>
+git pull --ff-only
+```
+
+### 18.2 platform-api 代码改动后
+
+只要改到了 `platform-api/` 下的 Python 代码，例如这次的 Jenkins 参数透传逻辑，就执行：
+
+```bash
+sudo systemctl restart platform-api
+sudo systemctl status platform-api --no-pager
+journalctl -u platform-api -n 100 --no-pager
+```
+
+### 18.3 automation-portal 前端代码改动后
+
+只要改到了 `automation-portal/` 下的前端页面或静态资源，例如这次新增 `TAF mode` 和 `Robotws git ref` 字段，就执行：
+
+```bash
+cd /opt/jenkins_robotframework/automation-portal
+npm run build
+sudo systemctl reload nginx
+```
+
+如果这台服务器上还没装过前端依赖，或者 `package.json` / `package-lock.json` 有变化，再先执行一次：
+
+```bash
+cd /opt/jenkins_robotframework/automation-portal
+npm install
+npm run build
+sudo systemctl reload nginx
+```
+
+### 18.4 Jenkins pipeline / 脚本改动后
+
+只要改到了下面这些文件：
+
+```text
+jenkins-integration/pipelines/robot-execution.Jenkinsfile
+jenkins-integration/scripts/*.py
+```
+
+通常不需要重启 Jenkins 服务。下一次 `robot/robot-execution` 从 SCM 读取最新仓库内容时就会生效。
+
+但要注意两点：
+
+1. 如果 job 是 `Pipeline script from SCM`，先确认 Jenkins job 的仓库分支已经指到包含最新提交的分支。
+2. 如果你还在用手工创建的 job，而不是 Seed Job / Job DSL，新增参数时可能需要在 Jenkins 页面重新保存一次 job 配置，或者先手工跑一次，让 Declarative Pipeline 把参数定义刷新出来。
+
+如需确认 Jenkinsfile 已更新到最新提交，可直接在 Jenkins 再触发一次 `Build with Parameters`，检查是否已经出现例如：
+
+```text
+TAF_MODE
+ROBOTWS_GIT_REF
+```
+
+### 18.5 Job DSL / JCasC 文件改动后
+
+如果改的是：
+
+```text
+jenkins-integration/jobs/robot-execution-job.groovy
+jenkins-integration/jcasc/jenkins.yaml
+```
+
+那不是 `git pull` 完就自动生效。
+
+你还需要按实际使用方式做额外动作：
+
+1. 如果你使用 Seed Job 管理 Jenkins job，就重新运行一次 Seed Job。
+2. 如果你使用 JCasC 管理 Jenkins，就执行 JCasC reload，或者重启 Jenkins 让配置重载。
+3. 如果当前 Jenkins job 是手工维护的，就到 Jenkins UI 手工补齐新增参数，不要指望 `.groovy` 或 `jenkins.yaml` 自动生效。
+
+### 18.6 这次变更对应的最小服务器操作
+
+这次实际涉及了三类改动：
+
+1. `platform-api` 新增 `TAF_MODE` 参数透传。
+2. `automation-portal` 新增 `TAF mode` / `Robotws git ref` 表单字段。
+3. `jenkins-integration/scripts/prepare_taf_environment.py` 在 `create-venv` 安装 TAF 依赖时自动加代理，并从 `robotws` lock / requirements 安装。
+
+所以服务器上最小建议执行顺序是：
+
+```bash
+cd /opt/jenkins_robotframework
+git fetch --all --prune
+git pull --ff-only
+
+cd /opt/jenkins_robotframework/automation-portal
+npm run build
+sudo systemctl reload nginx
+
+sudo systemctl restart platform-api
+sudo systemctl status platform-api --no-pager
+```
+
+然后 Jenkins 侧再做一次确认：
+
+1. 打开 `robot/robot-execution`。
+2. 看 `Build with Parameters` 是否已经有 `TAF_MODE` 和 `ROBOTWS_GIT_REF`。
+3. 如果没有，手工保存一次 job 配置，或先跑一次构建让参数刷新。
+4. 再从 Portal 提交一轮 smoke run。

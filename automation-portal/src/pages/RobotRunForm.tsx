@@ -22,6 +22,8 @@ export function RobotRunForm() {
   const [selectedTests, setSelectedTests] = useState("");
   const [variablesJson, setVariablesJson] = useState("{\n  \"AF_PATH\": \"\"\n}");
   const [build, setBuild] = useState("");
+  const [tafMode, setTafMode] = useState("reuse");
+  const [robotwsGitRef, setRobotwsGitRef] = useState("master");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,7 +42,9 @@ export function RobotRunForm() {
       const metadata: Record<string, unknown> = {
         case_name: caseName.trim(),
         selected_tests: selected,
-        robot_variables: robotVariables
+        robot_variables: robotVariables,
+        taf_mode: tafMode,
+        robotws_ref: robotwsGitRef.trim() || "master"
       };
       const payload: RunCreatePayload = {
         testline: testline.trim(),
@@ -92,6 +96,22 @@ export function RobotRunForm() {
         <label>
           Build
           <input value={build} onChange={(event) => setBuild(event.target.value)} placeholder="Optional build/version" />
+        </label>
+        <label>
+          TAF mode
+          <select value={tafMode} onChange={(event) => setTafMode(event.target.value)}>
+            <option value="reuse">reuse</option>
+            <option value="create-venv">create-venv</option>
+            <option value="skip-install">skip-install</option>
+          </select>
+        </label>
+        <label>
+          Robotws git ref
+          <input
+            value={robotwsGitRef}
+            onChange={(event) => setRobotwsGitRef(event.target.value)}
+            placeholder="Optional branch/tag/commit, default master"
+          />
         </label>
         <label className="span-2">
           Selected tests

@@ -19,6 +19,7 @@ pipeline {
         string(name: 'CASE_NAME', defaultValue: '', description: 'Optional Robot test case name passed with -t.')
         text(name: 'ROBOT_SELECTED_TESTS', defaultValue: '', description: 'Optional newline-separated Robot test names. Mirrors repeated -t usage in the legacy pipeline.')
         text(name: 'ROBOT_VARIABLES_JSON', defaultValue: '{}', description: 'Optional Robot variable mapping, for example {"AF_PATH":"...","target_version":"..."}.')
+        choice(name: 'TAF_MODE', choices: ['reuse', 'create-venv', 'skip-install'], description: 'TAF/python environment mode. reuse expects an existing CIENV, create-venv creates a new CIENV and installs TAF dependencies from robotws, skip-install only skips package installation.')
         string(name: 'PYTHON_ENV_ROOT', defaultValue: '', description: 'Optional Python environment root. Defaults to /home/ute/CIENV/<TESTLINE>.')
         string(name: 'ROBOTWS_ROOT', defaultValue: '', description: 'Optional explicit robotws root. Useful when workspace layout differs from repo root.')
         string(name: 'TESTLINE_VARIABLES_PATH', defaultValue: '', description: 'Optional explicit testline variable path. Defaults to testline_configuration/<TESTLINE>.')
@@ -71,6 +72,7 @@ metadata = {
     'artifact_label': optional(os.environ.get('ARTIFACT_LABEL', '')),
     'retry_index': optional(os.environ.get('RETRY_INDEX', '')),
     'log_level': optional(os.environ.get('ROBOT_LOG_LEVEL', '')),
+    'taf_mode': optional(os.environ.get('TAF_MODE', '')),
     'python_env_root': optional(os.environ.get('PYTHON_ENV_ROOT', '')) or f'/home/ute/CIENV/{testline}',
     'robotws_repo_url': optional(os.environ.get('ROBOTWS_REPO_URL_OVERRIDE', '')),
     'robotws_ref': optional(os.environ.get('ROBOTWS_GIT_REF', '')),

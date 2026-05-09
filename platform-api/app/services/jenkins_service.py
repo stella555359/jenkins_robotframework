@@ -93,6 +93,7 @@ def build_robot_jenkins_parameters(record: dict[str, Any]) -> dict[str, Any]:
         "ROBOT_SELECTED_TESTS": selected_tests_text,
         "ROBOT_VARIABLES_JSON": json.dumps(robot_variables, ensure_ascii=False),
         "PLATFORM_API_BASE_URL": metadata.get("platform_api_base_url") or settings.public_base_url,
+        "TAF_MODE": metadata.get("taf_mode") or "reuse",
         "PYTHON_ENV_ROOT": metadata.get("python_env_root") or "",
         "ROBOTWS_ROOT": metadata.get("robotws_root") or "",
         "TESTLINE_VARIABLES_PATH": metadata.get("testline_variables_path") or "",

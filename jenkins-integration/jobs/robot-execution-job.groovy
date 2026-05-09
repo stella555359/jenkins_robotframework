@@ -22,6 +22,7 @@ pipelineJob(jobName) {
         stringParam('CASE_NAME', '', 'Optional Robot test case name passed with -t.')
         textParam('ROBOT_SELECTED_TESTS', '', 'Optional newline-separated Robot test names. Mirrors repeated -t usage in the legacy pipeline.')
         textParam('ROBOT_VARIABLES_JSON', '{}', 'Optional Robot variable mapping, for example {"AF_PATH":"...","target_version":"..."}.')
+        choiceParam('TAF_MODE', ['reuse', 'create-venv', 'skip-install'], 'TAF/python environment mode. reuse expects an existing CIENV, create-venv creates a new CIENV and installs TAF dependencies from robotws, skip-install only skips package installation.')
         stringParam('PYTHON_ENV_ROOT', '', 'Optional Python environment root. Defaults to /home/ute/CIENV/<TESTLINE>.')
         stringParam('ROBOTWS_ROOT', '', 'Optional explicit robotws root. Useful when workspace layout differs from repo root.')
         stringParam('TESTLINE_VARIABLES_PATH', '', 'Optional explicit testline variable path. Defaults to testline_configuration/<TESTLINE>.')

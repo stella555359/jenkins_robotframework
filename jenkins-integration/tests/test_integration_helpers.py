@@ -93,6 +93,7 @@ def test_prepare_taf_environment_plan_supports_create_venv_install_mode() -> Non
 
     assert plan["mode"] == "create-venv"
     assert plan["will_install"] is True
+    assert "if [ ! -f" in plan["shell_script_text"]
     assert "python3.11 -m venv" in plan["shell_script_text"]
     assert "7_5_UTE5G402T820" in plan["shell_script_text"]
     assert "python -m pip install -r deploy/env/requirements-robot.txt" in plan["shell_script_text"]

@@ -51,7 +51,8 @@ def build_taf_environment_plan(request_payload: dict[str, Any]) -> dict[str, Any
     if mode == "create-venv":
         shell_lines.extend(
             [
-                f"if [ ! -d {_quote(str(python_env_root))} ]; then",
+                f"if [ ! -f {_quote(str(activate_script))} ]; then",
+                f"  mkdir -p {_quote(str(python_env_root.parent))}",
                 f"  {python_executable} -m venv {_quote(str(python_env_root))}",
                 "fi",
             ]

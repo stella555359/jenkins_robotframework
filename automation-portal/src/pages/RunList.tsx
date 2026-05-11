@@ -63,10 +63,10 @@ export function RunList() {
             <tr>
               <th>Run ID</th>
               <th>Testline</th>
-              <th>Robot case</th>
               <th>Status</th>
               <th>Jenkins</th>
               <th>Updated</th>
+              <th>Robot case</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -77,7 +77,6 @@ export function RunList() {
                   <Link to={`/runs/${item.run_id}`}>{item.run_id}</Link>
                 </td>
                 <td>{item.testline}</td>
-                <td>{item.robotcase_path || "-"}</td>
                 <td>
                   <StatusBadge status={item.status} />
                 </td>
@@ -85,6 +84,7 @@ export function RunList() {
                   <JenkinsLink buildRef={item.jenkins_build_ref} />
                 </td>
                 <td>{item.updated_at}</td>
+                <td className="muted">{item.robotcase_path || "-"}</td>
                 <td>
                   <Link className="button small secondary" to={`/runs/new?from=${item.run_id}`}>
                     Rebuild

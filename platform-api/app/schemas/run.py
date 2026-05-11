@@ -188,3 +188,21 @@ class RunCallbackResponse(BaseModel):
     status: str
     updated_at: str
 
+
+StageStatus = Literal["started", "completed", "failed", "skipped"]
+
+
+class RunStageUpdateRequest(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    stage_name: str = Field(min_length=1)
+    stage_status: StageStatus
+    message: str | None = None
+
+
+class RunStageUpdateResponse(BaseModel):
+    run_id: str
+    stage_name: str
+    stage_status: str
+    updated_at: str
+

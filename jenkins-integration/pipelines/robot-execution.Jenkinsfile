@@ -9,6 +9,7 @@ pipeline {
         CALLBACK_PAYLOAD_PATH = 'artifacts/callback-payload.json'
         CALLBACK_FALLBACK_PATH = 'artifacts/callback-fallback.json'
         CALLBACK_SEND_RESULT_PATH = 'artifacts/callback-send-result.json'
+        STAGE_PROGRESS_PATH = 'artifacts/stage-progress.json'
     }
 
     parameters {
@@ -49,6 +50,41 @@ pipeline {
                 script {
                     env.CALLBACK_RUN_ID = params.RUN_ID?.trim() ?: ''
                     env.RUN_STARTED_AT = new Date().format("yyyy-MM-dd'T'HH:mm:ssXXX", TimeZone.getTimeZone('Asia/Shanghai'))
+
+                    // Write a reusable stage-notification helper script
+                    writeFile(file: 'artifacts/notify-stage.sh', text: '''\
+#!/bin/bash
+# Usage: bash artifacts/notify-stage.sh <stage_name> <stage_status> [message]
+STAGE_NAME="$1"
+STAGE_STATUS="$2"
+STAGE_MESSAGE="${3:-}"
+RUN_ID="${CALLBACK_RUN_ID:-}"
+API_BASE="${PLATFORM_API_BASE_URL:-}"
+INSECURE="${CALLBACK_INSECURE_TLS:-false}"
+
+if [ -z "$RUN_ID" ] || [ -z "$API_BASE" ]; then
+    echo "[notify-stage] Skipped: RUN_ID or PLATFORM_API_BASE_URL not set."
+    exit 0
+fi
+
+CURL_OPTS="-s -o /dev/null -w %{http_code} --max-time 5"
+if [ "$INSECURE" = "true" ]; then
+    CURL_OPTS="$CURL_OPTS -k"
+fi
+
+PAYLOAD="{\\"stage_name\\": \\"${STAGE_NAME}\\", \\"stage_status\\": \\"${STAGE_STATUS}\\"}"
+if [ -n "$STAGE_MESSAGE" ]; then
+    PAYLOAD="{\\"stage_name\\": \\"${STAGE_NAME}\\", \\"stage_status\\": \\"${STAGE_STATUS}\\", \\"message\\": \\"${STAGE_MESSAGE}\\"}"
+fi
+
+HTTP_CODE=$(curl $CURL_OPTS -X POST \
+    -H "Content-Type: application/json" \
+    -d "$PAYLOAD" \
+    "${API_BASE}/api/runs/${RUN_ID}/stages" 2>/dev/null || echo "000")
+echo "[notify-stage] ${STAGE_NAME} -> ${STAGE_STATUS} (HTTP ${HTTP_CODE})"
+''')
+                    sh 'chmod +x artifacts/notify-stage.sh'
+                    sh 'bash artifacts/notify-stage.sh "Materialize Run Request" started'
                     if (params.RUN_REQUEST_JSON?.trim()) {
                         writeFile(file: 'artifacts/run-request-source.json', text: params.RUN_REQUEST_JSON)
                     } else {
@@ -144,12 +180,14 @@ PY
 
                     def callbackRunId = readFile('artifacts/callback-run-id.txt').trim()
                     env.CALLBACK_RUN_ID = callbackRunId ?: env.CALLBACK_RUN_ID
+                    sh 'bash artifacts/notify-stage.sh "Materialize Run Request" completed'
                 }
             }
         }
 
         stage('Prepare Workspace') {
             steps {
+                sh 'bash artifacts/notify-stage.sh "Prepare Workspace" started'
                 sh '''
                     python3 jenkins-integration/scripts/checkout_sources.py \
                       --request-json "$WORKSPACE/$ROBOT_REQUEST_PATH" \
@@ -205,22 +243,26 @@ PY
                     }
                 }
                 sh 'bash "$WORKSPACE/artifacts/prepare-python-env.sh"'
+                sh 'bash artifacts/notify-stage.sh "Prepare Workspace" completed'
             }
         }
 
         stage('Build Robot Command') {
             steps {
+                sh 'bash artifacts/notify-stage.sh "Build Robot Command" started'
                 sh '''
                     python3 jenkins-integration/scripts/build_robot_command.py \
                       --request-json "$WORKSPACE/$ROBOT_REQUEST_PATH" \
                       --workspace-root "$WORKSPACE" \
                       --output-json "$WORKSPACE/$ROBOT_COMMAND_PLAN_PATH"
                 '''
+                sh 'bash artifacts/notify-stage.sh "Build Robot Command" completed'
             }
         }
 
         stage('Run Robot Case') {
             steps {
+                sh 'bash artifacts/notify-stage.sh "Run Robot Case" started'
                 sh '''
                     python3 - <<'PY'
 import json
@@ -233,12 +275,14 @@ print(plan['shell']['shell_script_text'])
 PY
                     bash artifacts/run-robot.sh
                 '''
+                sh 'bash artifacts/notify-stage.sh "Run Robot Case" completed'
             }
         }
     }
 
     post {
         always {
+            sh 'bash artifacts/notify-stage.sh "Callback" started || true'
             archiveArtifacts artifacts: 'artifacts/**', allowEmptyArchive: true
             script {
                 def finishedAt = new Date().format("yyyy-MM-dd'T'HH:mm:ssXXX", TimeZone.getTimeZone('Asia/Shanghai'))
@@ -268,6 +312,7 @@ PY
                     }
                     callbackArgs.add('  --output-json "$WORKSPACE/$CALLBACK_PAYLOAD_PATH"')
                     sh callbackArgs.join(' \\\n')
+                    sh 'bash artifacts/notify-stage.sh "Callback" completed || true'
                 }
             }
         }

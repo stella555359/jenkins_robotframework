@@ -20,14 +20,14 @@ export default function App() {
             KPI Generator <span className="coming-soon-tag">Soon</span>
           </span>
           <span className="disabled-link">
-            Anomaly Detector <span className="coming-soon-tag">Soon</span>
+            KPI Anomaly Detector <span className="coming-soon-tag">Soon</span>
           </span>
         </div>
 
         <div className="sidebar-section">
           <div className="sidebar-section-label">Test Workflow</div>
           <span className="disabled-link">
-            Workflow Designer <span className="coming-soon-tag">Soon</span>
+            KPI Test Model <span className="coming-soon-tag">Soon</span>
           </span>
         </div>
       </aside>

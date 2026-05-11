@@ -11,6 +11,7 @@ from app.services.run_service import (
     run_create,
     trigger_run,
     tool_run_create,
+    update_run_stage,
 )
 from app.services.health_service import get_health_payload
 from app.schemas.run import (
@@ -22,6 +23,8 @@ from app.schemas.run import (
     RunDetailResponse,
     RunKpiResponse,
     RunListResponse,
+    RunStageUpdateRequest,
+    RunStageUpdateResponse,
     RunTriggerResponse,
     ToolRunCreateRequest,
     ToolRunCreateResponse,
@@ -82,4 +85,9 @@ def jenkins_callback(run_id: str, request: RunCallbackRequest) -> RunCallbackRes
 @router.post("/runs/{run_id}/callbacks/worker", response_model=RunCallbackResponse, tags=["run"])
 def worker_callback(run_id: str, request: RunCallbackRequest) -> RunCallbackResponse:
     return apply_run_callback(run_id, request)
+
+
+@router.post("/runs/{run_id}/stages", response_model=RunStageUpdateResponse, tags=["run"])
+def update_stage(run_id: str, request: RunStageUpdateRequest) -> RunStageUpdateResponse:
+    return update_run_stage(run_id, request)
 

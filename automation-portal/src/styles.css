@@ -52,11 +52,11 @@ a:hover {
 }
 
 .sidebar-section-label {
-  color: #7b8fb2;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  padding: 0 20px 4px;
+  color: #94afd0;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 4px 20px 6px;
   text-transform: uppercase;
 }
 
@@ -317,15 +317,13 @@ tbody tr:hover {
   color: #806000;
 }
 
-.summary-grid,
-.detail-grid {
+.summary-grid {
   display: grid;
   gap: 14px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.summary-grid > div,
-.detail-grid article {
+.summary-grid > div {
   background: #f5f9ff;
   border: 1px solid #dfe7f3;
   border-radius: 10px;
@@ -345,85 +343,205 @@ tbody tr:hover {
   overflow-wrap: anywhere;
 }
 
-.detail-grid {
+/* ── Detail sections ──────────────────────────────────── */
+
+.detail-section {
+  background: #f5f9ff;
+  border: 1px solid #dfe7f3;
+  border-radius: 10px;
   margin-top: 16px;
+  padding: 16px;
 }
 
-.detail-grid h3 {
-  margin: 0 0 12px;
-}
-
-.json {
-  background: #0f1723;
-  border-radius: 8px;
-  color: #c8d8f5;
-  font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
-  font-size: 13px;
-  margin: 0;
-  overflow-x: auto;
-  padding: 14px;
-}
-
-/* ── Artifacts ────────────────────────────────────────── */
-
-.artifact-list {
-  display: grid;
-  gap: 8px;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.artifact-list li {
+.detail-section-header {
   align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.detail-section-header h3 {
+  margin: 0;
+}
+
+/* ── Artifact chips ───────────────────────────────────── */
+
+.artifact-compact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.artifact-chip {
   background: #fff;
   border: 1px solid #dfe7f3;
-  border-radius: 8px;
-  display: flex;
-  gap: 12px;
-  padding: 10px 14px;
-}
-
-.artifact-list .artifact-icon {
-  color: #1a6dd4;
-  flex-shrink: 0;
-  font-size: 18px;
-}
-
-.artifact-list .artifact-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.artifact-list .artifact-label {
-  font-weight: 700;
-  font-size: 14px;
-}
-
-.artifact-list .artifact-path {
-  color: #6b7f9e;
-  font-size: 12px;
-  overflow-wrap: anywhere;
-}
-
-.artifact-list .artifact-actions {
-  flex-shrink: 0;
-}
-
-.artifact-list .artifact-actions a {
-  background: #e8f2fc;
   border-radius: 6px;
-  color: #1a6dd4;
+  color: #3c4d6b;
   font-size: 12px;
-  font-weight: 700;
   padding: 4px 10px;
-  text-decoration: none;
-  transition: background 0.15s;
 }
 
-.artifact-list .artifact-actions a:hover {
-  background: #d0e4f9;
+.artifact-chip a {
+  color: #1a6dd4;
+  font-weight: 600;
   text-decoration: none;
+}
+
+.artifact-chip a:hover {
+  text-decoration: underline;
+}
+
+/* ── Info table (compact key-value) ───────────────────── */
+
+.info-table {
+  width: 100%;
+}
+
+.info-table td {
+  border-bottom: 1px solid #e8eef6;
+  font-size: 13px;
+  padding: 6px 10px;
+}
+
+.info-table .info-label {
+  color: #6b7f9e;
+  font-weight: 700;
+  text-transform: uppercase;
+  white-space: nowrap;
+  width: 140px;
+}
+
+/* ── JSON compact (lighter than dark block) ───────────── */
+
+.json-compact {
+  background: #f0f4fa;
+  border: 1px solid #dfe7f3;
+  border-radius: 6px;
+  color: #2a3a54;
+  font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+  font-size: 12px;
+  margin: 8px 0 0;
+  max-height: 240px;
+  overflow: auto;
+  padding: 12px;
+  white-space: pre-wrap;
+}
+
+/* ── Meta expanded (details/summary) ──────────────────── */
+
+.meta-expanded {
+  display: grid;
+  gap: 10px;
+}
+
+.meta-expanded details {
+  border: 1px solid #e3eaf3;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.meta-expanded summary {
+  background: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 8px 12px;
+  user-select: none;
+}
+
+.meta-expanded summary:hover {
+  background: #f8faff;
+}
+
+/* ── Pipeline progress bar ────────────────────────────── */
+
+.pipeline-progress {
+  align-items: flex-start;
+  display: flex;
+  gap: 0;
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.pipeline-step {
+  align-items: center;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+}
+
+.pipeline-step::before {
+  background: #dfe7f3;
+  content: "";
+  height: 3px;
+  left: -50%;
+  position: absolute;
+  right: 50%;
+  top: 8px;
+}
+
+.pipeline-step:first-child::before {
+  display: none;
+}
+
+.pipeline-step.step-done::before {
+  background: #34a853;
+}
+
+.pipeline-step.step-active::before {
+  background: #f0b429;
+}
+
+.pipeline-step.step-failed::before {
+  background: #d93025;
+}
+
+.step-dot {
+  background: #dfe7f3;
+  border: 2px solid #dfe7f3;
+  border-radius: 50%;
+  height: 16px;
+  position: relative;
+  width: 16px;
+  z-index: 1;
+}
+
+.step-done .step-dot {
+  background: #34a853;
+  border-color: #34a853;
+}
+
+.step-active .step-dot {
+  background: #fff;
+  border-color: #f0b429;
+  box-shadow: 0 0 0 3px rgba(240, 180, 41, 0.25);
+}
+
+.step-failed .step-dot {
+  background: #d93025;
+  border-color: #d93025;
+}
+
+.step-label {
+  color: #6b7f9e;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.step-done .step-label {
+  color: #1a7a35;
+}
+
+.step-active .step-label {
+  color: #806000;
+  font-weight: 800;
+}
+
+.step-failed .step-label {
+  color: #9f1d1d;
 }
 
 /* ── Jenkins link ─────────────────────────────────────── */
@@ -494,13 +612,26 @@ tbody tr:hover {
   }
 
   .form-grid,
-  .summary-grid,
-  .detail-grid {
+  .summary-grid {
     grid-template-columns: 1fr;
   }
 
   .span-2,
   .wide {
     grid-column: span 1;
+  }
+
+  .pipeline-progress {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .pipeline-step {
+    flex-direction: row;
+    gap: 8px;
+  }
+
+  .pipeline-step::before {
+    display: none;
   }
 }

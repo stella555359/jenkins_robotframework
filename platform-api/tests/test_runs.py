@@ -584,6 +584,64 @@ def test_create_robot_run_rejects_kpi_options(client) -> None:
 
 
 @allure.feature("Run API")
+@allure.story("Stage progress")
+@allure.title("POST /api/runs/{run_id}/stages updates pipeline stage in metadata")
+def test_stage_update_persists_in_metadata(client, create_run_via_api) -> None:
+    run = create_run_via_api()
+    run_id = run["run_id"]
+
+    response = client.post(
+        f"/api/runs/{run_id}/stages",
+        json={"stage_name": "Materialize Run Request", "stage_status": "started"},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["run_id"] == run_id
+    assert payload["stage_name"] == "Materialize Run Request"
+    assert payload["stage_status"] == "started"
+    assert payload["updated_at"]
+
+    detail = client.get(f"/api/runs/{run_id}").json()
+    stages = detail["metadata"]["pipeline_stages"]
+    assert len(stages) == 1
+    assert stages[0]["name"] == "Materialize Run Request"
+    assert stages[0]["status"] == "started"
+    assert "started_at" in stages[0]
+
+
+@allure.feature("Run API")
+@allure.story("Stage progress")
+@allure.title("POST /api/runs/{run_id}/stages accumulates multiple stages")
+def test_stage_update_accumulates_stages(client, create_run_via_api) -> None:
+    run = create_run_via_api()
+    run_id = run["run_id"]
+
+    client.post(f"/api/runs/{run_id}/stages", json={"stage_name": "Materialize Run Request", "stage_status": "started"})
+    client.post(f"/api/runs/{run_id}/stages", json={"stage_name": "Materialize Run Request", "stage_status": "completed"})
+    client.post(f"/api/runs/{run_id}/stages", json={"stage_name": "Prepare Workspace", "stage_status": "started"})
+
+    detail = client.get(f"/api/runs/{run_id}").json()
+    stages = detail["metadata"]["pipeline_stages"]
+    assert len(stages) == 2
+    assert stages[0]["name"] == "Materialize Run Request"
+    assert stages[0]["status"] == "completed"
+    assert "finished_at" in stages[0]
+    assert stages[1]["name"] == "Prepare Workspace"
+    assert stages[1]["status"] == "started"
+
+
+@allure.feature("Run API")
+@allure.story("Stage progress")
+@allure.title("POST /api/runs/{run_id}/stages returns 404 for missing run")
+def test_stage_update_returns_404_for_missing_run(client) -> None:
+    response = client.post(
+        "/api/runs/nonexistent/stages",
+        json={"stage_name": "Materialize Run Request", "stage_status": "started"},
+    )
+    assert response.status_code == 404
+
+
+@allure.feature("Run API")
 @allure.story("Run callbacks")
 @allure.title("Jenkins callback updates artifacts and KPI summaries")
 def test_jenkins_callback_updates_artifacts_and_kpi_summary(client, create_run_via_api) -> None:

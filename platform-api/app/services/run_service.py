@@ -26,6 +26,8 @@ from app.schemas.run import (
     RunKpiResponse,
     RunListItem,
     RunListResponse,
+    RunStageUpdateRequest,
+    RunStageUpdateResponse,
     RunTriggerResponse,
     ToolExecutionHandoff,
     ToolRunCreateRequest,
@@ -319,4 +321,50 @@ def apply_run_callback(run_id: str, request: RunCallbackRequest) -> RunCallbackR
         run_id=run_id,
         status=normalized["status"],
         updated_at=normalized["updated_at"],
+    )
+
+
+def update_run_stage(run_id: str, request: RunStageUpdateRequest) -> RunStageUpdateResponse:
+    existing = _get_required_record(run_id)
+    now = datetime.now(ZoneInfo("Asia/Shanghai")).isoformat()
+
+    metadata = dict(existing["metadata"])
+    stages: list[dict[str, Any]] = list(metadata.get("pipeline_stages") or [])
+
+    # Find existing stage entry or create a new one
+    stage_entry = None
+    for entry in stages:
+        if entry.get("name") == request.stage_name:
+            stage_entry = entry
+            break
+
+    if stage_entry is None:
+        stage_entry = {"name": request.stage_name}
+        stages.append(stage_entry)
+
+    stage_entry["status"] = request.stage_status
+    if request.stage_status == "started":
+        stage_entry["started_at"] = now
+    elif request.stage_status in ("completed", "failed", "skipped"):
+        stage_entry["finished_at"] = now
+    if request.message:
+        stage_entry["message"] = request.message
+
+    metadata["pipeline_stages"] = stages
+
+    updated = update_run_record(
+        run_id,
+        {
+            "run_metadata_json": metadata,
+            "updated_at": now,
+        },
+    )
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Run not found.")
+
+    return RunStageUpdateResponse(
+        run_id=run_id,
+        stage_name=request.stage_name,
+        stage_status=request.stage_status,
+        updated_at=now,
     )

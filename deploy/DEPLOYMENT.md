@@ -231,16 +231,16 @@ https://jenkins.company.com/jenkins/
 
 ```bash
 sudo openssl req -x509 -nodes -days 365 -newkey rsa:4096 \
-  -keyout /etc/ssl/private/test-workflow-runner.key \
-  -out /etc/ssl/certs/test-workflow-runner.crt \
+  -keyout /etc/ssl/private/jenkins-kpi-platform.key \
+  -out /etc/ssl/certs/jenkins-kpi-platform.crt \
   -subj "/CN=10.71.210.104"
 ```
 
 证书文件位置：
 
 ```text
-/etc/ssl/certs/test-workflow-runner.crt
-/etc/ssl/private/test-workflow-runner.key
+/etc/ssl/certs/jenkins-kpi-platform.crt
+/etc/ssl/private/jenkins-kpi-platform.key
 ```
 
 ### 6.2 Nginx 配置文件位置
@@ -248,14 +248,14 @@ sudo openssl req -x509 -nodes -days 365 -newkey rsa:4096 \
 仓库建议维护位置：
 
 ```text
-/opt/jenkins_robotframework/deploy/nginx/test-workflow-runner.conf
+/opt/jenkins_robotframework/deploy/nginx/jenkins-kpi-platform.conf
 ```
 
 系统启用位置：
 
 ```text
-/etc/nginx/sites-available/test-workflow-runner.conf
-/etc/nginx/sites-enabled/test-workflow-runner.conf
+/etc/nginx/sites-available/jenkins-kpi-platform.conf
+/etc/nginx/sites-enabled/jenkins-kpi-platform.conf
 ```
 
 如果服务器上已经有旧配置，例如：
@@ -273,9 +273,9 @@ sudo ls -l /etc/nginx/sites-enabled/jenkins-kpi-platform.conf
 常见情况有两种：
 
 1. 如果它链接到 `/etc/nginx/sites-available/jenkins-kpi-platform.conf`，优先改 `sites-available` 里的源文件。
-2. 如果它就是一个实际文件，也可以直接原地修改这个文件，不必强制改名成 `test-workflow-runner.conf`。
+2. 如果它就是一个实际文件，也可以直接原地修改这个文件，不必强制改名成 `jenkins-kpi-platform.conf`。
 
-也就是说，这一节里的 `test-workflow-runner.conf` 是推荐文件名，不是必须文件名。服务器已经稳定运行时，保留旧文件名、只更新内容，风险更低。
+也就是说，这一节里的 `jenkins-kpi-platform.conf` 是推荐文件名，不是必须文件名。服务器已经稳定运行时，保留旧文件名、只更新内容，风险更低。
 
 当前仓库如果还没有 `deploy/nginx/` 目录，可以在服务器部署时创建：
 
@@ -328,7 +328,7 @@ location /kpi/ {
 
 ### 6.3 完整 Nginx 配置
 
-`/opt/jenkins_robotframework/deploy/nginx/test-workflow-runner.conf`：
+`/opt/jenkins_robotframework/deploy/nginx/jenkins-kpi-platform.conf`：
 
 ```nginx
 server {
@@ -342,8 +342,8 @@ server {
     listen 443 ssl;
     server_name 10.71.210.104;
 
-    ssl_certificate /etc/ssl/certs/test-workflow-runner.crt;
-    ssl_certificate_key /etc/ssl/private/test-workflow-runner.key;
+    ssl_certificate /etc/ssl/certs/jenkins-kpi-platform.crt;
+    ssl_certificate_key /etc/ssl/private/jenkins-kpi-platform.key;
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_prefer_server_ciphers on;
 
@@ -351,6 +351,16 @@ server {
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
+
+    # Serve Jenkins archived artifacts (log.html etc.) without CSP restriction.
+    # Jenkins default CSP blocks inline JavaScript, which breaks Robot Framework log.html.
+    # This block MUST appear before the general /jenkins/ prefix location.
+    location ~ ^/jenkins/job/.+/artifact/ {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_hide_header Content-Security-Policy;
+    }
 
     location /jenkins/ {
         proxy_pass http://127.0.0.1:8080/jenkins/;
@@ -374,8 +384,8 @@ server {
 启用：
 
 ```bash
-sudo cp /opt/jenkins_robotframework/deploy/nginx/test-workflow-runner.conf /etc/nginx/sites-available/test-workflow-runner.conf
-sudo ln -sf /etc/nginx/sites-available/test-workflow-runner.conf /etc/nginx/sites-enabled/test-workflow-runner.conf
+sudo cp /opt/jenkins_robotframework/deploy/nginx/jenkins-kpi-platform.conf /etc/nginx/sites-available/jenkins-kpi-platform.conf
+sudo ln -sf /etc/nginx/sites-available/jenkins-kpi-platform.conf /etc/nginx/sites-enabled/jenkins-kpi-platform.conf
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t
 sudo systemctl reload nginx
@@ -411,6 +421,14 @@ server {
   proxy_set_header X-Real-IP $remote_addr;
   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
   proxy_set_header X-Forwarded-Proto $scheme;
+
+  # Serve Jenkins archived artifacts (log.html etc.) without CSP restriction.
+  location ~ ^/jenkins/job/.+/artifact/ {
+    proxy_pass http://127.0.0.1:8080;
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    proxy_hide_header Content-Security-Policy;
+  }
 
   location /jenkins/ {
     proxy_pass http://127.0.0.1:8080/jenkins/;
@@ -1471,7 +1489,7 @@ journalctl -u internal-tools-worker -n 100 --no-pager
 
 | 模块 | 仓库位置 | 服务器实际位置 |
 |---|---|---|
-| Nginx HTTPS 反代 | `deploy/nginx/test-workflow-runner.conf` | `/etc/nginx/sites-available/test-workflow-runner.conf` |
+| Nginx HTTPS 反代 | `deploy/nginx/jenkins-kpi-platform.conf` | `/etc/nginx/sites-available/jenkins-kpi-platform.conf` |
 | platform-api env | `platform-api/.env` 不提交真实密钥 | `/opt/jenkins_robotframework/platform-api/.env` |
 | platform-api systemd | 建议后续沉淀到 `deploy/systemd/platform-api.service` | `/etc/systemd/system/platform-api.service` |
 | Portal env | `automation-portal/.env` 不提交环境私有值 | `/opt/jenkins_robotframework/automation-portal/.env`，含 `VITE_JENKINS_BASE_URL` |

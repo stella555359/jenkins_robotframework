@@ -172,3 +172,23 @@ def test_post_run_callback_retries_and_writes_fallback(tmp_path: Path) -> None:
     assert len(send_result["attempts"]) == 3
     assert fallback_payload["callback_url"].endswith("/api/runs/run-20260429123000000/callbacks/jenkins")
     assert fallback_payload["payload"]["status"] == "failed"
+
+
+def test_post_run_callback_can_disable_tls_verification_for_sender() -> None:
+    received: dict[str, object] = {}
+
+    def recording_sender(**kwargs: object) -> dict[str, object]:
+        received.update(kwargs)
+        return {"ok": True}
+
+    send_result = callback_module.send_callback_with_retry(
+        base_url="https://10.71.210.104",
+        run_id="run-20260511093552227",
+        payload={"status": "passed"},
+        verify_tls=False,
+        send_operation=recording_sender,
+        sleep_operation=lambda _: None,
+    )
+
+    assert send_result["sent"] is True
+    assert received["verify_tls"] is False

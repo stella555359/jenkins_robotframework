@@ -42,6 +42,7 @@ pipelineJob(jobName) {
         stringParam('CALLBACK_MAX_ATTEMPTS', '3', 'Maximum callback retry attempts sent by post_run_callback.py.')
         stringParam('CALLBACK_BACKOFF_SECONDS', '2', 'Linear backoff base seconds between callback retries.')
         booleanParam('CALLBACK_IGNORE_FAILURE', true, 'Do not fail the pipeline if callback sending still fails after retries.')
+        booleanParam('CALLBACK_INSECURE_TLS', true, 'Skip TLS certificate verification for platform-api callback. Keep enabled when Nginx HTTPS uses a self-signed certificate.')
     }
 
     definition {

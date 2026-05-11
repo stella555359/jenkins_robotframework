@@ -1410,6 +1410,7 @@ journalctl -u platform-api -f
 
 ```text
 PLATFORM_API_BASE_URL=https://10.71.210.104
+CALLBACK_INSECURE_TLS=true
 ```
 
 检查 callback URL 是否可从 Jenkins Master/Agent 访问：
@@ -1418,7 +1419,7 @@ PLATFORM_API_BASE_URL=https://10.71.210.104
 curl -k https://10.71.210.104/api/health
 ```
 
-检查 Jenkins 构建日志里 `post_run_callback.py` 的输出。
+检查 Jenkins 构建日志里 `post_run_callback.py` 的输出。如果看到 `CERTIFICATE_VERIFY_FAILED`，说明当前还是自签名证书场景，但 callback 没有跳过 TLS 校验。
 
 ### 15.5 Agent 连不上
 

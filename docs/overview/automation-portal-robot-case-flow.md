@@ -547,6 +547,7 @@ platform-api 会把 run record 转成 Jenkins 参数。核心映射如下：
 | `PIP_EXTRA_INDEX_URL_OVERRIDE` | Jenkins job 参数覆盖 | `create-venv` 安装依赖时作为主 index 为空时的备用 pip index。 |
 | `PIP_TRUSTED_HOST_OVERRIDE` | Jenkins job 参数覆盖 | `create-venv` 安装依赖时覆盖 trusted-host。 |
 | `PLATFORM_API_BASE_URL` | `PUBLIC_BASE_URL` 或 metadata override | Jenkins callback 目标根地址。 |
+| `CALLBACK_INSECURE_TLS` | Jenkins job 参数默认值 | callback 回写 `platform-api` 时是否跳过 TLS 证书校验。自签名 HTTPS 部署通常应保持开启。 |
 | `ROBOTWS_GIT_REF` | metadata override，否则 `master` | checkout `robotws` ref。 |
 | `TESTLINE_CONFIGURATION_GIT_REF` | metadata override，否则 `master` | checkout `testline_configuration` ref。 |
 
@@ -671,4 +672,5 @@ GET /api/runs/{run_id}/kpi
 | `source-checkout.json` 里 `repo_url: null` | Jenkins 全局环境未配置 `ROBOTWS_REPO_URL` / `TESTLINE_CONFIGURATION_REPO_URL` | Jenkins System -> Global properties |
 | Missing activate script | `/home/ute/CIENV/<TESTLINE>/bin/activate` 不存在 | Agent 文件系统、`PYTHON_ENV_ROOT` |
 | Robot case path not found | `ROBOTCASE_PATH` 不在 workspace 或 robotws 下 | Jenkins artifacts 中 `robot-request.json`、`robot-command.json` |
+| Portal 页面创建后 run 一直不回写最终状态，`callback-send-result.json` 里是 `CERTIFICATE_VERIFY_FAILED` | Jenkins 回调 `https://.../api/runs/{run_id}/callbacks/jenkins` 时校验了自签名证书 | 保持 `CALLBACK_INSECURE_TLS=true`，或改用受信任证书 / 内部 CA |
 | Portal 不更新最终状态 | Jenkins callback 到 `PLATFORM_API_BASE_URL` 失败 | Jenkins Console Output、`callback-fallback.json` |

@@ -39,6 +39,7 @@ pipeline {
         string(name: 'CALLBACK_MAX_ATTEMPTS', defaultValue: '3', description: 'Maximum callback retry attempts sent by post_run_callback.py.')
         string(name: 'CALLBACK_BACKOFF_SECONDS', defaultValue: '2', description: 'Linear backoff base seconds between callback retries.')
         booleanParam(name: 'CALLBACK_IGNORE_FAILURE', defaultValue: true, description: 'Do not fail the pipeline if callback sending still fails after retries.')
+        booleanParam(name: 'CALLBACK_INSECURE_TLS', defaultValue: true, description: 'Skip TLS certificate verification for platform-api callback. Keep enabled when Nginx HTTPS uses a self-signed certificate.')
     }
 
     stages {
@@ -257,6 +258,9 @@ PY
                     ]
                     if (params.CALLBACK_IGNORE_FAILURE) {
                         callbackArgs.add('  --ignore-send-failure')
+                    }
+                    if (params.CALLBACK_INSECURE_TLS) {
+                        callbackArgs.add('  --insecure-skip-tls-verify')
                     }
                     callbackArgs.add('  --output-json "$WORKSPACE/$CALLBACK_PAYLOAD_PATH"')
                     sh callbackArgs.join(' \\\n')

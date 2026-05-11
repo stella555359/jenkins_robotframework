@@ -4,6 +4,7 @@ import argparse
 import json
 from mimetypes import guess_type
 from pathlib import Path
+import ssl
 import time
 from typing import Any, Callable, Sequence
 from urllib import error as urllib_error
@@ -76,7 +77,14 @@ def build_callback_payload(
     }
 
 
-def send_callback(*, base_url: str, run_id: str, payload: dict[str, Any], timeout_seconds: int = 30) -> dict[str, Any]:
+def send_callback(
+    *,
+    base_url: str,
+    run_id: str,
+    payload: dict[str, Any],
+    timeout_seconds: int = 30,
+    verify_tls: bool = True,
+) -> dict[str, Any]:
     url = f"{base_url.rstrip('/')}/api/runs/{run_id}/callbacks/jenkins"
     request = urllib_request.Request(
         url,
@@ -84,7 +92,8 @@ def send_callback(*, base_url: str, run_id: str, payload: dict[str, Any], timeou
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with urllib_request.urlopen(request, timeout=timeout_seconds) as response:
+    ssl_context = None if verify_tls else ssl._create_unverified_context()
+    with urllib_request.urlopen(request, timeout=timeout_seconds, context=ssl_context) as response:
         return json.loads(response.read().decode("utf-8"))
 
 
@@ -105,6 +114,7 @@ def send_callback_with_retry(
     backoff_seconds: float = 2.0,
     fallback_output_json: Path | None = None,
     ignore_send_failure: bool = False,
+    verify_tls: bool = True,
     send_operation: Callable[..., dict[str, Any]] | None = None,
     sleep_operation: Callable[[float], None] | None = None,
 ) -> dict[str, Any]:
@@ -123,6 +133,7 @@ def send_callback_with_retry(
                 run_id=run_id,
                 payload=payload,
                 timeout_seconds=timeout_seconds,
+                verify_tls=verify_tls,
             )
             result = {
                 "sent": True,
@@ -182,6 +193,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--fallback-output-json", type=Path, default=None, help="Optional file path to persist callback payload and errors after final failure.")
     parser.add_argument("--send-result-json", type=Path, default=None, help="Optional file path to persist callback send result summary.")
     parser.add_argument("--ignore-send-failure", action="store_true", help="Do not exit non-zero when callback send fails after retries.")
+    parser.add_argument("--insecure-skip-tls-verify", action="store_true", help="Skip TLS certificate verification when POSTing callback payload. Useful for self-signed HTTPS deployments.")
     parser.add_argument("--output-json", type=Path, required=True, help="Path to write the callback payload JSON.")
     return parser
 
@@ -218,6 +230,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             backoff_seconds=args.backoff_seconds,
             fallback_output_json=args.fallback_output_json,
             ignore_send_failure=args.ignore_send_failure,
+            verify_tls=not args.insecure_skip_tls_verify,
         )
         _write_json_file(args.send_result_json, send_result)
         print(json.dumps(send_result, ensure_ascii=False, indent=2))

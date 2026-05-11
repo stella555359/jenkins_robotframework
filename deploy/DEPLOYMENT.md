@@ -927,13 +927,13 @@ npm 可用
 ```bash
 VITE_APP_TITLE=Automation Portal
 VITE_API_BASE_URL=/api
+VITE_JENKINS_BASE_URL=https://10.71.210.104/jenkins
 ```
 
-必须使用 `/api` 相对路径，这样 Windows 浏览器访问 `https://10.71.210.104/` 时会同域调用：
+说明：
 
-```text
-https://10.71.210.104/api/...
-```
+- `VITE_API_BASE_URL` 必须使用 `/api` 相对路径，这样 Windows 浏览器访问 `https://10.71.210.104/` 时会同域调用 `https://10.71.210.104/api/...`。
+- `VITE_JENKINS_BASE_URL` 是 Portal 页面上 Jenkins 链接的目标地址。Portal 会根据 `jenkins_build_ref`（格式 `robot/robot-execution#42`）自动拼出 Jenkins build 页面 URL 和 archived artifact URL。如果不配或为空，Portal 的 Jenkins 链接和 artifact 下载按钮不会显示。
 
 如果 `.env` 还不存在，可先创建：
 
@@ -941,6 +941,7 @@ https://10.71.210.104/api/...
 cat > /opt/jenkins_robotframework/automation-portal/.env <<'EOF'
 VITE_APP_TITLE="Automation Portal"
 VITE_API_BASE_URL=/api
+VITE_JENKINS_BASE_URL=https://10.71.210.104/jenkins
 EOF
 ```
 
@@ -1473,7 +1474,7 @@ journalctl -u internal-tools-worker -n 100 --no-pager
 | Nginx HTTPS 反代 | `deploy/nginx/test-workflow-runner.conf` | `/etc/nginx/sites-available/test-workflow-runner.conf` |
 | platform-api env | `platform-api/.env` 不提交真实密钥 | `/opt/jenkins_robotframework/platform-api/.env` |
 | platform-api systemd | 建议后续沉淀到 `deploy/systemd/platform-api.service` | `/etc/systemd/system/platform-api.service` |
-| Portal env | `automation-portal/.env` 不提交环境私有值 | `/opt/jenkins_robotframework/automation-portal/.env` |
+| Portal env | `automation-portal/.env` 不提交环境私有值 | `/opt/jenkins_robotframework/automation-portal/.env`，含 `VITE_JENKINS_BASE_URL` |
 | Portal dist | `automation-portal/dist` 构建产物 | `/opt/jenkins_robotframework/automation-portal/dist` |
 | Jenkinsfile | `jenkins-integration/pipelines/robot-execution.Jenkinsfile` | Jenkins job 从仓库读取 |
 | Jenkins JCasC | `jenkins-integration/jcasc/jenkins.yaml` | Jenkins Configuration as Code 使用 |
@@ -1587,15 +1588,47 @@ jenkins-integration/jcasc/jenkins.yaml
 2. 如果你使用 JCasC 管理 Jenkins，就执行 JCasC reload，或者重启 Jenkins 让配置重载。
 3. 如果当前 Jenkins job 是手工维护的，就到 Jenkins UI 手工补齐新增参数，不要指望 `.groovy` 或 `jenkins.yaml` 自动生效。
 
-### 18.6 这次变更对应的最小服务器操作
+### 18.6 Portal 前端改版部署步骤
 
-这次实际涉及了三类改动：
+本次 Portal 前端改动包括：
 
-1. `platform-api` 新增 `TAF_MODE` 参数透传。
-2. `automation-portal` 新增 `TAF mode` / `Robotws git ref` 表单字段。
-3. `jenkins-integration/scripts/prepare_taf_environment.py` 在 `create-venv` 安装 TAF 依赖时自动加代理，并从 `robotws` lock / requirements 安装。
+1. 整体背景改成浅蓝色，字体切换到 Calibri。
+2. 从顶部导航栏改为左侧侧边栏布局，预留 KPI Generator / Anomaly Detector / Workflow Designer 入口。
+3. Run Detail 展示完整 artifact 列表和可直接打开的 `log.html` 链接。
+4. Run List 和 Run Detail 新增 Jenkins build 跳转链接。
+5. Run List 和 Run Detail 新增 Rebuild 按钮，可从已有 run 预填充表单快速重跑。
+6. `materialize_run_request.py` 新增 `--insecure-skip-tls-verify` 支持自签名 HTTPS 部署。
 
-所以服务器上最小建议执行顺序是：
+服务器侧要做的三步：
+
+#### 第一步：配置 Portal 前端环境变量
+
+在 `/opt/jenkins_robotframework/automation-portal/.env` 中确认有以下内容：
+
+```bash
+VITE_APP_TITLE="Automation Portal"
+VITE_API_BASE_URL=/api
+VITE_JENKINS_BASE_URL=https://10.71.210.104/jenkins
+```
+
+如果文件不存在，新建：
+
+```bash
+cat > /opt/jenkins_robotframework/automation-portal/.env <<'EOF'
+VITE_APP_TITLE="Automation Portal"
+VITE_API_BASE_URL=/api
+VITE_JENKINS_BASE_URL=https://10.71.210.104/jenkins
+EOF
+```
+
+关键说明：
+
+- `VITE_JENKINS_BASE_URL` 用于 Portal 页面拼接 Jenkins build 页面链接和 artifact 下载 URL。
+- 它的值应与 Nginx 反代 Jenkins 的外部地址一致。
+- 如果后续域名或端口变化，只需改这一个变量然后重新 `npm run build`。
+- **不要**在这里填 `http://127.0.0.1:8080/jenkins`，因为这是 Portal 页面在浏览器端用的，必须是 Windows 浏览器能访问到的外部地址。
+
+#### 第二步：重新构建前端
 
 ```bash
 cd /opt/jenkins_robotframework
@@ -1603,19 +1636,76 @@ git fetch --all --prune
 git pull --ff-only
 
 cd /opt/jenkins_robotframework/automation-portal
+npm install
 npm run build
-sudo systemctl reload nginx
-
-sudo systemctl restart platform-api
-sudo systemctl status platform-api --no-pager
 ```
 
-然后 Jenkins 侧再做一次确认：
+说明：
 
-1. 打开 `robot/robot-execution`。
-2. 看 `Build with Parameters` 是否已经有 `TAF_MODE` 和 `ROBOTWS_GIT_REF`。
-3. 如果没有，手工保存一次 job 配置，或先跑一次构建让参数刷新。
-4. 再从 Portal 提交一轮 smoke run。
+- `npm install` 在 `package.json` 没变化时可以跳过，但如果不确定就执行一次，耗时不长。
+- `npm run build` 会执行 `tsc -b && vite build`，产出 `dist/` 目录。
+- Vite 只在 **构建时** 把 `.env` 里的 `VITE_*` 变量注入到 JS bundle 里，运行时不会再读 `.env`。所以如果改了 `.env`，必须重新 build。
+
+构建完成后确认：
+
+```bash
+ls -la /opt/jenkins_robotframework/automation-portal/dist/index.html
+```
+
+#### 第三步：部署到 Nginx 并验证
+
+Nginx 配置不需要改，当前已经有：
+
+```nginx
+location / {
+    root /opt/jenkins_robotframework/automation-portal/dist;
+    try_files $uri $uri/ /index.html;
+}
+```
+
+直接 reload 让 Nginx 重新读取静态文件：
+
+```bash
+sudo systemctl reload nginx
+```
+
+本机验证：
+
+```bash
+curl -k -I https://127.0.0.1/
+```
+
+预期返回 `200 OK`。
+
+Windows 浏览器验证：
+
+```text
+https://10.71.210.104/
+```
+
+验证要点：
+
+1. 左侧应出现深蓝色侧边栏，包含 Robot Execution / KPI Tools / Test Workflow 三个分区。
+2. 整体背景应为浅蓝色。
+3. 进入 Run List，每行应有 Rebuild 按钮；如果有已完成的 run，Jenkins 列应显示可点击的链接。
+4. 进入某个已完成的 Run Detail：
+   - Jenkins Build 行应显示可点击的 Jenkins build 链接。
+   - 如果有 `log.html` artifact，应在 summary 区域显示 "Open log.html" 快速入口。
+   - Artifacts 区域应列出所有 artifact，每个带 Open/Download 按钮。
+   - Rebuild 按钮应跳转到 New Robot Run 表单并自动预填上次的参数。
+5. 如果 Jenkins 链接或 artifact 下载链接不可用，检查 `.env` 中 `VITE_JENKINS_BASE_URL` 是否配置正确，以及是否重新执行了 `npm run build`。
+
+#### 附：Jenkins 侧同步确认
+
+本次同时更新了 `materialize_run_request.py` 和 `robot-execution.Jenkinsfile`。Jenkins 侧不需要手工操作，只要 job 的 SCM 分支指向了包含本次提交的分支，下次构建时会自动读到最新代码。
+
+可以确认的方式是手工或从 Portal 触发一次 `robot/robot-execution`，在 Console Output 里搜索：
+
+```text
+--insecure-skip-tls-verify
+```
+
+如果 Materialize Run Request 阶段的命令里已经包含这个参数，说明 Jenkins 已经读到了最新的 Jenkinsfile 和脚本。
 
 ### 18.7 `create-venv` 的内部 Artifactory 配置
 

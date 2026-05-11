@@ -1,5 +1,5 @@
-import { FormEvent, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { FormEvent, useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, RunCreatePayload } from "../api";
 
 function parseJsonObject(value: string): Record<string, unknown> {
@@ -16,6 +16,9 @@ function parseJsonObject(value: string): Record<string, unknown> {
 
 export function RobotRunForm() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const fromRunId = searchParams.get("from");
+
   const [testline, setTestline] = useState("T813");
   const [robotcasePath, setRobotcasePath] = useState("testsuite/Hangzhou/RRM/example.robot");
   const [caseName, setCaseName] = useState("");
@@ -25,7 +28,35 @@ export function RobotRunForm() {
   const [tafMode, setTafMode] = useState("reuse");
   const [robotwsGitRef, setRobotwsGitRef] = useState("master");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingSource, setIsLoadingSource] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Pre-fill form from an existing run when ?from=run-xxx is present
+  useEffect(() => {
+    if (!fromRunId) return;
+    setIsLoadingSource(true);
+    api
+      .getRun(fromRunId)
+      .then((run) => {
+        setTestline(run.testline || "");
+        setRobotcasePath(run.robotcase_path || "");
+        setBuild(run.build || "");
+        const meta = run.metadata || {};
+        setCaseName(String(meta.case_name || ""));
+        const selected = Array.isArray(meta.selected_tests)
+          ? (meta.selected_tests as string[]).join("\n")
+          : "";
+        setSelectedTests(selected);
+        const vars = meta.robot_variables;
+        setVariablesJson(vars && typeof vars === "object" ? JSON.stringify(vars, null, 2) : "{}");
+        setTafMode(String(meta.taf_mode || "reuse"));
+        setRobotwsGitRef(String(meta.robotws_ref || "master"));
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "Failed to load source run.");
+      })
+      .finally(() => setIsLoadingSource(false));
+  }, [fromRunId]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -75,10 +106,18 @@ export function RobotRunForm() {
       <div className="section-heading">
         <div>
           <p className="eyebrow">Robot</p>
-          <h2>New Robot Run</h2>
+          <h2>{fromRunId ? "Rebuild Robot Run" : "New Robot Run"}</h2>
         </div>
-        <p className="muted">One button creates the run, triggers Jenkins, then opens the run detail page.</p>
+        {fromRunId ? (
+          <p className="muted">
+            Pre-filled from <strong>{fromRunId}</strong>. Modify any field before submitting.
+          </p>
+        ) : (
+          <p className="muted">One button creates the run, triggers Jenkins, then opens the run detail page.</p>
+        )}
       </div>
+
+      {isLoadingSource ? <p className="muted">Loading source run...</p> : null}
 
       <form className="form-grid" onSubmit={handleSubmit}>
         <label>
@@ -130,8 +169,8 @@ export function RobotRunForm() {
         {error ? <p className="error span-2">{error}</p> : null}
 
         <div className="actions span-2">
-          <button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Running..." : "Run"}
+          <button type="submit" disabled={isSubmitting || isLoadingSource}>
+            {isSubmitting ? "Running..." : fromRunId ? "Rebuild" : "Run"}
           </button>
         </div>
       </form>

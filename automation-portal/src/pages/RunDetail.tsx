@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
-import { api, ArtifactDescriptor, RunDetail as RunDetailModel, RunKpi } from "../api";
+import { api, ArtifactDescriptor, jenkinsArtifactUrl, jenkinsJobUrl, RunDetail as RunDetailModel, RunKpi } from "../api";
 
 type LocationState = {
   triggerError?: string;
@@ -10,27 +10,44 @@ function JsonBlock({ value }: { value: unknown }) {
   return <pre className="json">{JSON.stringify(value, null, 2)}</pre>;
 }
 
-function ArtifactList({ items }: { items: ArtifactDescriptor[] }) {
+function ArtifactList({ items, buildRef }: { items: ArtifactDescriptor[]; buildRef?: string | null }) {
   if (items.length === 0) {
     return <p className="muted">No artifacts reported yet.</p>;
   }
 
   return (
     <ul className="artifact-list">
-      {items.map((item, index) => (
-        <li key={`${item.kind}-${index}`}>
-          <strong>{item.label}</strong>
-          <span>{item.kind}</span>
-          {item.url ? (
-            <a href={item.url} target="_blank" rel="noreferrer">
-              Open
-            </a>
-          ) : (
-            <code>{item.path || "-"}</code>
-          )}
-        </li>
-      ))}
+      {items.map((item, index) => {
+        const directUrl = item.url || (item.path ? jenkinsArtifactUrl(buildRef, item.path) : null);
+        const isHtml = item.label.endsWith(".html") || item.content_type === "text/html";
+        return (
+          <li key={`${item.kind}-${index}`}>
+            <span className="artifact-icon">{isHtml ? "📄" : "📎"}</span>
+            <div className="artifact-info">
+              <div className="artifact-label">{item.label}</div>
+              {item.path ? <div className="artifact-path">{item.path}</div> : null}
+            </div>
+            <div className="artifact-actions">
+              {directUrl ? (
+                <a href={directUrl} target="_blank" rel="noreferrer">
+                  {isHtml ? "Open" : "Download"}
+                </a>
+              ) : null}
+            </div>
+          </li>
+        );
+      })}
     </ul>
+  );
+}
+
+function JenkinsBuildLink({ buildRef }: { buildRef: string | null | undefined }) {
+  const url = jenkinsJobUrl(buildRef);
+  if (!url || !buildRef) return null;
+  return (
+    <a className="jenkins-link" href={url} target="_blank" rel="noreferrer" title="View build in Jenkins">
+      <span className="jenkins-link-icon">⚙</span> {buildRef}
+    </a>
   );
 }
 
@@ -99,6 +116,14 @@ export function RunDetail() {
 
   const canRetryTrigger = detail?.executor_type === "robot" && ["created", "trigger_failed"].includes(detail.status);
 
+  // Find the primary log.html artifact for quick access
+  const logHtmlArtifact = artifacts.find(
+    (a) => a.label === "log.html" || a.label.endsWith("/log.html")
+  );
+  const logHtmlUrl = logHtmlArtifact
+    ? logHtmlArtifact.url || (logHtmlArtifact.path ? jenkinsArtifactUrl(detail?.jenkins_build_ref, logHtmlArtifact.path) : null)
+    : null;
+
   return (
     <section className="panel">
       <div className="section-heading">
@@ -115,6 +140,9 @@ export function RunDetail() {
               {isTriggering ? "Triggering..." : "Retry Trigger"}
             </button>
           ) : null}
+          <Link className="button secondary" to={`/runs/new?from=${runId}`}>
+            Rebuild
+          </Link>
           <Link className="button secondary" to="/runs">
             Back
           </Link>
@@ -132,10 +160,6 @@ export function RunDetail() {
               <strong className={`badge status-${detail.status.replace(/_/g, "-")}`}>{detail.status}</strong>
             </div>
             <div>
-              <span>Executor</span>
-              <strong>{detail.executor_type}</strong>
-            </div>
-            <div>
               <span>Testline</span>
               <strong>{detail.testline}</strong>
             </div>
@@ -143,14 +167,26 @@ export function RunDetail() {
               <span>Build</span>
               <strong>{detail.build || "-"}</strong>
             </div>
-            <div className="wide">
+            <div>
               <span>Robot case</span>
               <strong>{detail.robotcase_path || "-"}</strong>
             </div>
             <div className="wide">
-              <span>Jenkins ref</span>
-              <strong>{detail.jenkins_build_ref || "-"}</strong>
+              <span>Jenkins Build</span>
+              {detail.jenkins_build_ref ? (
+                <JenkinsBuildLink buildRef={detail.jenkins_build_ref} />
+              ) : (
+                <strong className="muted">-</strong>
+              )}
             </div>
+            {logHtmlUrl ? (
+              <div className="wide">
+                <span>Robot Log</span>
+                <a className="jenkins-link" href={logHtmlUrl} target="_blank" rel="noreferrer">
+                  <span className="jenkins-link-icon">📄</span> Open log.html
+                </a>
+              </div>
+            ) : null}
             <div className="wide">
               <span>Message</span>
               <strong>{detail.message}</strong>
@@ -159,8 +195,8 @@ export function RunDetail() {
 
           <div className="detail-grid">
             <article>
-              <h3>Artifacts</h3>
-              <ArtifactList items={artifacts} />
+              <h3>Artifacts ({artifacts.length})</h3>
+              <ArtifactList items={artifacts} buildRef={detail.jenkins_build_ref} />
             </article>
             <article>
               <h3>KPI</h3>

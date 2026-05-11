@@ -1,9 +1,19 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, RunListItem } from "../api";
+import { api, jenkinsJobUrl, RunListItem } from "../api";
 
 function StatusBadge({ status }: { status: string }) {
   return <span className={`badge status-${status.replace(/_/g, "-")}`}>{status}</span>;
+}
+
+function JenkinsLink({ buildRef }: { buildRef: string | null | undefined }) {
+  const url = jenkinsJobUrl(buildRef);
+  if (!url) return null;
+  return (
+    <a className="jenkins-link" href={url} target="_blank" rel="noreferrer" title="Open in Jenkins">
+      <span className="jenkins-link-icon">⚙</span> Jenkins
+    </a>
+  );
 }
 
 export function RunList() {
@@ -31,7 +41,7 @@ export function RunList() {
     <section className="panel">
       <div className="section-heading">
         <div>
-          <p className="eyebrow">Runs</p>
+          <p className="eyebrow">Robot Execution</p>
           <h2>Run List</h2>
         </div>
         <div className="actions">
@@ -52,11 +62,12 @@ export function RunList() {
           <thead>
             <tr>
               <th>Run ID</th>
-              <th>Executor</th>
               <th>Testline</th>
               <th>Robot case</th>
               <th>Status</th>
+              <th>Jenkins</th>
               <th>Updated</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -65,13 +76,20 @@ export function RunList() {
                 <td>
                   <Link to={`/runs/${item.run_id}`}>{item.run_id}</Link>
                 </td>
-                <td>{item.executor_type}</td>
                 <td>{item.testline}</td>
                 <td>{item.robotcase_path || "-"}</td>
                 <td>
                   <StatusBadge status={item.status} />
                 </td>
+                <td>
+                  <JenkinsLink buildRef={item.jenkins_build_ref} />
+                </td>
                 <td>{item.updated_at}</td>
+                <td>
+                  <Link className="button small secondary" to={`/runs/new?from=${item.run_id}`}>
+                    Rebuild
+                  </Link>
+                </td>
               </tr>
             ))}
           </tbody>

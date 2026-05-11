@@ -71,6 +71,31 @@ export type RunTriggerResponse = {
 };
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
+const jenkinsBaseUrl = (import.meta.env.VITE_JENKINS_BASE_URL || "").replace(/\/$/, "");
+
+/** Parse "robot/robot-execution#42" → Jenkins build page URL. */
+export function jenkinsJobUrl(buildRef: string | null | undefined): string | null {
+  if (!buildRef || !jenkinsBaseUrl) return null;
+  const match = buildRef.match(/^(.+)#(\d+)$/);
+  if (!match) return null;
+  const [, jobName, buildNumber] = match;
+  const jobPath = jobName
+    .split("/")
+    .map((s) => `job/${encodeURIComponent(s)}`)
+    .join("/");
+  return `${jenkinsBaseUrl}/${jobPath}/${buildNumber}`;
+}
+
+/** Build a direct Jenkins archived-artifact URL from a filesystem path. */
+export function jenkinsArtifactUrl(buildRef: string | null | undefined, artifactPath: string): string | null {
+  const buildUrl = jenkinsJobUrl(buildRef);
+  if (!buildUrl) return null;
+  const marker = "/artifacts/";
+  const idx = artifactPath.indexOf(marker);
+  if (idx === -1) return null;
+  const relativePath = artifactPath.substring(idx + 1);
+  return `${buildUrl}/artifact/${relativePath}`;
+}
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${apiBaseUrl}${path}`, {

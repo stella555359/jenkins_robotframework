@@ -4,18 +4,34 @@ const title = import.meta.env.VITE_APP_TITLE || "Automation Portal";
 
 export default function App() {
   return (
-    <div className="shell">
-      <header className="topbar">
-        <div>
-          <p className="eyebrow">5G gNB Test Automation</p>
-          <h1>{title}</h1>
-        </div>
-        <nav>
-          <NavLink to="/runs">Runs</NavLink>
+    <div className="layout">
+      <aside className="sidebar">
+        <p className="sidebar-brand">{title}</p>
+
+        <div className="sidebar-section">
+          <div className="sidebar-section-label">Robot Execution</div>
+          <NavLink to="/runs">Run List</NavLink>
           <NavLink to="/runs/new">New Robot Run</NavLink>
-        </nav>
-      </header>
-      <main>
+        </div>
+
+        <div className="sidebar-section">
+          <div className="sidebar-section-label">KPI Tools</div>
+          <span className="disabled-link">
+            KPI Generator <span className="coming-soon-tag">Soon</span>
+          </span>
+          <span className="disabled-link">
+            Anomaly Detector <span className="coming-soon-tag">Soon</span>
+          </span>
+        </div>
+
+        <div className="sidebar-section">
+          <div className="sidebar-section-label">Test Workflow</div>
+          <span className="disabled-link">
+            Workflow Designer <span className="coming-soon-tag">Soon</span>
+          </span>
+        </div>
+      </aside>
+      <main className="main-content">
         <Outlet />
       </main>
     </div>

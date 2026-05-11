@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 from fastapi import HTTPException
 
 from app.repositories.run_repository import (
+    delete_run_record,
     get_run_record_by_id,
     insert_run_record,
     list_run_records,
@@ -17,15 +18,21 @@ from app.services.jenkins_service import (
     trigger_jenkins_job,
 )
 from app.schemas.run import (
+    ProgressEvent,
+    ProgressUpdateRequest,
+    ProgressUpdateResponse,
     RunArtifactsResponse,
     RunCallbackRequest,
     RunCallbackResponse,
     RunCreateRequest,
     RunCreateResponse,
+    RunDeleteResponse,
     RunDetailResponse,
     RunKpiResponse,
     RunListItem,
     RunListResponse,
+    RunProgressResponse,
+    RunRebuildResponse,
     RunStageUpdateRequest,
     RunStageUpdateResponse,
     RunTriggerResponse,
@@ -367,4 +374,162 @@ def update_run_stage(run_id: str, request: RunStageUpdateRequest) -> RunStageUpd
         stage_name=request.stage_name,
         stage_status=request.stage_status,
         updated_at=now,
+    )
+
+
+def get_tool_run_list_filtered(
+    *,
+    tool_kind: str | None = None,
+    status: str | None = None,
+    testline: str | None = None,
+    scenario: str | None = None,
+) -> RunListResponse:
+    normalized_tool_kind = _normalize_optional_text(tool_kind)
+    normalized_status = _normalize_optional_text(status)
+    normalized_testline = _normalize_optional_text(testline)
+    normalized_scenario = _normalize_optional_text(scenario)
+
+    records: list[dict[str, Any]] = []
+    for record in list_run_records():
+        if record.get("executor_type") != "internal_tool":
+            continue
+        metadata = record.get("run_metadata_json") or {}
+        if isinstance(metadata, str):
+            import json as _json
+            metadata = _json.loads(metadata)
+        record_tool_kind = _normalize_optional_text(metadata.get("tool_kind"))
+        if normalized_tool_kind and record_tool_kind != normalized_tool_kind:
+            continue
+        if normalized_status and record.get("status") != normalized_status:
+            continue
+        if normalized_testline and normalized_testline.lower() not in (record.get("testline") or "").lower():
+            continue
+        record_scenario = _normalize_optional_text(record.get("scenario"))
+        if normalized_scenario and normalized_scenario.lower() not in (record_scenario or "").lower():
+            continue
+        records.append(_normalize_record(record))
+
+    return RunListResponse(items=[RunListItem(**r) for r in records])
+
+
+def delete_run(run_id: str) -> RunDeleteResponse:
+    record = _get_required_record(run_id)
+
+    # For detector runs, clean up history JSON
+    metadata = record.get("metadata") or {}
+    record_tool_kind = _normalize_optional_text(metadata.get("tool_kind"))
+    if record_tool_kind == "kpi_detector":
+        _cleanup_detector_history(record)
+
+    deleted = delete_run_record(run_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Run not found.")
+
+    return RunDeleteResponse(
+        run_id=run_id,
+        deleted=True,
+        message="Run deleted successfully.",
+    )
+
+
+def _cleanup_detector_history(record: dict[str, Any]) -> None:
+    import json as _json
+    from pathlib import Path
+
+    detector_summary = record.get("detector_summary") or {}
+    portal_summary = detector_summary.get("portal_summary") or {}
+    history_file_path = _normalize_optional_text(portal_summary.get("history_file_path"))
+    if not history_file_path:
+        return
+
+    history_path = Path(history_file_path)
+    if not history_path.exists():
+        return
+
+    source_filename = detector_summary.get("filename") or ""
+    sheet_name = str(detector_summary.get("sheet_name") or "").strip()
+    if not source_filename:
+        return
+
+    try:
+        all_records = _json.loads(history_path.read_text(encoding="utf-8"))
+        if not isinstance(all_records, list):
+            return
+        filtered = [
+            r for r in all_records
+            if not (
+                r.get("filename", "") == source_filename
+                and str(r.get("sheet_name") or "").strip() == sheet_name
+            )
+        ]
+        history_path.write_text(
+            _json.dumps(filtered, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+    except Exception:
+        pass  # Best effort cleanup
+
+
+def rebuild_run(run_id: str) -> RunRebuildResponse:
+    record = _get_required_record(run_id)
+    if record.get("executor_type") != "internal_tool":
+        raise HTTPException(status_code=400, detail="Only internal tool runs can be rebuilt.")
+
+    metadata = record.get("metadata") or {}
+    tool_kind = _normalize_optional_text(metadata.get("tool_kind"))
+    tool_payload = metadata.get("tool_payload")
+    if not tool_kind or not isinstance(tool_payload, dict):
+        raise HTTPException(status_code=400, detail="Cannot rebuild: original tool_kind or payload missing.")
+
+    rebuild_metadata = dict(metadata)
+    rebuild_metadata["rebuilt_from"] = run_id
+    rebuild_metadata.pop("worker", None)
+    rebuild_metadata.pop("worker_status", None)
+
+    request = ToolRunCreateRequest(
+        tool_kind=tool_kind,
+        payload=dict(tool_payload),
+        testline=_normalize_optional_text(record.get("testline")),
+        build=_normalize_optional_text(record.get("build")),
+        metadata=rebuild_metadata,
+    )
+    response = tool_run_create(request)
+    return RunRebuildResponse(
+        original_run_id=run_id,
+        new_run_id=response.run_id,
+        tool_kind=tool_kind,
+        status=response.status,
+        message=f"Rebuilt from {run_id}.",
+    )
+
+
+def update_run_progress(run_id: str, request: ProgressUpdateRequest) -> ProgressUpdateResponse:
+    existing = _get_required_record(run_id)
+    now = datetime.now(ZoneInfo("Asia/Shanghai")).isoformat()
+
+    metadata = dict(existing.get("metadata") or {})
+    events: list[dict[str, Any]] = list(metadata.get("progress_events") or [])
+    for event in request.events:
+        events.append(event.model_dump(mode="json"))
+    metadata["progress_events"] = events
+
+    update_run_record(
+        run_id,
+        {
+            "run_metadata_json": metadata,
+            "updated_at": now,
+        },
+    )
+    return ProgressUpdateResponse(run_id=run_id, event_count=len(events))
+
+
+def get_run_progress(run_id: str) -> RunProgressResponse:
+    record = _get_required_record(run_id)
+    metadata = record.get("metadata") or {}
+    raw_events = metadata.get("progress_events") or []
+    events = [ProgressEvent(**e) for e in raw_events if isinstance(e, dict)]
+    return RunProgressResponse(
+        run_id=run_id,
+        status=record.get("status", ""),
+        events=events,
     )

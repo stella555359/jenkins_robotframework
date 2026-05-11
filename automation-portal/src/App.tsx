@@ -16,12 +16,8 @@ export default function App() {
 
         <div className="sidebar-section">
           <div className="sidebar-section-label">KPI Tools</div>
-          <span className="disabled-link">
-            KPI Generator <span className="coming-soon-tag">Soon</span>
-          </span>
-          <span className="disabled-link">
-            KPI Anomaly Detector <span className="coming-soon-tag">Soon</span>
-          </span>
+          <NavLink to="/kpi/generator">KPI Generator</NavLink>
+          <NavLink to="/kpi/detector">KPI Anomaly Detector</NavLink>
         </div>
 
         <div className="sidebar-section">

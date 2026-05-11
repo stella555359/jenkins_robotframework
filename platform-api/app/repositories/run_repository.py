@@ -221,3 +221,16 @@ def update_run_record(run_id: str, updates: dict[str, Any]) -> dict[str, Any] | 
         connection.commit()
 
     return get_run_record_by_id(run_id)
+
+
+def delete_run_record(run_id: str) -> bool:
+    initialize_run_repository()
+
+    with sqlite3.connect(settings.runs_db_path) as connection:
+        cursor = connection.execute(
+            "DELETE FROM runs WHERE run_id = ?",
+            (run_id,),
+        )
+        connection.commit()
+
+    return cursor.rowcount > 0

@@ -10,6 +10,7 @@ from .core import (
     KpiGeneratorResult,
     KpiGeneratorService,
     configure_logging,
+    convert_scout_report_to_compass_format,
 )
 
 SPECIAL_PARAM_KEYS = {
@@ -19,6 +20,7 @@ SPECIAL_PARAM_KEYS = {
     "verbose",
     "compass_username",
     "compass_password",
+    "mode",
 }
 
 
@@ -40,6 +42,65 @@ def _clean_payload(payload: dict[str, Any]) -> dict[str, Any]:
 
 def run_generator_from_payload(
     *,
+    payload: dict[str, Any],
+    item_id: str | None = None,
+) -> dict[str, Any]:
+    mode = str(payload.get("mode") or "compass").strip().lower()
+    if mode == "scout":
+        return _run_scout_conversion(payload, item_id)
+    return _run_compass_generation(payload, item_id)
+
+
+def _run_scout_conversion(
+    payload: dict[str, Any],
+    item_id: str | None = None,
+) -> dict[str, Any]:
+    scout_report_path = Path(str(payload.get("scout_report_path") or "").strip())
+    dist_name_filter = str(payload.get("dist_name_filter") or "").strip()
+    build = str(payload.get("build") or "").strip()
+    environment = str(payload.get("environment") or "").strip()
+    scenario = str(payload.get("scenario") or "").strip()
+    verbose = bool(payload.get("verbose", False))
+
+    output_dir = Path(
+        str(payload.get("output_dir") or (Path.cwd() / "kpi-artifacts" / "kpi_generator" / (item_id or "scout")))
+    )
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path_str = payload.get("output_path")
+    output_path = Path(str(output_path_str)) if output_path_str else output_dir / f"{scout_report_path.stem}_compass.xlsx"
+
+    result = convert_scout_report_to_compass_format(
+        scout_report_path=scout_report_path,
+        dist_name_filter=dist_name_filter,
+        environment=environment,
+        build=build,
+        scenario=scenario,
+        output_path=output_path,
+        verbose=verbose,
+    )
+
+    result_dict = result.to_jsonable()
+    report_path = result_dict.get("output_path") or str(output_path)
+
+    artifacts = [
+        item
+        for item in (_artifact("generator_report", "Scout Converted Report", report_path),)
+        if item is not None
+    ]
+
+    return {
+        "summary": {
+            "implementation_mode": "scout_conversion",
+            "output_dir": str(output_dir),
+            "report_file_path": report_path,
+            "final_filename": Path(report_path).name if report_path else "",
+        },
+        "artifacts": artifacts,
+        "generator_result": result_dict,
+    }
+
+
+def _run_compass_generation(
     payload: dict[str, Any],
     item_id: str | None = None,
 ) -> dict[str, Any]:

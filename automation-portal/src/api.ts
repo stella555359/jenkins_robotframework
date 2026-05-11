@@ -1,4 +1,5 @@
 export type ExecutorType = "robot" | "python_orchestrator" | "internal_tool";
+export type ToolKind = "kpi_generator" | "kpi_detector";
 
 export type ArtifactDescriptor = {
   kind: string;
@@ -68,6 +69,55 @@ export type RunTriggerResponse = {
   message: string;
   scheduler: string;
   dispatch: Record<string, unknown>;
+};
+
+export type ToolRunCreatePayload = {
+  tool_kind: ToolKind;
+  payload: Record<string, unknown>;
+  testline?: string;
+  build?: string;
+  metadata?: Record<string, unknown>;
+};
+
+export type ToolRunCreateResponse = {
+  run_id: string;
+  executor_type: ExecutorType;
+  tool_kind: ToolKind;
+  status: string;
+  message: string;
+  handoff: {
+    run_id: string;
+    tool_kind: ToolKind;
+    detail_url: string;
+    callback_url: string;
+  };
+};
+
+export type ProgressEvent = {
+  stage: string;
+  message: string;
+  timestamp: string;
+  extra?: Record<string, unknown>;
+};
+
+export type RunProgressResponse = {
+  run_id: string;
+  status: string;
+  events: ProgressEvent[];
+};
+
+export type RunDeleteResponse = {
+  run_id: string;
+  deleted: boolean;
+  message: string;
+};
+
+export type RunRebuildResponse = {
+  original_run_id: string;
+  new_run_id: string;
+  tool_kind: ToolKind;
+  status: string;
+  message: string;
 };
 
 const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/$/, "");
@@ -147,5 +197,33 @@ export const api = {
   },
   getKpi(runId: string) {
     return requestJson<RunKpi>(`/runs/${encodeURIComponent(runId)}/kpi`);
-  }
+  },
+  createToolRun(payload: ToolRunCreatePayload) {
+    return requestJson<ToolRunCreateResponse>("/kpi/tool-runs", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  },
+  listToolRuns(params?: { tool_kind?: string; status?: string; testline?: string; scenario?: string }) {
+    const query = new URLSearchParams();
+    if (params?.tool_kind) query.set("tool_kind", params.tool_kind);
+    if (params?.status) query.set("status", params.status);
+    if (params?.testline) query.set("testline", params.testline);
+    if (params?.scenario) query.set("scenario", params.scenario);
+    const qs = query.toString();
+    return requestJson<{ items: RunListItem[] }>(`/kpi/tool-runs${qs ? `?${qs}` : ""}`);
+  },
+  getRunProgress(runId: string) {
+    return requestJson<RunProgressResponse>(`/runs/${encodeURIComponent(runId)}/progress`);
+  },
+  deleteRun(runId: string) {
+    return requestJson<RunDeleteResponse>(`/runs/${encodeURIComponent(runId)}`, {
+      method: "DELETE",
+    });
+  },
+  rebuildRun(runId: string) {
+    return requestJson<RunRebuildResponse>(`/runs/${encodeURIComponent(runId)}/rebuild`, {
+      method: "POST",
+    });
+  },
 };

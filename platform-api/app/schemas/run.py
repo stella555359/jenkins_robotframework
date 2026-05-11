@@ -206,3 +206,41 @@ class RunStageUpdateResponse(BaseModel):
     stage_status: str
     updated_at: str
 
+
+class RunDeleteResponse(BaseModel):
+    run_id: str
+    deleted: bool
+    message: str
+
+
+class RunRebuildResponse(BaseModel):
+    original_run_id: str
+    new_run_id: str
+    tool_kind: ToolKind
+    status: str
+    message: str
+
+
+class ProgressEvent(BaseModel):
+    stage: str
+    message: str
+    timestamp: str
+    extra: dict[str, Any] = Field(default_factory=dict)
+
+
+class ProgressUpdateRequest(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    events: list[ProgressEvent] = Field(default_factory=list)
+
+
+class ProgressUpdateResponse(BaseModel):
+    run_id: str
+    event_count: int
+
+
+class RunProgressResponse(BaseModel):
+    run_id: str
+    status: str
+    events: list[ProgressEvent] = Field(default_factory=list)
+

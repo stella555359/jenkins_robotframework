@@ -58,6 +58,37 @@ def test_materialize_robot_request_promotes_metadata_and_sources(tmp_path: Path)
     assert request_payload["callback"]["path"] == "/api/runs/run-20260429120000000/callbacks/jenkins"
 
 
+def test_materialize_fetch_json_can_disable_tls_verification(monkeypatch) -> None:
+    received: dict[str, object] = {}
+
+    class DummyResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self) -> bytes:
+            return b'{"run_id": "run-1"}'
+
+    def fake_urlopen(url: str, timeout: int = 30, context=None):
+        received["url"] = url
+        received["timeout"] = timeout
+        received["context"] = context
+        return DummyResponse()
+
+    monkeypatch.setattr(materialize_module.urllib_request, "urlopen", fake_urlopen)
+
+    payload = materialize_module._fetch_json(
+        "https://10.71.210.104/api/runs/run-1",
+        verify_tls=False,
+    )
+
+    assert payload["run_id"] == "run-1"
+    assert received["url"] == "https://10.71.210.104/api/runs/run-1"
+    assert received["context"] is not None
+
+
 def test_checkout_plan_builds_clone_commands_when_repo_urls_exist(tmp_path: Path) -> None:
     plan = checkout_module.build_checkout_plan(
         {

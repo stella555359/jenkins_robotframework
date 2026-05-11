@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import ssl
 from typing import Any, Sequence
 from urllib import request as urllib_request
 
@@ -25,8 +26,9 @@ def _load_json_file(path: Path | None) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def _fetch_json(url: str, timeout_seconds: int = 30) -> dict[str, Any]:
-    with urllib_request.urlopen(url, timeout=timeout_seconds) as response:
+def _fetch_json(url: str, timeout_seconds: int = 30, verify_tls: bool = True) -> dict[str, Any]:
+    ssl_context = None if verify_tls else ssl._create_unverified_context()
+    with urllib_request.urlopen(url, timeout=timeout_seconds, context=ssl_context) as response:
         return json.loads(response.read().decode("utf-8"))
 
 
@@ -179,6 +181,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--input-json", type=Path, default=None, help="Optional JSON file containing a platform-api run detail or ad-hoc robot request.")
     parser.add_argument("--run-id", type=str, default=None, help="Optional run id fetched from platform-api when input-json is omitted.")
     parser.add_argument("--platform-api-base-url", type=str, default=None, help="Base URL used to fetch run detail and later callbacks.")
+    parser.add_argument("--insecure-skip-tls-verify", action="store_true", help="Skip TLS certificate verification when fetching run detail from platform-api. Useful for self-signed HTTPS deployments.")
     parser.add_argument("--workspace-root", type=Path, default=None, help="Optional workspace root used to resolve relative internal paths.")
     parser.add_argument("--python-env-template", type=str, default="/home/ute/CIENV/{testline}", help="Default template for python_env_root when not provided.")
     parser.add_argument("--output-json", type=Path, required=True, help="Path to write the materialized internal request.")
@@ -193,7 +196,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         if not args.run_id or not args.platform_api_base_url:
             raise SystemExit("Either --input-json or both --run-id and --platform-api-base-url are required.")
         base_url = args.platform_api_base_url.rstrip("/")
-        payload = _fetch_json(f"{base_url}/api/runs/{args.run_id}")
+        payload = _fetch_json(
+            f"{base_url}/api/runs/{args.run_id}",
+            verify_tls=not args.insecure_skip_tls_verify,
+        )
 
     request_payload = materialize_robot_request(
         payload,

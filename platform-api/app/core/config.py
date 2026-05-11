@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     jenkins_api_token: str = ""
     jenkins_trigger_token: str = ""
     jenkins_timeout_seconds: int = 30
+    jenkins_insecure_tls: bool = False
+    jenkins_callback_insecure_tls: bool = True
 
     model_config = SettingsConfigDict(
         env_file=".env",

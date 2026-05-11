@@ -1413,6 +1413,19 @@ PLATFORM_API_BASE_URL=https://10.71.210.104
 CALLBACK_INSECURE_TLS=true
 ```
 
+检查 `platform-api` 到 Jenkins 的触发配置：
+
+```text
+JENKINS_BASE_URL=http://127.0.0.1:8080/jenkins
+JENKINS_INSECURE_TLS=false
+```
+
+如果你把 `JENKINS_BASE_URL` 配成了外部 `https://10.71.210.104/jenkins`，且当前还是自签名证书，就需要额外设置：
+
+```text
+JENKINS_INSECURE_TLS=true
+```
+
 检查 callback URL 是否可从 Jenkins Master/Agent 访问：
 
 ```bash

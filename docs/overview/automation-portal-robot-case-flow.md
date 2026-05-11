@@ -518,6 +518,8 @@ JENKINS_BASE_URL=http://127.0.0.1:8080/jenkins
 JENKINS_ROBOT_JOB_PATH=job/robot/job/robot-execution
 JENKINS_USERNAME=<jenkins-user>
 JENKINS_API_TOKEN=<jenkins-api-token>
+JENKINS_INSECURE_TLS=false
+JENKINS_CALLBACK_INSECURE_TLS=true
 PUBLIC_BASE_URL=https://10.71.210.104
 ```
 
@@ -528,6 +530,8 @@ PUBLIC_BASE_URL=https://10.71.210.104
 | `JENKINS_BASE_URL` | platform-api 触发 Jenkins 的内部地址。 |
 | `JENKINS_ROBOT_JOB_PATH` | 要触发的 Jenkins job 路径。当前目标是 `robot/robot-execution`。 |
 | `JENKINS_USERNAME` / `JENKINS_API_TOKEN` | Jenkins buildWithParameters 鉴权。 |
+| `JENKINS_INSECURE_TLS` | `platform-api` 触发 Jenkins 时是否跳过 TLS 证书校验。只有 `JENKINS_BASE_URL` 指向自签名 HTTPS Jenkins 时才需要设成 `true`。 |
+| `JENKINS_CALLBACK_INSECURE_TLS` | `platform-api` 触发 Jenkins 时默认透传给 job 的 `CALLBACK_INSECURE_TLS`。当前自签名 HTTPS 部署建议保持 `true`。 |
 | `PUBLIC_BASE_URL` | 传给 Jenkins，供 callback 回写 `https://10.71.210.104/api/runs/{run_id}/callbacks/jenkins`。 |
 
 ### 6.2 Jenkins job 参数
@@ -661,7 +665,7 @@ GET /api/runs/{run_id}/kpi
 | 现象 | 常见原因 | 排查方向 |
 |---|---|---|
 | Portal 创建失败 | `Robot variables JSON` 不是 object，或必填项为空 | 浏览器错误提示、platform-api 日志 |
-| 创建成功但 trigger 失败 | Jenkins token、job path、crumb/权限、Jenkins URL 错误 | `journalctl -u platform-api -f` |
+| 创建成功但 trigger 失败，`platform-api` 日志里是 `CERTIFICATE_VERIFY_FAILED` | `platform-api` 用 `JENKINS_BASE_URL=https://...` 访问了自签名 Jenkins，但 `JENKINS_INSECURE_TLS` 没打开 | `journalctl -u platform-api -f`，以及 `/opt/jenkins_robotframework/platform-api/.env` |
 | Jenkins 一直排队 | 没有在线 Agent，或 label / executor 不匹配 | Jenkins Queue、Nodes 页面 |
 | Jenkins checkout 失败 | repo URL 或 credentials 未配置 | Console Output、Jenkins global env / credentials |
 | `create-venv` 安装 lock 文件时报 `No matching distribution found` | Jenkins 没配置内部 `PIP_INDEX_URL` / `PIP_EXTRA_INDEX_URL`，或配置仍指向外部公共源 | Jenkins 全局环境、job 参数 `PIP_*_OVERRIDE`、pip 日志里的 `Looking in indexes` |
@@ -673,4 +677,5 @@ GET /api/runs/{run_id}/kpi
 | Missing activate script | `/home/ute/CIENV/<TESTLINE>/bin/activate` 不存在 | Agent 文件系统、`PYTHON_ENV_ROOT` |
 | Robot case path not found | `ROBOTCASE_PATH` 不在 workspace 或 robotws 下 | Jenkins artifacts 中 `robot-request.json`、`robot-command.json` |
 | Portal 页面创建后 run 一直不回写最终状态，`callback-send-result.json` 里是 `CERTIFICATE_VERIFY_FAILED` | Jenkins 回调 `https://.../api/runs/{run_id}/callbacks/jenkins` 时校验了自签名证书 | 保持 `CALLBACK_INSECURE_TLS=true`，或改用受信任证书 / 内部 CA |
+| Portal 触发后 Jenkins 一开始就在 `materialize_run_request.py --run-id ... --platform-api-base-url https://...` 处报 `CERTIFICATE_VERIFY_FAILED` | Jenkins 在第一阶段通过 `https://.../api/runs/{run_id}` 拉 run 详情时校验了自签名证书 | 保持 `CALLBACK_INSECURE_TLS=true`，这样 Jenkins 会同时对 run-detail 拉取和 callback 回写都跳过 TLS 校验 |
 | Portal 不更新最终状态 | Jenkins callback 到 `PLATFORM_API_BASE_URL` 失败 | Jenkins Console Output、`callback-fallback.json` |

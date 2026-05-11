@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import json
+import ssl
 from typing import Any
 from urllib import error as urllib_error
 from urllib import parse, request
@@ -53,9 +54,10 @@ def trigger_jenkins_job(*, parameters: dict[str, Any]) -> dict[str, Any]:
         **_auth_header(),
     }
     http_request = request.Request(url, data=body, headers=headers, method="POST")
+    ssl_context = None if not settings.jenkins_insecure_tls else ssl._create_unverified_context()
 
     try:
-        with request.urlopen(http_request, timeout=settings.jenkins_timeout_seconds) as response:
+        with request.urlopen(http_request, timeout=settings.jenkins_timeout_seconds, context=ssl_context) as response:
             safe_params = dict(request_params)
             safe_params.pop("token", None)
             return {
@@ -106,5 +108,10 @@ def build_robot_jenkins_parameters(record: dict[str, Any]) -> dict[str, Any]:
         "ARTIFACT_LABEL": metadata.get("artifact_label") or "quicktest",
         "RETRY_INDEX": metadata.get("retry_index") or "0",
         "ROBOT_LOG_LEVEL": metadata.get("log_level") or "TRACE",
+        "CALLBACK_INSECURE_TLS": str(
+            metadata.get("callback_insecure_tls")
+            if metadata.get("callback_insecure_tls") is not None
+            else settings.jenkins_callback_insecure_tls
+        ).lower(),
     }
     return params

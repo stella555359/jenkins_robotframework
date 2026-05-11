@@ -90,6 +90,7 @@ def test_trigger_robot_run_dispatches_to_jenkins(client, fetch_run_record, monke
     assert '"AF_PATH": "/tmp/af"' in captured["ROBOT_VARIABLES_JSON"]
     assert '"BUILD": "SBTS26R3.ENB.9999"' in captured["ROBOT_VARIABLES_JSON"]
     assert captured["TAF_MODE"] == "create-venv"
+    assert captured["CALLBACK_INSECURE_TLS"] == "true"
     assert captured["ROBOTWS_GIT_REF"] == "feature/robot"
 
     row = fetch_run_record(run_id)

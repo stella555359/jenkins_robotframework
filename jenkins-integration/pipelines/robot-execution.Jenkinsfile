@@ -111,13 +111,17 @@ PY
                 }
                 script {
                     if (!params.RUN_REQUEST_JSON?.trim() && params.RUN_ID?.trim() && params.PLATFORM_API_BASE_URL?.trim()) {
-                        sh '''
-                            python3 jenkins-integration/scripts/materialize_run_request.py \
-                              --run-id "$RUN_ID" \
-                              --platform-api-base-url "$PLATFORM_API_BASE_URL" \
-                              --workspace-root "$WORKSPACE" \
-                              --output-json "$WORKSPACE/$ROBOT_REQUEST_PATH"
-                        '''
+                        def materializeArgs = [
+                            'python3 jenkins-integration/scripts/materialize_run_request.py',
+                            '  --run-id "$RUN_ID"',
+                            '  --platform-api-base-url "$PLATFORM_API_BASE_URL"',
+                            '  --workspace-root "$WORKSPACE"',
+                            '  --output-json "$WORKSPACE/$ROBOT_REQUEST_PATH"',
+                        ]
+                        if (params.CALLBACK_INSECURE_TLS) {
+                            materializeArgs.add('  --insecure-skip-tls-verify')
+                        }
+                        sh materializeArgs.join(' \\\n')
                     } else {
                         sh '''
                             python3 jenkins-integration/scripts/materialize_run_request.py \

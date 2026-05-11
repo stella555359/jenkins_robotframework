@@ -48,6 +48,9 @@ Manage Jenkins -> System -> Global properties -> Environment variables
 | `TESTLINE_CONFIGURATION_REPO_URL` | `testline_configuration` 源码仓库地址 | `git@your-git-host:team/testline_configuration.git` 或对应 HTTPS 地址 |
 | `ROBOTWS_CREDENTIALS_ID` | checkout `robotws` 时默认使用的 Jenkins credentials ID | `robotws-ssh` |
 | `TESTLINE_CONFIGURATION_CREDENTIALS_ID` | checkout `testline_configuration` 时默认使用的 Jenkins credentials ID | `testline-config-ssh` |
+| `PIP_INDEX_URL` | `create-venv` 安装 TAF 依赖时使用的主 pip index | 内部 Artifactory PyPI URL |
+| `PIP_EXTRA_INDEX_URL` | `create-venv` 安装 TAF 依赖时使用的额外 pip index | 第二内部 Artifactory PyPI URL |
+| `PIP_TRUSTED_HOST` | `create-venv` 安装 TAF 依赖时的 pip trusted-host | 空格分隔的 Artifactory host 列表 |
 
 当前环境如果采用 SSH 方式，推荐直接填成：
 
@@ -56,6 +59,9 @@ ROBOTWS_REPO_URL=git@wrgitlab.ext.net.nokia.com:RAN/robotws.git
 TESTLINE_CONFIGURATION_REPO_URL=git@wrgitlab.ext.net.nokia.com:RAN/configuration-management/testline_configuration.git
 ROBOTWS_CREDENTIALS_ID=robotws-ssh
 TESTLINE_CONFIGURATION_CREDENTIALS_ID=testline-config-ssh
+PIP_INDEX_URL=https://<user>:<token>@artifactory-hz1.ext.net.nokia.com/artifactory/api/pypi/ute-pypi-virtual/simple
+PIP_EXTRA_INDEX_URL=https://<user>:<token>@artifactory-espoo2.int.net.nokia.com/artifactory/api/pypi/ute-pypi-virtual/simple
+PIP_TRUSTED_HOST=artifactory-hz1.ext.net.nokia.com artifactory-espoo2.int.net.nokia.com
 ```
 
 如果你使用的是 JCasC，这几个值也可以通过 [jenkins-integration/jcasc/jenkins.yaml](c:/TA/jenkins_robotframework/jenkins-integration/jcasc/jenkins.yaml) 注入。
@@ -215,6 +221,51 @@ git ls-remote git@wrgitlab.ext.net.nokia.com:RAN/configuration-management/testli
 1. 仓库支持 HTTPS 匿名拉取时，只配置 `ROBOTWS_REPO_URL` 和 `TESTLINE_CONFIGURATION_REPO_URL` 即可。
 2. 这时不要在 Jenkins 全局环境里设置 `ROBOTWS_CREDENTIALS_ID` 和 `TESTLINE_CONFIGURATION_CREDENTIALS_ID`。
 3. 这样 Pipeline 会直接执行 `git clone`，不会进入 `sshagent { ... }` 这一分支，也就不依赖 `SSH Agent` 插件。
+
+### 2.2.5 `create-venv` 的内部 PyPI / Artifactory 配置
+
+如果你要让 Jenkins 在 `TAF mode=create-venv` 下自动安装 `robotws/dependencies.py<major><minor>-rf50.lock`，不要再依赖 Agent 宿主机已有的 `pip.conf`。当前实现改成了在 `create-venv` 自动安装分支里显式执行等价于下面这种命令：
+
+```bash
+python -m pip install -r /automation/workspace/workspace/robot/robot-execution/robotws/dependencies.py311-rf50.lock \
+  --no-deps \
+  -i https://artifactory-espoo2.int.net.nokia.com/artifactory/api/pypi/ute-pypi-virtual/simple \
+  --proxy http://10.158.100.9:8080 \
+  --trusted-host artifactory-espoo2.int.net.nokia.com
+```
+
+其中可配置部分仍然来自 Jenkins 环境变量：
+
+```text
+PIP_INDEX_URL
+PIP_EXTRA_INDEX_URL
+PIP_TRUSTED_HOST
+```
+
+推荐做法：
+
+1. 在 Jenkins `Manage Jenkins -> System -> Global properties -> Environment variables` 配这三个值。
+2. 如果某次构建想临时覆盖，也可以在 job 参数里填：
+
+```text
+PIP_INDEX_URL_OVERRIDE
+PIP_EXTRA_INDEX_URL_OVERRIDE
+PIP_TRUSTED_HOST_OVERRIDE
+```
+
+优先级：
+
+```text
+PIP_INDEX_URL_OVERRIDE > Jenkins 全局环境 PIP_INDEX_URL > PIP_EXTRA_INDEX_URL_OVERRIDE > Jenkins 全局环境 PIP_EXTRA_INDEX_URL
+```
+
+补充说明：
+
+1. `create-venv` 自动安装 `robotws` lock 文件时会带 `--no-deps`。
+2. 当前脚本只会选择一个生效的内部 index URL，优先主 index，主 index 为空时再退回 `PIP_EXTRA_INDEX_URL`。
+3. 当前脚本固定使用 `--proxy http://10.158.100.9:8080`。
+4. `PIP_TRUSTED_HOST` 如果配置了多个 host，会被展开成多个 `--trusted-host <host>`。
+5. 如果 `create-venv` 下既没有配置 `PIP_INDEX_URL`，也没有配置 `PIP_EXTRA_INDEX_URL`，当前脚本会直接失败，并提示缺少内部 pip index 配置，而不是再去外网 PyPI 兜底。
 
 ### 2.3 最短手工创建 `robot/robot-execution` job
 
@@ -492,6 +543,9 @@ platform-api 会把 run record 转成 Jenkins 参数。核心映射如下：
 | `ROBOT_SELECTED_TESTS` | Portal `Selected tests` | 每行一个 Robot `-t`。 |
 | `ROBOT_VARIABLES_JSON` | Portal `Robot variables JSON` + `Build` | 转成 Robot `-v KEY:VALUE`。 |
 | `TAF_MODE` | Portal `TAF mode` | 控制 Python/TAF 环境准备方式。 |
+| `PIP_INDEX_URL_OVERRIDE` | Jenkins job 参数覆盖 | `create-venv` 安装依赖时覆盖主 pip index。 |
+| `PIP_EXTRA_INDEX_URL_OVERRIDE` | Jenkins job 参数覆盖 | `create-venv` 安装依赖时作为主 index 为空时的备用 pip index。 |
+| `PIP_TRUSTED_HOST_OVERRIDE` | Jenkins job 参数覆盖 | `create-venv` 安装依赖时覆盖 trusted-host。 |
 | `PLATFORM_API_BASE_URL` | `PUBLIC_BASE_URL` 或 metadata override | Jenkins callback 目标根地址。 |
 | `ROBOTWS_GIT_REF` | metadata override，否则 `master` | checkout `robotws` ref。 |
 | `TESTLINE_CONFIGURATION_GIT_REF` | metadata override，否则 `master` | checkout `testline_configuration` ref。 |
@@ -609,6 +663,7 @@ GET /api/runs/{run_id}/kpi
 | 创建成功但 trigger 失败 | Jenkins token、job path、crumb/权限、Jenkins URL 错误 | `journalctl -u platform-api -f` |
 | Jenkins 一直排队 | 没有在线 Agent，或 label / executor 不匹配 | Jenkins Queue、Nodes 页面 |
 | Jenkins checkout 失败 | repo URL 或 credentials 未配置 | Console Output、Jenkins global env / credentials |
+| `create-venv` 安装 lock 文件时报 `No matching distribution found` | Jenkins 没配置内部 `PIP_INDEX_URL` / `PIP_EXTRA_INDEX_URL`，或配置仍指向外部公共源 | Jenkins 全局环境、job 参数 `PIP_*_OVERRIDE`、pip 日志里的 `Looking in indexes` |
 | `No such DSL method 'sshagent'` | Jenkins 缺少 `SSH Agent` 插件，或当前链路本不需要凭据却配置了 `*_CREDENTIALS_ID` | Jenkins Plugins；或先移除 `ROBOTWS_CREDENTIALS_ID` / `TESTLINE_CONFIGURATION_CREDENTIALS_ID` |
 | `fatal: could not read Username for 'https://...'` | 仍在使用需要鉴权的 HTTPS 仓库地址，但当前 checkout 逻辑没有注入 HTTPS 用户名密码 | 把 repo URL 改成 SSH 地址，或扩展 Pipeline 支持 HTTPS credentials |
 | SSH clone 首次连接 GitLab 失败 | GitLab host key 未接受，或 known_hosts 校验失败 | 在 Agent 上先手工 `ssh -T git@wrgitlab.ext.net.nokia.com` 接受 host key；检查 Jenkins Git host key 策略 |

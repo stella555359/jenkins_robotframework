@@ -20,6 +20,12 @@ jenkins:
             value: "robotws-ssh"
           - key: TESTLINE_CONFIGURATION_CREDENTIALS_ID
             value: "testline-config-ssh"
+          - key: PIP_INDEX_URL
+            value: "${PIP_INDEX_URL}"
+          - key: PIP_EXTRA_INDEX_URL
+            value: "${PIP_EXTRA_INDEX_URL}"
+          - key: PIP_TRUSTED_HOST
+            value: "${PIP_TRUSTED_HOST}"
   nodes:
     - permanent:
         name: "robot-linux-01"

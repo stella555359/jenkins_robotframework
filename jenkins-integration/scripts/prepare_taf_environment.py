@@ -70,12 +70,25 @@ def build_taf_environment_plan(request_payload: dict[str, Any]) -> dict[str, Any
     if will_install:
         shell_lines.extend(
             [
-                'export http_proxy="http://10.144.1.10:8080"',
-                'export https_proxy="http://10.144.1.10:8080"',
-                'export HTTP_PROXY="http://10.144.1.10:8080"',
-                'export HTTPS_PROXY="http://10.144.1.10:8080"',
+                'PIP_INDEX_URL_VALUE="${PIP_INDEX_URL_OVERRIDE:-${PIP_INDEX_URL:-}}"',
+                'PIP_EXTRA_INDEX_URL_VALUE="${PIP_EXTRA_INDEX_URL_OVERRIDE:-${PIP_EXTRA_INDEX_URL:-}}"',
+                'PIP_TRUSTED_HOST_VALUE="${PIP_TRUSTED_HOST_OVERRIDE:-${PIP_TRUSTED_HOST:-}}"',
+                'PIP_INSTALL_INDEX_URL_VALUE="${PIP_INDEX_URL_VALUE:-$PIP_EXTRA_INDEX_URL_VALUE}"',
+                'PIP_PROXY_VALUE="http://10.158.100.9:8080"',
             ]
         )
+        if auto_install_from_robotws:
+            shell_lines.extend(
+                [
+                    'if [ -z "$PIP_INSTALL_INDEX_URL_VALUE" ]; then echo "Missing internal pip index configuration. Set Jenkins global env PIP_INDEX_URL / PIP_EXTRA_INDEX_URL or job params PIP_INDEX_URL_OVERRIDE / PIP_EXTRA_INDEX_URL_OVERRIDE."; exit 1; fi',
+                    'PIP_TRUSTED_HOST_ARGS=()',
+                    'if [ -n "$PIP_TRUSTED_HOST_VALUE" ]; then',
+                    '  for trusted_host in $PIP_TRUSTED_HOST_VALUE; do',
+                    '    PIP_TRUSTED_HOST_ARGS+=(--trusted-host "$trusted_host")',
+                    '  done',
+                    'fi',
+                ]
+            )
         shell_lines.append("python -m pip install --upgrade pip")
         if requirements_file is not None:
             shell_lines.append(f"python -m pip install -r {_quote(requirements_file)}")
@@ -89,7 +102,7 @@ def build_taf_environment_plan(request_payload: dict[str, Any]) -> dict[str, Any
                     "PY",
                     ")",
                     'TAF_LOCK_FILE="$ROBOTWS_ROOT/dependencies.py${PYTHON_MM}-rf50.lock"',
-                    'if [ -f "$TAF_LOCK_FILE" ]; then python -m pip install -r "$TAF_LOCK_FILE"; elif [ -f "$ROBOTWS_ROOT/requirements.cfg" ]; then python -m pip install -r "$ROBOTWS_ROOT/requirements.cfg"; else echo "Missing TAF dependency file under $ROBOTWS_ROOT. Expected $TAF_LOCK_FILE or requirements.cfg"; exit 1; fi',
+                    'if [ -f "$TAF_LOCK_FILE" ]; then python -m pip install -r "$TAF_LOCK_FILE" --no-deps -i "$PIP_INSTALL_INDEX_URL_VALUE" --proxy "$PIP_PROXY_VALUE" "${PIP_TRUSTED_HOST_ARGS[@]}"; elif [ -f "$ROBOTWS_ROOT/requirements.cfg" ]; then python -m pip install -r "$ROBOTWS_ROOT/requirements.cfg" --no-deps -i "$PIP_INSTALL_INDEX_URL_VALUE" --proxy "$PIP_PROXY_VALUE" "${PIP_TRUSTED_HOST_ARGS[@]}"; else echo "Missing TAF dependency file under $ROBOTWS_ROOT. Expected $TAF_LOCK_FILE or requirements.cfg"; exit 1; fi',
                 ]
             )
         for package_spec in package_specs:

@@ -1602,3 +1602,57 @@ sudo systemctl status platform-api --no-pager
 2. 看 `Build with Parameters` 是否已经有 `TAF_MODE` 和 `ROBOTWS_GIT_REF`。
 3. 如果没有，手工保存一次 job 配置，或先跑一次构建让参数刷新。
 4. 再从 Portal 提交一轮 smoke run。
+
+### 18.7 `create-venv` 的内部 Artifactory 配置
+
+如果你启用 `TAF_MODE=create-venv`，并希望 Jenkins 在新建 CIENV 后自动安装 `robotws/dependencies.py<major><minor>-rf50.lock`，现在 `prepare_taf_environment.py` 会在自动安装分支里生成接近下面这种命令：
+
+```bash
+python -m pip install -r /automation/workspace/workspace/robot/robot-execution/robotws/dependencies.py311-rf50.lock \
+  --no-deps \
+  -i https://artifactory-espoo2.int.net.nokia.com/artifactory/api/pypi/ute-pypi-virtual/simple \
+  --proxy http://10.158.100.9:8080 \
+  --trusted-host artifactory-espoo2.int.net.nokia.com
+```
+
+不要再依赖 Agent 宿主机的 `pip.conf`。当前推荐直接在 Jenkins 配下面这几个环境变量：
+
+```text
+PIP_INDEX_URL
+PIP_EXTRA_INDEX_URL
+PIP_TRUSTED_HOST
+```
+
+示例：
+
+```text
+PIP_INDEX_URL=https://<user>:<token>@artifactory-hz1.ext.net.nokia.com/artifactory/api/pypi/ute-pypi-virtual/simple
+PIP_EXTRA_INDEX_URL=https://<user>:<token>@artifactory-espoo2.int.net.nokia.com/artifactory/api/pypi/ute-pypi-virtual/simple
+PIP_TRUSTED_HOST=artifactory-hz1.ext.net.nokia.com artifactory-espoo2.int.net.nokia.com
+```
+
+如果你不想配成全局环境，也可以在 `robot/robot-execution` 的 `Build with Parameters` 里临时填写：
+
+```text
+PIP_INDEX_URL_OVERRIDE
+PIP_EXTRA_INDEX_URL_OVERRIDE
+PIP_TRUSTED_HOST_OVERRIDE
+```
+
+生效顺序是：
+
+```text
+PIP_INDEX_URL_OVERRIDE > PIP_INDEX_URL > PIP_EXTRA_INDEX_URL_OVERRIDE > PIP_EXTRA_INDEX_URL
+```
+
+另外注意：
+
+1. lock 文件安装会带 `--no-deps`。
+2. 当前脚本固定使用 `--proxy http://10.158.100.9:8080`。
+3. `PIP_TRUSTED_HOST` 如果配多个 host，会展开成多个 `--trusted-host`。
+
+推荐优先用 Jenkins 全局环境，原因是：
+
+1. 不需要每次手工填。
+2. 不需要把内部 Artifactory 地址和凭据暴露给 Portal。
+3. `prepare_taf_environment.py` 会优先使用 `*_OVERRIDE`，否则回退到 Jenkins 全局环境 `PIP_*`。

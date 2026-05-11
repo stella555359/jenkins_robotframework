@@ -117,11 +117,15 @@ def test_prepare_taf_environment_plan_auto_installs_from_robotws_when_create_ven
     assert plan["auto_install_from_robotws"] is True
     assert "ROBOTWS_ROOT=" in plan["shell_script_text"]
     assert "robot-execution" in plan["shell_script_text"]
-    assert 'export http_proxy="http://10.144.1.10:8080"' in plan["shell_script_text"]
-    assert 'export HTTPS_PROXY="http://10.144.1.10:8080"' in plan["shell_script_text"]
+    assert 'PIP_INDEX_URL_VALUE="${PIP_INDEX_URL_OVERRIDE:-${PIP_INDEX_URL:-}}"' in plan["shell_script_text"]
+    assert 'PIP_EXTRA_INDEX_URL_VALUE="${PIP_EXTRA_INDEX_URL_OVERRIDE:-${PIP_EXTRA_INDEX_URL:-}}"' in plan["shell_script_text"]
+    assert 'PIP_INSTALL_INDEX_URL_VALUE="${PIP_INDEX_URL_VALUE:-$PIP_EXTRA_INDEX_URL_VALUE}"' in plan["shell_script_text"]
+    assert 'PIP_PROXY_VALUE="http://10.158.100.9:8080"' in plan["shell_script_text"]
+    assert 'PIP_TRUSTED_HOST_ARGS=()' in plan["shell_script_text"]
+    assert 'Missing internal pip index configuration.' in plan["shell_script_text"]
     assert 'TAF_LOCK_FILE="$ROBOTWS_ROOT/dependencies.py${PYTHON_MM}-rf50.lock"' in plan["shell_script_text"]
-    assert 'python -m pip install -r "$TAF_LOCK_FILE"' in plan["shell_script_text"]
-    assert 'python -m pip install -r "$ROBOTWS_ROOT/requirements.cfg"' in plan["shell_script_text"]
+    assert 'python -m pip install -r "$TAF_LOCK_FILE" --no-deps -i "$PIP_INSTALL_INDEX_URL_VALUE" --proxy "$PIP_PROXY_VALUE" "${PIP_TRUSTED_HOST_ARGS[@]}"' in plan["shell_script_text"]
+    assert 'python -m pip install -r "$ROBOTWS_ROOT/requirements.cfg" --no-deps -i "$PIP_INSTALL_INDEX_URL_VALUE" --proxy "$PIP_PROXY_VALUE" "${PIP_TRUSTED_HOST_ARGS[@]}"' in plan["shell_script_text"]
 
 
 def test_post_run_callback_collects_artifacts_and_builds_payload(tmp_path: Path) -> None:

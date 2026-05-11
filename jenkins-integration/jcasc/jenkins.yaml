@@ -1,4 +1,5 @@
-# Draft JCasC example for the robot execution path.
+# Jenkins Configuration as Code for the robot execution path.
+# Non-secret global defaults live here so Jenkins UI global variables do not need to be created by hand.
 # Real secrets should come from the controller environment or an external secret source.
 # This example uses a static inbound agent because the YAML shape is stable across environments.
 # If the real controller uses SSH agents or a cloud plugin, export that launcher block from Jenkins and replace it here.
@@ -13,13 +14,14 @@ jenkins:
     - envVars:
         env:
           - key: ROBOTWS_REPO_URL
-            value: "${ROBOTWS_REPO_URL}"
+            value: "git@wrgitlab.ext.net.nokia.com:RAN/robotws.git"
           - key: TESTLINE_CONFIGURATION_REPO_URL
-            value: "${TESTLINE_CONFIGURATION_REPO_URL}"
+            value: "git@wrgitlab.ext.net.nokia.com:RAN/configuration-management/testline_configuration.git"
           - key: ROBOTWS_CREDENTIALS_ID
             value: "robotws-ssh"
           - key: TESTLINE_CONFIGURATION_CREDENTIALS_ID
             value: "testline-config-ssh"
+          # Keep pip values as controller environment variables because internal PyPI URLs can contain credentials/tokens.
           - key: PIP_INDEX_URL
             value: "${PIP_INDEX_URL}"
           - key: PIP_EXTRA_INDEX_URL

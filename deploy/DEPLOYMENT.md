@@ -604,13 +604,18 @@ Description: SSH key for t813-agent
 
 ### 8.1 全局环境与凭据
 
-`jenkins-integration/jcasc/jenkins.yaml` 中定义了建议的全局环境：
+当前推荐使用 JCasC 管理 Jenkins 全局环境变量，不再到 Jenkins UI 里手工维护。
+
+`jenkins-integration/jcasc/jenkins.yaml` 中定义了 Robot 主线需要的全局环境：
 
 ```text
-ROBOTWS_REPO_URL
-TESTLINE_CONFIGURATION_REPO_URL
+ROBOTWS_REPO_URL=git@wrgitlab.ext.net.nokia.com:RAN/robotws.git
+TESTLINE_CONFIGURATION_REPO_URL=git@wrgitlab.ext.net.nokia.com:RAN/configuration-management/testline_configuration.git
 ROBOTWS_CREDENTIALS_ID=robotws-ssh
 TESTLINE_CONFIGURATION_CREDENTIALS_ID=testline-config-ssh
+PIP_INDEX_URL=${PIP_INDEX_URL}
+PIP_EXTRA_INDEX_URL=${PIP_EXTRA_INDEX_URL}
+PIP_TRUSTED_HOST=${PIP_TRUSTED_HOST}
 ```
 
 对应 Credentials：
@@ -620,7 +625,81 @@ robotws-ssh
 testline-config-ssh
 ```
 
-如果不使用 JCasC，也可以在 Jenkins 页面手工配置：
+`PIP_*` 和 SSH private key 属于敏感或环境私有值，不直接写入 `jenkins.yaml`，需要通过 Jenkins controller 的环境变量提供。参考文件：
+
+```text
+deploy/env/jenkins-jcasc.env.example
+```
+
+服务器上可以创建真实文件，例如：
+
+```text
+/etc/default/jenkins-jcasc
+```
+
+内容按实际环境填写：
+
+```bash
+JENKINS_URL=https://10.71.210.104/jenkins/
+JENKINS_ADMIN_EMAIL=admin@example.com
+
+ROBOTWS_GIT_SSH_USER=git
+ROBOTWS_GIT_SSH_PRIVATE_KEY="-----BEGIN OPENSSH PRIVATE KEY-----
+...
+-----END OPENSSH PRIVATE KEY-----"
+
+TESTLINE_CONFIGURATION_GIT_SSH_USER=git
+TESTLINE_CONFIGURATION_GIT_SSH_PRIVATE_KEY="-----BEGIN OPENSSH PRIVATE KEY-----
+...
+-----END OPENSSH PRIVATE KEY-----"
+
+PIP_INDEX_URL=https://<user>:<token>@artifactory-hz1.ext.net.nokia.com/artifactory/api/pypi/ute-pypi-virtual/simple
+PIP_EXTRA_INDEX_URL=https://<user>:<token>@artifactory-espoo2.int.net.nokia.com/artifactory/api/pypi/ute-pypi-virtual/simple
+PIP_TRUSTED_HOST=artifactory-hz1.ext.net.nokia.com artifactory-espoo2.int.net.nokia.com
+```
+
+把 JCasC 配置和 env 文件接入 Jenkins systemd override：
+
+```bash
+sudo systemctl edit jenkins
+```
+
+写入或合并：
+
+```ini
+[Service]
+Environment="CASC_JENKINS_CONFIG=/opt/jenkins_robotframework/jenkins-integration/jcasc/jenkins.yaml"
+EnvironmentFile=-/etc/default/jenkins-jcasc
+```
+
+应用：
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart jenkins
+```
+
+如果 Jenkins 已安装 Configuration as Code 插件，也可以在页面执行 reload：
+
+```text
+Manage Jenkins -> Configuration as Code -> Reload existing configuration
+```
+
+验证 Jenkins 全局变量是否由 JCasC 注入：
+
+```text
+Manage Jenkins -> System -> Global properties -> Environment variables
+```
+
+也可以跑一次 `robot/robot-execution`，查看 checkout 阶段生成的：
+
+```text
+artifacts/source-checkout.json
+```
+
+其中 `robotws` 和 `testline_configuration` 的 `repo_url` 不应再是 `null`。
+
+如果暂时不使用 JCasC，才需要在 Jenkins 页面手工配置：
 
 ```text
 Manage Jenkins -> System -> Global properties -> Environment variables

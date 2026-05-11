@@ -519,7 +519,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             max_workers=args.max_workers,
             timeout_seconds=args.timeout_seconds,
         )
-        print(json.dumps({"processed_count": processed_count, "output_root": str(output_root)}, ensure_ascii=False))
+        if processed_count > 0:
+            print(json.dumps({"processed_count": processed_count, "output_root": str(output_root)}, ensure_ascii=False))
         if args.once:
             return 0
         time.sleep(args.poll_interval_seconds)

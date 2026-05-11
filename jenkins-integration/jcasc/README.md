@@ -23,8 +23,50 @@
 	- 一份围绕 `robot` 执行链的 JCasC 示例
 	- 包含 controller 基础项，例如 system message、controller executor 策略、location
 	- 包含一个静态 inbound node 示例，固定 `robot linux ute` 这类 agent label 约定写法
-	- 固定 `ROBOTWS_REPO_URL` / `TESTLINE_CONFIGURATION_REPO_URL` 的全局环境入口
+	- 直接固定真实 Robot 主线需要的 `ROBOTWS_REPO_URL` / `TESTLINE_CONFIGURATION_REPO_URL`
 	- 固定 `robotws-ssh` / `testline-config-ssh` 的 credentials id 示例
+	- 通过 controller 环境变量注入 pip token、SSH private key 等敏感值
+
+## 当前落地方式
+
+之前真实 Robot case 跑通时，如果是在 Jenkins UI 里手工配置：
+
+```text
+Manage Jenkins -> System -> Global properties -> Environment variables
+```
+
+现在应改为由 `jenkins.yaml` 管理。也就是说：
+
+- `ROBOTWS_REPO_URL`
+- `TESTLINE_CONFIGURATION_REPO_URL`
+- `ROBOTWS_CREDENTIALS_ID`
+- `TESTLINE_CONFIGURATION_CREDENTIALS_ID`
+- `PIP_INDEX_URL`
+- `PIP_EXTRA_INDEX_URL`
+- `PIP_TRUSTED_HOST`
+
+这些 Jenkins 全局环境变量都从 JCasC 注入，不再依赖 UI 手工填写。
+
+当前 `jenkins.yaml` 里，非敏感值直接写死在 YAML：
+
+```text
+ROBOTWS_REPO_URL=git@wrgitlab.ext.net.nokia.com:RAN/robotws.git
+TESTLINE_CONFIGURATION_REPO_URL=git@wrgitlab.ext.net.nokia.com:RAN/configuration-management/testline_configuration.git
+ROBOTWS_CREDENTIALS_ID=robotws-ssh
+TESTLINE_CONFIGURATION_CREDENTIALS_ID=testline-config-ssh
+```
+
+敏感值仍从 controller 环境变量读取：
+
+```text
+PIP_INDEX_URL
+PIP_EXTRA_INDEX_URL
+PIP_TRUSTED_HOST
+ROBOTWS_GIT_SSH_PRIVATE_KEY
+TESTLINE_CONFIGURATION_GIT_SSH_PRIVATE_KEY
+```
+
+可参考 `deploy/env/jenkins-jcasc.env.example` 在服务器上准备真实环境变量。
 
 ## 当前推荐的 repo 与 credentials 约定
 
@@ -37,6 +79,9 @@
 	- `TESTLINE_CONFIGURATION_REPO_URL`
 	- `ROBOTWS_CREDENTIALS_ID`
 	- `TESTLINE_CONFIGURATION_CREDENTIALS_ID`
+	- `PIP_INDEX_URL`
+	- `PIP_EXTRA_INDEX_URL`
+	- `PIP_TRUSTED_HOST`
 - Job / seed job 默认值
 	- `ROBOTWS_GIT_REF`，当前默认 `master`
 	- `TESTLINE_CONFIGURATION_GIT_REF`，当前默认 `master`

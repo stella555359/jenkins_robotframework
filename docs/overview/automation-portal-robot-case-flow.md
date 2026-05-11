@@ -34,13 +34,13 @@ Portal 能否真正把 run 跑起来，关键不在 Portal 页面本身，而在
 
 `checkout_sources.py` 默认从 Jenkins 全局环境里拿下面这些值。如果不配，Jenkins 虽然能启动 Pipeline，但会在 checkout 阶段失败。
 
-路径：
+当前推荐使用 JCasC 注入这些全局环境变量，不再手工到 Jenkins UI 维护。配置文件：
 
 ```text
-Manage Jenkins -> System -> Global properties -> Environment variables
+jenkins-integration/jcasc/jenkins.yaml
 ```
 
-建议至少配置：
+JCasC 中至少应包含：
 
 | 环境变量 | 作用 | 推荐值示例 |
 |---|---|---|
@@ -52,19 +52,30 @@ Manage Jenkins -> System -> Global properties -> Environment variables
 | `PIP_EXTRA_INDEX_URL` | `create-venv` 安装 TAF 依赖时使用的额外 pip index | 第二内部 Artifactory PyPI URL |
 | `PIP_TRUSTED_HOST` | `create-venv` 安装 TAF 依赖时的 pip trusted-host | 空格分隔的 Artifactory host 列表 |
 
-当前环境如果采用 SSH 方式，推荐直接填成：
+当前环境如果采用 SSH 方式，`jenkins.yaml` 中已经固定：
 
 ```text
 ROBOTWS_REPO_URL=git@wrgitlab.ext.net.nokia.com:RAN/robotws.git
 TESTLINE_CONFIGURATION_REPO_URL=git@wrgitlab.ext.net.nokia.com:RAN/configuration-management/testline_configuration.git
 ROBOTWS_CREDENTIALS_ID=robotws-ssh
 TESTLINE_CONFIGURATION_CREDENTIALS_ID=testline-config-ssh
+```
+
+这些敏感或环境私有值仍由 Jenkins controller 环境变量提供：
+
+```text
 PIP_INDEX_URL=https://<user>:<token>@artifactory-hz1.ext.net.nokia.com/artifactory/api/pypi/ute-pypi-virtual/simple
 PIP_EXTRA_INDEX_URL=https://<user>:<token>@artifactory-espoo2.int.net.nokia.com/artifactory/api/pypi/ute-pypi-virtual/simple
 PIP_TRUSTED_HOST=artifactory-hz1.ext.net.nokia.com artifactory-espoo2.int.net.nokia.com
 ```
 
-如果你使用的是 JCasC，这几个值也可以通过 [jenkins-integration/jcasc/jenkins.yaml](c:/TA/jenkins_robotframework/jenkins-integration/jcasc/jenkins.yaml) 注入。
+JCasC 生效方式见 [jenkins-integration/jcasc/README.md](c:/TA/jenkins_robotframework/jenkins-integration/jcasc/README.md) 和 [deploy/DEPLOYMENT.md](c:/TA/jenkins_robotframework/deploy/DEPLOYMENT.md)。
+
+如果你暂时不用 JCasC，才需要在 Jenkins UI 手工配置：
+
+```text
+Manage Jenkins -> System -> Global properties -> Environment variables
+```
 
 ### 2.2 Jenkins 全局凭据
 

@@ -545,8 +545,10 @@ systemctl status ssh --no-pager || systemctl status sshd --no-pager
 在 Master 上生成 key：
 
 ```bash
-ssh-keygen -t rsa -b 4096 -C "jenkins-master" -f ~/.ssh/jenkins_agent_rsa -N ""
+ssh-keygen -t rsa -b 4096 -m PEM -C "jenkins-master" -f ~/.ssh/jenkins_agent_rsa -N ""
 ```
+
+这里建议显式带上 `-m PEM`，让 `t813-agent` 这把登录私钥保持为 `-----BEGIN RSA PRIVATE KEY-----` 格式，避免 Jenkins SSH launcher 报 `PEM problem: it is of unknown type`。
 
 把公钥加入 Agent 的 `jenkins` 用户：
 

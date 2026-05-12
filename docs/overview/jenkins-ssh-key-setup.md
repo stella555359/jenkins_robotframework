@@ -45,7 +45,30 @@
 mkdir -p ~/.ssh
 chmod 700 ~/.ssh
 
-ssh-keygen -t rsa -b 4096 -C "jenkins-master" -f ~/.ssh/jenkins_agent_rsa -N ""
+ssh-keygen -t rsa -b 4096 -m PEM -C "jenkins-master" -f ~/.ssh/jenkins_agent_rsa -N ""
+```
+
+这里 `-m PEM` 很重要。当前 Jenkins SSH launcher 走的是 `ssh-slaves` / `trilead` 这条解析链，
+更稳妥的做法是让 `T813_AGENT_SSH_PRIVATE_KEY` 使用传统 PEM RSA 格式，也就是：
+
+```text
+-----BEGIN RSA PRIVATE KEY-----
+...
+-----END RSA PRIVATE KEY-----
+```
+
+不要把它写成：
+
+```text
+-----BEGIN OPENSSH PRIVATE KEY-----
+...
+-----END OPENSSH PRIVATE KEY-----
+```
+
+否则 Jenkins 节点 launcher 很容易报：
+
+```text
+PEM problem: it is of unknown type
 ```
 
 生成后会得到：
@@ -84,6 +107,24 @@ ssh -i ~/.ssh/jenkins_agent_rsa jenkins@10.57.159.149 "echo 'SSH OK'"
 ```
 
 如果返回 `SSH OK`，说明这套 key 可用。
+
+如果你手里已经有一把现成的 RSA key，但格式是 `OPENSSH PRIVATE KEY`，可以在 Controller 上转成 PEM：
+
+```bash
+ssh-keygen -p -m PEM -f ~/.ssh/jenkins_agent_rsa -N "" -P ""
+```
+
+转换完成后，再确认文件头已经变成：
+
+```bash
+head -n 1 ~/.ssh/jenkins_agent_rsa
+```
+
+输出应该是：
+
+```text
+-----BEGIN RSA PRIVATE KEY-----
+```
 
 ## 4. 生成 `ROBOTWS_GIT_SSH_PRIVATE_KEY` 和 `TESTLINE_CONFIGURATION_GIT_SSH_PRIVATE_KEY`
 

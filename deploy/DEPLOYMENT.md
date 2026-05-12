@@ -540,6 +540,8 @@ systemctl status ssh --no-pager || systemctl status sshd --no-pager
 
 ### 7.3 Master 到 Agent SSH
 
+如果你忘了 `t813-agent` 登录 key、`robotws` checkout key、`testline_configuration` checkout key 分别怎么生成、如何配置到 JCasC、以及哪两把可以复用，统一参考 [c:/TA/jenkins_robotframework/docs/overview/jenkins-ssh-key-setup.md](c:/TA/jenkins_robotframework/docs/overview/jenkins-ssh-key-setup.md)。
+
 在 Master 上生成 key：
 
 ```bash
@@ -630,6 +632,8 @@ testline-config-ssh
 ```text
 deploy/env/jenkins-jcasc.env.example
 ```
+
+关于 `T813_AGENT_SSH_PRIVATE_KEY`、`ROBOTWS_GIT_SSH_PRIVATE_KEY`、`TESTLINE_CONFIGURATION_GIT_SSH_PRIVATE_KEY` 的生成命令、公钥投放位置、JCasC env 填法与验证步骤，统一参考 [c:/TA/jenkins_robotframework/docs/overview/jenkins-ssh-key-setup.md](c:/TA/jenkins_robotframework/docs/overview/jenkins-ssh-key-setup.md)。
 
 服务器上可以创建真实文件，例如：
 

@@ -1,9 +1,8 @@
 # Jenkins Configuration as Code for the robot execution path.
 # Non-secret global defaults live here so Jenkins UI global variables do not need to be created by hand.
 # Real secrets should come from the controller environment or an external secret source.
-# This example keeps a static inbound launcher because the YAML shape is stable across environments.
-# Node identity and labels below are aligned to the deployed t813 agent convention.
-# If the real controller uses SSH agents or a cloud plugin, export that launcher block from Jenkins and replace it here.
+# This JCasC file is aligned to the deployed t813 robot execution path.
+# The permanent node below uses the deployed SSH launcher convention.
 
 jenkins:
   systemMessage: "Managed by Jenkins Configuration as Code for jenkins-integration."
@@ -38,12 +37,15 @@ jenkins:
         numExecutors: 1
         mode: EXCLUSIVE
         launcher:
-          inbound:
-            workDirSettings:
-              disabled: true
-              failIfWorkDirIsMissing: false
-              internalDir: "remoting"
-              workDirPath: "/automation/workspace/remoting"
+          ssh:
+            host: "10.57.159.149"
+            port: 22
+            credentialsId: "t813-agent-ssh"
+            javaPath: "/usr/bin/java"
+            launchTimeoutSeconds: 60
+            maxNumRetries: 10
+            retryWaitTime: 15
+            sshHostKeyVerificationStrategy: "nonVerifyingKeyVerificationStrategy"
         nodeProperties:
           - envVars:
               env:
@@ -61,6 +63,14 @@ credentials:
   system:
     domainCredentials:
       - credentials:
+          - basicSSHUserPrivateKey:
+              scope: GLOBAL
+              id: "t813-agent-ssh"
+              username: "${T813_AGENT_SSH_USER}"
+              description: "SSH key for t813-agent"
+              privateKeySource:
+                directEntry:
+                  privateKey: "${T813_AGENT_SSH_PRIVATE_KEY}"
           - basicSSHUserPrivateKey:
               scope: GLOBAL
               id: "robotws-ssh"

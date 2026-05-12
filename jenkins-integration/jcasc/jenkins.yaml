@@ -17,10 +17,6 @@ jenkins:
             value: "git@wrgitlab.ext.net.nokia.com:RAN/robotws.git"
           - key: TESTLINE_CONFIGURATION_REPO_URL
             value: "git@wrgitlab.ext.net.nokia.com:RAN/configuration-management/testline_configuration.git"
-          - key: ROBOTWS_CREDENTIALS_ID
-            value: "robotws-ssh"
-          - key: TESTLINE_CONFIGURATION_CREDENTIALS_ID
-            value: "testline-config-ssh"
           # Keep pip values as controller environment variables because internal PyPI URLs can contain credentials/tokens.
           - key: PIP_INDEX_URL
             value: "${PIP_INDEX_URL}"
@@ -53,6 +49,10 @@ jenkins:
                   value: "/home/ute"
                 - key: PYTHON_BIN
                   value: "/usr/bin/python3"
+                - key: ROBOTWS_GIT_SSH_KEY_PATH
+                  value: "${ROBOTWS_GIT_SSH_KEY_PATH}"
+                - key: TESTLINE_CONFIGURATION_GIT_SSH_KEY_PATH
+                  value: "${TESTLINE_CONFIGURATION_GIT_SSH_KEY_PATH}"
 
 unclassified:
   location:
@@ -71,22 +71,6 @@ credentials:
               privateKeySource:
                 directEntry:
                   privateKey: __T813_AGENT_SSH_PRIVATE_KEY_BLOCK__
-          - basicSSHUserPrivateKey:
-              scope: GLOBAL
-              id: "robotws-ssh"
-              username: "${ROBOTWS_GIT_SSH_USER}"
-              description: "SSH key for robotws checkout"
-              privateKeySource:
-                directEntry:
-                  privateKey: __ROBOTWS_GIT_SSH_PRIVATE_KEY_BLOCK__
-          - basicSSHUserPrivateKey:
-              scope: GLOBAL
-              id: "testline-config-ssh"
-              username: "${TESTLINE_CONFIGURATION_GIT_SSH_USER}"
-              description: "SSH key for testline_configuration checkout"
-              privateKeySource:
-                directEntry:
-                  privateKey: __TESTLINE_CONFIGURATION_GIT_SSH_PRIVATE_KEY_BLOCK__
 
 # Intentionally not defined here:
 # - ROBOTWS_GIT_REF

@@ -225,15 +225,18 @@ git ls-remote git@wrgitlab.ext.net.nokia.com:RAN/configuration-management/testli
 
 - `deploy/env/jenkins-jcasc.env.example`
 
-当前更推荐把私钥作为 controller 本机文件保存，再在 env 文件里只放路径。这样可以避免 `EnvironmentFile` 直接承载多行私钥导致的格式污染、截断或复制错误。
+当前更推荐把 launcher 私钥作为 controller 本机文件保存，再在 env 文件里只放路径。这样可以避免 `EnvironmentFile` 直接承载多行私钥导致的格式污染、截断或复制错误。
+
+对于 `robotws` / `testline_configuration` checkout，当前改为使用 `t813-agent` 本机已有的 GitLab key，不再要求 controller 持有这把 checkout 私钥。
 
 先准备 key 文件目录：
 
 ```bash
 sudo install -d -m 0700 /etc/jenkins/keys
-sudo install -m 0600 ~/.ssh/jenkins_agent_rsa /etc/jenkins/keys/jenkins_agent_rsa
-sudo install -m 0600 ~/.ssh/jenkins_gitlab_rsa /etc/jenkins/keys/jenkins_gitlab_rsa
+sudo install -o jenkins -g jenkins -m 0600 ~/.ssh/jenkins_agent_rsa /etc/jenkins/keys/jenkins_agent_rsa
 ```
+
+这里不要只验证 root 自己能读。因为 `render_jcasc.py` 是在 Jenkins 启动链路里执行，私钥文件必须对 Jenkins 服务用户可读。
 
 服务器上建议落到真实 env 文件，例如：
 
@@ -245,25 +248,25 @@ JENKINS_ADMIN_EMAIL=admin@example.com
 T813_AGENT_SSH_USER=jenkins
 T813_AGENT_SSH_PRIVATE_KEY_PATH=/etc/jenkins/keys/jenkins_agent_rsa
 
-ROBOTWS_GIT_SSH_USER=git
-ROBOTWS_GIT_SSH_PRIVATE_KEY_PATH=/etc/jenkins/keys/jenkins_gitlab_rsa
+ROBOTWS_GIT_SSH_KEY_PATH=/home/jenkins/.ssh/jenkins_gitlab_rsa
 
-TESTLINE_CONFIGURATION_GIT_SSH_USER=git
-TESTLINE_CONFIGURATION_GIT_SSH_PRIVATE_KEY_PATH=/etc/jenkins/keys/jenkins_gitlab_rsa
+TESTLINE_CONFIGURATION_GIT_SSH_KEY_PATH=/home/jenkins/.ssh/jenkins_gitlab_rsa
 EOF
 ```
 
 如果 `robotws` 和 `testline_configuration` 复用同一把 GitLab key，那么最后两个 path 完全相同是正常的。
 
+这里的 `/home/jenkins/.ssh/jenkins_gitlab_rsa` 只是示例。它必须替换成 `t813-agent` 本机真实存在、并且对 Jenkins agent 进程可读的路径。
+
 ## 6. 这些值如何映射到 Jenkins credentials
 
-当前 JCasC 会创建 3 个 Jenkins credentials。用户名来自 env，私钥内容由启动前渲染脚本从对应 path 读取后写入最终 JCasC：
+当前 JCasC 会创建 1 个 Jenkins credential。用户名来自 env，私钥内容由启动前渲染脚本从 controller 本机 path 读取后写入最终 JCasC：
 
 | Jenkins credentials ID | 来源环境变量 | 用途 |
 |---|---|---|
 | `t813-agent-ssh` | `T813_AGENT_SSH_USER` + `T813_AGENT_SSH_PRIVATE_KEY_PATH` | Jenkins Controller 连接 `t813-agent` |
-| `robotws-ssh` | `ROBOTWS_GIT_SSH_USER` + `ROBOTWS_GIT_SSH_PRIVATE_KEY_PATH` | checkout `robotws` |
-| `testline-config-ssh` | `TESTLINE_CONFIGURATION_GIT_SSH_USER` + `TESTLINE_CONFIGURATION_GIT_SSH_PRIVATE_KEY_PATH` | checkout `testline_configuration` |
+
+`robotws` 和 `testline_configuration` checkout 不再依赖 Jenkins credentials，而是由 `checkout-sources.sh` 在 agent 上使用 `ROBOTWS_GIT_SSH_KEY_PATH` / `TESTLINE_CONFIGURATION_GIT_SSH_KEY_PATH` 调用本机 `git`。
 
 ## 7. JCasC reload 与生效
 
@@ -309,8 +312,6 @@ Manage Jenkins -> Credentials -> System -> Global credentials
 应该能看到：
 
 1. `t813-agent-ssh`
-2. `robotws-ssh`
-3. `testline-config-ssh`
 
 ### 8.4 如果 Jenkins 报 `Illegal base64 character 2e`
 
@@ -357,6 +358,21 @@ sudo systemctl restart jenkins
 ```
 
 然后到 Jenkins 页面确认 `t813-agent-ssh` credential 已经刷新成最新值，再重新测试节点连接。
+
+### 8.5 如果 job checkout 失败但 agent 已经 online
+
+这通常说明 `t813-agent-ssh` 正常，但 agent 本机 GitLab key 路径不可读、路径写错，或者 key 本身不正确。
+
+到 `t813-agent` 上检查：
+
+```bash
+test -r /home/jenkins/.ssh/jenkins_gitlab_rsa
+ssh-keygen -y -f /home/jenkins/.ssh/jenkins_gitlab_rsa >/dev/null
+GIT_SSH_COMMAND='ssh -i /home/jenkins/.ssh/jenkins_gitlab_rsa -o IdentitiesOnly=yes' git ls-remote git@wrgitlab.ext.net.nokia.com:RAN/robotws.git
+GIT_SSH_COMMAND='ssh -i /home/jenkins/.ssh/jenkins_gitlab_rsa -o IdentitiesOnly=yes' git ls-remote git@wrgitlab.ext.net.nokia.com:RAN/configuration-management/testline_configuration.git
+```
+
+如果这里失败，先修 agent 本机 key 和权限，不要回头查 controller credential。
 
 ## 9. 最终推荐
 

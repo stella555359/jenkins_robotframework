@@ -211,6 +211,10 @@ plan = json.loads(Path('artifacts/source-checkout.json').read_text(encoding='utf
 credential_ids = []
 
 for operation in plan.get('operations', []):
+    credential_kind = str(operation.get('credential_kind') or '').strip()
+    if credential_kind and credential_kind != 'sshagent':
+        continue
+
     explicit_credential_id = str(operation.get('credentials_id') or '').strip()
     if explicit_credential_id:
         credential_ids.append(explicit_credential_id)

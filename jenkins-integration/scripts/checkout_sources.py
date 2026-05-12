@@ -13,14 +13,16 @@ REPO_CONVENTIONS = {
         "repo_url_env": "ROBOTWS_REPO_URL",
         "ref_env": "ROBOTWS_GIT_REF",
         "credentials_id_env": "ROBOTWS_CREDENTIALS_ID",
-        "credential_kind": "sshagent",
+        "ssh_key_path_env": "ROBOTWS_GIT_SSH_KEY_PATH",
+        "credential_kind": "agent-local-key",
     },
     "testline_configuration": {
         "path": "testline_configuration",
         "repo_url_env": "TESTLINE_CONFIGURATION_REPO_URL",
         "ref_env": "TESTLINE_CONFIGURATION_GIT_REF",
         "credentials_id_env": "TESTLINE_CONFIGURATION_CREDENTIALS_ID",
-        "credential_kind": "sshagent",
+        "ssh_key_path_env": "TESTLINE_CONFIGURATION_GIT_SSH_KEY_PATH",
+        "credential_kind": "agent-local-key",
     },
 }
 
@@ -91,11 +93,15 @@ def build_checkout_plan(request_payload: dict[str, Any], *, workspace_root: Path
         ref_env = _clean_text(spec.get("ref_env"))
         credentials_id = _clean_text(spec.get("credentials_id"))
         credentials_id_env = _clean_text(spec.get("credentials_id_env"))
-        credential_kind = _clean_text(spec.get("credential_kind")) or "sshagent"
+        ssh_key_path = _clean_text(spec.get("ssh_key_path"))
+        ssh_key_path_env = _clean_text(spec.get("ssh_key_path_env"))
+        credential_kind = _clean_text(spec.get("credential_kind")) or "agent-local-key"
         git_dir = repo_dir / ".git"
         env_prefix = spec["name"].upper()
         effective_repo_url_var = f"{env_prefix}_EFFECTIVE_REPO_URL"
         effective_ref_var = f"{env_prefix}_EFFECTIVE_REF"
+        effective_ssh_key_path_var = f"{env_prefix}_EFFECTIVE_SSH_KEY_PATH"
+        git_runner = f"run_git_{spec['name']}"
 
         operation = {
             "name": spec["name"],
@@ -106,6 +112,8 @@ def build_checkout_plan(request_payload: dict[str, Any], *, workspace_root: Path
             "ref_env": ref_env,
             "credentials_id": credentials_id,
             "credentials_id_env": credentials_id_env,
+            "ssh_key_path": ssh_key_path,
+            "ssh_key_path_env": ssh_key_path_env,
             "credential_kind": credential_kind,
             "action": "reuse-existing" if repo_dir.exists() and not git_dir.exists() else "git-sync" if git_dir.exists() else "git-clone" if (repo_url or repo_url_env) else "missing-source",
         }
@@ -122,15 +130,29 @@ def build_checkout_plan(request_payload: dict[str, Any], *, workspace_root: Path
             env_name=ref_env,
             explicit_value=ref,
         )
+        _append_effective_value_assignment(
+            shell_lines,
+            variable_name=effective_ssh_key_path_var,
+            env_name=ssh_key_path_env,
+            explicit_value=ssh_key_path,
+        )
+
+        shell_lines.append(f"{git_runner}() {{")
+        if credential_kind == "agent-local-key":
+            shell_lines.append(f'  if [ -n "${{{effective_ssh_key_path_var}}}" ] && [ ! -r "${{{effective_ssh_key_path_var}}}" ]; then echo Missing readable SSH key for {spec["name"]}: "${{{effective_ssh_key_path_var}}}"; exit 1; fi')
+            shell_lines.append(f'  if [ -n "${{{effective_ssh_key_path_var}}}" ]; then GIT_SSH_COMMAND="ssh -i \"${{{effective_ssh_key_path_var}}}\" -o IdentitiesOnly=yes -o StrictHostKeyChecking=no" git "$@"; else git "$@"; fi')
+        else:
+            shell_lines.append('  git "$@"')
+        shell_lines.append("}")
 
         if git_dir.exists():
-            shell_lines.append(f'if [ -n "${{{effective_repo_url_var}}}" ]; then git -C {_quote(str(repo_dir))} remote set-url origin "${{{effective_repo_url_var}}}"; fi')
-            shell_lines.append(f"git -C {_quote(str(repo_dir))} fetch --progress --all --tags --prune")
-            shell_lines.append(f'if [ -n "${{{effective_ref_var}}}" ]; then git -C {_quote(str(repo_dir))} checkout "${{{effective_ref_var}}}"; fi')
+            shell_lines.append(f'if [ -n "${{{effective_repo_url_var}}}" ]; then {git_runner} -C {_quote(str(repo_dir))} remote set-url origin "${{{effective_repo_url_var}}}"; fi')
+            shell_lines.append(f"{git_runner} -C {_quote(str(repo_dir))} fetch --progress --all --tags --prune")
+            shell_lines.append(f'if [ -n "${{{effective_ref_var}}}" ]; then {git_runner} -C {_quote(str(repo_dir))} checkout "${{{effective_ref_var}}}"; fi')
         elif repo_url is not None or repo_url_env is not None:
             shell_lines.append(f"mkdir -p {_quote(str(repo_dir.parent))}")
             shell_lines.append(f'if [ -z "${{{effective_repo_url_var}}}" ]; then echo Missing repo URL for {spec["name"]}. Set {repo_url_env or "an explicit repo_url"}.; exit 1; fi')
-            shell_lines.append(f'if [ -n "${{{effective_ref_var}}}" ]; then git clone --progress --branch "${{{effective_ref_var}}}" "${{{effective_repo_url_var}}}" {_quote(str(repo_dir))}; else git clone --progress "${{{effective_repo_url_var}}}" {_quote(str(repo_dir))}; fi')
+            shell_lines.append(f'if [ -n "${{{effective_ref_var}}}" ]; then {git_runner} clone --progress --branch "${{{effective_ref_var}}}" "${{{effective_repo_url_var}}}" {_quote(str(repo_dir))}; else {git_runner} clone --progress "${{{effective_repo_url_var}}}" {_quote(str(repo_dir))}; fi')
         elif repo_dir.exists():
             shell_lines.append(f"echo Reusing existing directory {_quote(str(repo_dir))} without git metadata")
         else:

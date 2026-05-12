@@ -24,8 +24,8 @@
 	- 包含 controller 基础项，例如 system message、controller executor 策略、location
 	- 包含一个静态 inbound node 示例，固定 `robot linux ute` 这类 agent label 约定写法
 	- 直接固定真实 Robot 主线需要的 `ROBOTWS_REPO_URL` / `TESTLINE_CONFIGURATION_REPO_URL`
-	- 固定 `robotws-ssh` / `testline-config-ssh` 的 credentials id 示例
-	- 通过 controller 环境变量注入 pip token、SSH private key 等敏感值
+	- checkout 默认改为 agent-local key，不再要求 controller 维护 `robotws-ssh` / `testline-config-ssh`
+	- 通过 controller 环境变量注入 pip token，以及 agent launcher 所需的 SSH private key path
 
 ## 当前落地方式
 
@@ -52,19 +52,17 @@ Manage Jenkins -> System -> Global properties -> Environment variables
 ```text
 ROBOTWS_REPO_URL=git@wrgitlab.ext.net.nokia.com:RAN/robotws.git
 TESTLINE_CONFIGURATION_REPO_URL=git@wrgitlab.ext.net.nokia.com:RAN/configuration-management/testline_configuration.git
-ROBOTWS_CREDENTIALS_ID=robotws-ssh
-TESTLINE_CONFIGURATION_CREDENTIALS_ID=testline-config-ssh
 ```
 
-敏感值里，单行值仍从 controller 环境变量读取；SSH private key 改为由 controller 本机文件提供，再由启动前渲染脚本注入最终 JCasC：
+敏感值里，单行值仍从 controller 环境变量读取；controller 只持有 agent launcher 私钥。checkout 所需的 GitLab key 保留在 agent 本机，通过 node env 注入 key path：
 
 ```text
 PIP_INDEX_URL
 PIP_EXTRA_INDEX_URL
 PIP_TRUSTED_HOST
 T813_AGENT_SSH_PRIVATE_KEY_PATH
-ROBOTWS_GIT_SSH_PRIVATE_KEY_PATH
-TESTLINE_CONFIGURATION_GIT_SSH_PRIVATE_KEY_PATH
+ROBOTWS_GIT_SSH_KEY_PATH
+TESTLINE_CONFIGURATION_GIT_SSH_KEY_PATH
 ```
 
 可参考 `deploy/env/jenkins-jcasc.env.example` 在服务器上准备真实环境变量。
@@ -102,23 +100,10 @@ TESTLINE_CONFIGURATION_GIT_SSH_PRIVATE_KEY_PATH
 
 当前推荐：
 
-- `robotws-ssh`
-	- 用于 checkout `robotws`
-- `testline-config-ssh`
-	- 用于 checkout `testline_configuration`
+- `t813-agent-ssh`
+	- 用于 Jenkins controller 连接 `t813-agent`
 
-如果后续要区分环境，可以按下面风格扩展：
-
-- `robotws-ssh-prod`
-- `robotws-ssh-staging`
-- `testline-config-ssh-prod`
-- `testline-config-ssh-staging`
-
-重点不是具体单词，而是要保持：
-
-- 仓库对象明确
-- 凭据类型明确
-- 环境后缀一致
+如果后续仍需要回退到 Jenkins credentials 模式，可以在 job metadata 里显式指定 `credentials_id` 和 `credential_kind=sshagent`。默认路径已经改为 agent-local key。
 
 ## 为什么不推荐直接把 repo URL 做成 job 参数默认值
 

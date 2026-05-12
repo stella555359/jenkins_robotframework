@@ -615,21 +615,12 @@ Description: SSH key for t813-agent
 ```text
 ROBOTWS_REPO_URL=git@wrgitlab.ext.net.nokia.com:RAN/robotws.git
 TESTLINE_CONFIGURATION_REPO_URL=git@wrgitlab.ext.net.nokia.com:RAN/configuration-management/testline_configuration.git
-ROBOTWS_CREDENTIALS_ID=robotws-ssh
-TESTLINE_CONFIGURATION_CREDENTIALS_ID=testline-config-ssh
 PIP_INDEX_URL=${PIP_INDEX_URL}
 PIP_EXTRA_INDEX_URL=${PIP_EXTRA_INDEX_URL}
 PIP_TRUSTED_HOST=${PIP_TRUSTED_HOST}
 ```
 
-对应 Credentials：
-
-```text
-robotws-ssh
-testline-config-ssh
-```
-
-`PIP_*` 属于敏感或环境私有值，仍通过 Jenkins controller 环境变量提供。SSH private key 不再直接放进 `EnvironmentFile`，而是以 key file path 的形式提供，再由启动前渲染脚本读入生成最终 JCasC。参考文件：
+`PIP_*` 属于敏感或环境私有值，仍通过 Jenkins controller 环境变量提供。Controller 只保存 `t813-agent` 启动用的 SSH launcher 私钥；`robotws` / `testline_configuration` 的 checkout 私钥改为保留在 agent 本机，通过 agent 环境变量提供 key path。参考文件：
 
 ```text
 deploy/env/jenkins-jcasc.env.example
@@ -652,26 +643,24 @@ JENKINS_ADMIN_EMAIL=admin@example.com
 T813_AGENT_SSH_USER=jenkins
 T813_AGENT_SSH_PRIVATE_KEY_PATH=/etc/jenkins/keys/jenkins_agent_rsa
 
-ROBOTWS_GIT_SSH_USER=git
-ROBOTWS_GIT_SSH_PRIVATE_KEY_PATH=/etc/jenkins/keys/jenkins_gitlab_rsa
-
-TESTLINE_CONFIGURATION_GIT_SSH_USER=git
-TESTLINE_CONFIGURATION_GIT_SSH_PRIVATE_KEY_PATH=/etc/jenkins/keys/jenkins_gitlab_rsa
+ROBOTWS_GIT_SSH_KEY_PATH=/home/jenkins/.ssh/jenkins_gitlab_rsa
+TESTLINE_CONFIGURATION_GIT_SSH_KEY_PATH=/home/jenkins/.ssh/jenkins_gitlab_rsa
 
 PIP_INDEX_URL=https://<user>:<token>@artifactory-hz1.ext.net.nokia.com/artifactory/api/pypi/ute-pypi-virtual/simple
 PIP_EXTRA_INDEX_URL=https://<user>:<token>@artifactory-espoo2.int.net.nokia.com/artifactory/api/pypi/ute-pypi-virtual/simple
 PIP_TRUSTED_HOST=artifactory-hz1.ext.net.nokia.com artifactory-espoo2.int.net.nokia.com
 ```
 
-同时把真实私钥单独放到 controller 本机文件，例如：
+同时把 controller 连接 agent 的真实私钥单独放到 controller 本机文件，例如：
 
 ```bash
 sudo install -d -m 0700 /etc/jenkins/keys
-sudo install -m 0600 ~/.ssh/jenkins_agent_rsa /etc/jenkins/keys/jenkins_agent_rsa
-sudo install -m 0600 ~/.ssh/jenkins_gitlab_rsa /etc/jenkins/keys/jenkins_gitlab_rsa
+sudo install -o jenkins -g jenkins -m 0600 ~/.ssh/jenkins_agent_rsa /etc/jenkins/keys/jenkins_agent_rsa
 ```
 
-`jenkins_agent_rsa` 仍要求是 PEM RSA；`jenkins_gitlab_rsa` 保持仓库实际可用格式即可。
+`jenkins_agent_rsa` 仍要求是 PEM RSA。
+
+`robotws` / `testline_configuration` 的 GitLab key 不再复制到 controller。请确保这把 key 已经存在于 `t813-agent` 本机，并且上面两个 `*_GIT_SSH_KEY_PATH` 指向的文件路径对 Jenkins agent 进程可读。
 
 把 JCasC 配置和 env 文件接入 Jenkins systemd override：
 
@@ -695,11 +684,16 @@ sudo systemctl daemon-reload
 sudo systemctl restart jenkins
 ```
 
-如果 `ExecStartPre` 失败，先检查这 3 个 path 变量是否存在且文件权限可读：
+如果 `ExecStartPre` 失败，先检查 controller 上的 launcher key path 是否存在，并且对 Jenkins 服务用户可读：
 
 ```bash
-sudo test -r /etc/jenkins/keys/jenkins_agent_rsa
-sudo test -r /etc/jenkins/keys/jenkins_gitlab_rsa
+sudo -u jenkins test -r /etc/jenkins/keys/jenkins_agent_rsa
+```
+
+如果 job checkout 失败，再到 `t813-agent` 上检查：
+
+```bash
+test -r /home/jenkins/.ssh/jenkins_gitlab_rsa
 ```
 
 如果 Jenkins 已安装 Configuration as Code 插件，也可以在页面执行 reload：

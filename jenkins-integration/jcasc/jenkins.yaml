@@ -1,7 +1,8 @@
 # Jenkins Configuration as Code for the robot execution path.
 # Non-secret global defaults live here so Jenkins UI global variables do not need to be created by hand.
 # Real secrets should come from the controller environment or an external secret source.
-# This example uses a static inbound agent because the YAML shape is stable across environments.
+# This example keeps a static inbound launcher because the YAML shape is stable across environments.
+# Node identity and labels below are aligned to the deployed t813 agent convention.
 # If the real controller uses SSH agents or a cloud plugin, export that launcher block from Jenkins and replace it here.
 
 jenkins:
@@ -30,10 +31,10 @@ jenkins:
             value: "${PIP_TRUSTED_HOST}"
   nodes:
     - permanent:
-        name: "robot-linux-01"
-        nodeDescription: "Example Linux robot executor for robotws and testline_configuration jobs."
-        remoteFS: "/home/jenkins"
-        labelString: "robot linux ute"
+        name: "t813-agent"
+        nodeDescription: "T813 Linux robot executor for robotws and testline_configuration jobs."
+        remoteFS: "/automation/workspace"
+        labelString: "t813 robot"
         numExecutors: 1
         mode: EXCLUSIVE
         launcher:
@@ -42,7 +43,7 @@ jenkins:
               disabled: true
               failIfWorkDirIsMissing: false
               internalDir: "remoting"
-              workDirPath: "/home/jenkins/remoting"
+              workDirPath: "/automation/workspace/remoting"
         nodeProperties:
           - envVars:
               env:

@@ -56,14 +56,15 @@ ROBOTWS_CREDENTIALS_ID=robotws-ssh
 TESTLINE_CONFIGURATION_CREDENTIALS_ID=testline-config-ssh
 ```
 
-敏感值仍从 controller 环境变量读取：
+敏感值里，单行值仍从 controller 环境变量读取；SSH private key 改为由 controller 本机文件提供，再由启动前渲染脚本注入最终 JCasC：
 
 ```text
 PIP_INDEX_URL
 PIP_EXTRA_INDEX_URL
 PIP_TRUSTED_HOST
-ROBOTWS_GIT_SSH_PRIVATE_KEY
-TESTLINE_CONFIGURATION_GIT_SSH_PRIVATE_KEY
+T813_AGENT_SSH_PRIVATE_KEY_PATH
+ROBOTWS_GIT_SSH_PRIVATE_KEY_PATH
+TESTLINE_CONFIGURATION_GIT_SSH_PRIVATE_KEY_PATH
 ```
 
 可参考 `deploy/env/jenkins-jcasc.env.example` 在服务器上准备真实环境变量。

@@ -629,7 +629,7 @@ robotws-ssh
 testline-config-ssh
 ```
 
-`PIP_*` 和 SSH private key 属于敏感或环境私有值，不直接写入 `jenkins.yaml`，需要通过 Jenkins controller 的环境变量提供。参考文件：
+`PIP_*` 属于敏感或环境私有值，仍通过 Jenkins controller 环境变量提供。SSH private key 不再直接放进 `EnvironmentFile`，而是以 key file path 的形式提供，再由启动前渲染脚本读入生成最终 JCasC。参考文件：
 
 ```text
 deploy/env/jenkins-jcasc.env.example
@@ -649,20 +649,29 @@ deploy/env/jenkins-jcasc.env.example
 JENKINS_URL=https://10.71.210.104/jenkins/
 JENKINS_ADMIN_EMAIL=admin@example.com
 
+T813_AGENT_SSH_USER=jenkins
+T813_AGENT_SSH_PRIVATE_KEY_PATH=/etc/jenkins/keys/jenkins_agent_rsa
+
 ROBOTWS_GIT_SSH_USER=git
-ROBOTWS_GIT_SSH_PRIVATE_KEY="-----BEGIN OPENSSH PRIVATE KEY-----
-...
------END OPENSSH PRIVATE KEY-----"
+ROBOTWS_GIT_SSH_PRIVATE_KEY_PATH=/etc/jenkins/keys/jenkins_gitlab_rsa
 
 TESTLINE_CONFIGURATION_GIT_SSH_USER=git
-TESTLINE_CONFIGURATION_GIT_SSH_PRIVATE_KEY="-----BEGIN OPENSSH PRIVATE KEY-----
-...
------END OPENSSH PRIVATE KEY-----"
+TESTLINE_CONFIGURATION_GIT_SSH_PRIVATE_KEY_PATH=/etc/jenkins/keys/jenkins_gitlab_rsa
 
 PIP_INDEX_URL=https://<user>:<token>@artifactory-hz1.ext.net.nokia.com/artifactory/api/pypi/ute-pypi-virtual/simple
 PIP_EXTRA_INDEX_URL=https://<user>:<token>@artifactory-espoo2.int.net.nokia.com/artifactory/api/pypi/ute-pypi-virtual/simple
 PIP_TRUSTED_HOST=artifactory-hz1.ext.net.nokia.com artifactory-espoo2.int.net.nokia.com
 ```
+
+同时把真实私钥单独放到 controller 本机文件，例如：
+
+```bash
+sudo install -d -m 0700 /etc/jenkins/keys
+sudo install -m 0600 ~/.ssh/jenkins_agent_rsa /etc/jenkins/keys/jenkins_agent_rsa
+sudo install -m 0600 ~/.ssh/jenkins_gitlab_rsa /etc/jenkins/keys/jenkins_gitlab_rsa
+```
+
+`jenkins_agent_rsa` 仍要求是 PEM RSA；`jenkins_gitlab_rsa` 保持仓库实际可用格式即可。
 
 把 JCasC 配置和 env 文件接入 Jenkins systemd override：
 
@@ -674,8 +683,9 @@ sudo systemctl edit jenkins
 
 ```ini
 [Service]
-Environment="CASC_JENKINS_CONFIG=/opt/jenkins_robotframework/jenkins-integration/jcasc/jenkins.yaml"
+Environment="CASC_JENKINS_CONFIG=/var/lib/jenkins/casc_configs/jenkins.rendered.yaml"
 EnvironmentFile=-/etc/default/jenkins-jcasc
+ExecStartPre=/usr/bin/python3 /opt/jenkins_robotframework/jenkins-integration/scripts/render_jcasc.py --template /opt/jenkins_robotframework/jenkins-integration/jcasc/jenkins.yaml --output /var/lib/jenkins/casc_configs/jenkins.rendered.yaml
 ```
 
 应用：
@@ -683,6 +693,13 @@ EnvironmentFile=-/etc/default/jenkins-jcasc
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl restart jenkins
+```
+
+如果 `ExecStartPre` 失败，先检查这 3 个 path 变量是否存在且文件权限可读：
+
+```bash
+sudo test -r /etc/jenkins/keys/jenkins_agent_rsa
+sudo test -r /etc/jenkins/keys/jenkins_gitlab_rsa
 ```
 
 如果 Jenkins 已安装 Configuration as Code 插件，也可以在页面执行 reload：

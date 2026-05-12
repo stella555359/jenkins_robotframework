@@ -1,6 +1,6 @@
 # Jenkins Configuration as Code for the robot execution path.
 # Non-secret global defaults live here so Jenkins UI global variables do not need to be created by hand.
-# Real secrets should come from the controller environment or an external secret source.
+# Real secrets should come from key files rendered into a generated JCasC file before Jenkins starts.
 # This JCasC file is aligned to the deployed t813 robot execution path.
 # The permanent node below uses the deployed SSH launcher convention.
 
@@ -70,7 +70,7 @@ credentials:
               description: "SSH key for t813-agent"
               privateKeySource:
                 directEntry:
-                  privateKey: "${T813_AGENT_SSH_PRIVATE_KEY}"
+                  privateKey: __T813_AGENT_SSH_PRIVATE_KEY_BLOCK__
           - basicSSHUserPrivateKey:
               scope: GLOBAL
               id: "robotws-ssh"
@@ -78,7 +78,7 @@ credentials:
               description: "SSH key for robotws checkout"
               privateKeySource:
                 directEntry:
-                  privateKey: "${ROBOTWS_GIT_SSH_PRIVATE_KEY}"
+                  privateKey: __ROBOTWS_GIT_SSH_PRIVATE_KEY_BLOCK__
           - basicSSHUserPrivateKey:
               scope: GLOBAL
               id: "testline-config-ssh"
@@ -86,7 +86,7 @@ credentials:
               description: "SSH key for testline_configuration checkout"
               privateKeySource:
                 directEntry:
-                  privateKey: "${TESTLINE_CONFIGURATION_GIT_SSH_PRIVATE_KEY}"
+                  privateKey: __TESTLINE_CONFIGURATION_GIT_SSH_PRIVATE_KEY_BLOCK__
 
 # Intentionally not defined here:
 # - ROBOTWS_GIT_REF

@@ -110,6 +110,14 @@ ssh -i ~/.ssh/jenkins_agent_rsa jenkins@10.57.159.149 "echo 'SSH OK'"
 
 如果你手里已经有一把现成的 RSA key，但格式是 `OPENSSH PRIVATE KEY`，可以在 Controller 上转成 PEM：
 
+注意，这种情况很常见：
+
+- 公钥看起来是 `ssh-rsa ...`
+- 文件名也可能叫 `jenkins_agent_rsa`
+- 但私钥文件头仍然是 `-----BEGIN OPENSSH PRIVATE KEY-----`
+
+这时 Jenkins SSH launcher 仍然可能无法识别，需要继续做下面这一步转换。
+
 ```bash
 ssh-keygen -p -m PEM -f ~/.ssh/jenkins_agent_rsa -N "" -P ""
 ```
@@ -217,6 +225,16 @@ git ls-remote git@wrgitlab.ext.net.nokia.com:RAN/configuration-management/testli
 
 - `deploy/env/jenkins-jcasc.env.example`
 
+当前更推荐把私钥作为 controller 本机文件保存，再在 env 文件里只放路径。这样可以避免 `EnvironmentFile` 直接承载多行私钥导致的格式污染、截断或复制错误。
+
+先准备 key 文件目录：
+
+```bash
+sudo install -d -m 0700 /etc/jenkins/keys
+sudo install -m 0600 ~/.ssh/jenkins_agent_rsa /etc/jenkins/keys/jenkins_agent_rsa
+sudo install -m 0600 ~/.ssh/jenkins_gitlab_rsa /etc/jenkins/keys/jenkins_gitlab_rsa
+```
+
 服务器上建议落到真实 env 文件，例如：
 
 ```bash
@@ -225,33 +243,27 @@ JENKINS_URL=https://10.71.210.104/jenkins/
 JENKINS_ADMIN_EMAIL=admin@example.com
 
 T813_AGENT_SSH_USER=jenkins
-T813_AGENT_SSH_PRIVATE_KEY="-----BEGIN OPENSSH PRIVATE KEY-----
-...这里粘贴 ~/.ssh/jenkins_agent_rsa 的完整内容...
------END OPENSSH PRIVATE KEY-----"
+T813_AGENT_SSH_PRIVATE_KEY_PATH=/etc/jenkins/keys/jenkins_agent_rsa
 
 ROBOTWS_GIT_SSH_USER=git
-ROBOTWS_GIT_SSH_PRIVATE_KEY="-----BEGIN OPENSSH PRIVATE KEY-----
-...这里粘贴 ~/.ssh/jenkins_gitlab_rsa 的完整内容...
------END OPENSSH PRIVATE KEY-----"
+ROBOTWS_GIT_SSH_PRIVATE_KEY_PATH=/etc/jenkins/keys/jenkins_gitlab_rsa
 
 TESTLINE_CONFIGURATION_GIT_SSH_USER=git
-TESTLINE_CONFIGURATION_GIT_SSH_PRIVATE_KEY="-----BEGIN OPENSSH PRIVATE KEY-----
-...如果共用，同样粘贴 ~/.ssh/jenkins_gitlab_rsa 的完整内容...
------END OPENSSH PRIVATE KEY-----"
+TESTLINE_CONFIGURATION_GIT_SSH_PRIVATE_KEY_PATH=/etc/jenkins/keys/jenkins_gitlab_rsa
 EOF
 ```
 
-如果 `robotws` 和 `testline_configuration` 复用同一把 GitLab key，那么最后两段私钥内容完全相同是正常的。
+如果 `robotws` 和 `testline_configuration` 复用同一把 GitLab key，那么最后两个 path 完全相同是正常的。
 
 ## 6. 这些值如何映射到 Jenkins credentials
 
-当前 JCasC 会创建 3 个 Jenkins credentials：
+当前 JCasC 会创建 3 个 Jenkins credentials。用户名来自 env，私钥内容由启动前渲染脚本从对应 path 读取后写入最终 JCasC：
 
 | Jenkins credentials ID | 来源环境变量 | 用途 |
 |---|---|---|
-| `t813-agent-ssh` | `T813_AGENT_SSH_USER` + `T813_AGENT_SSH_PRIVATE_KEY` | Jenkins Controller 连接 `t813-agent` |
-| `robotws-ssh` | `ROBOTWS_GIT_SSH_USER` + `ROBOTWS_GIT_SSH_PRIVATE_KEY` | checkout `robotws` |
-| `testline-config-ssh` | `TESTLINE_CONFIGURATION_GIT_SSH_USER` + `TESTLINE_CONFIGURATION_GIT_SSH_PRIVATE_KEY` | checkout `testline_configuration` |
+| `t813-agent-ssh` | `T813_AGENT_SSH_USER` + `T813_AGENT_SSH_PRIVATE_KEY_PATH` | Jenkins Controller 连接 `t813-agent` |
+| `robotws-ssh` | `ROBOTWS_GIT_SSH_USER` + `ROBOTWS_GIT_SSH_PRIVATE_KEY_PATH` | checkout `robotws` |
+| `testline-config-ssh` | `TESTLINE_CONFIGURATION_GIT_SSH_USER` + `TESTLINE_CONFIGURATION_GIT_SSH_PRIVATE_KEY_PATH` | checkout `testline_configuration` |
 
 ## 7. JCasC reload 与生效
 
@@ -299,6 +311,52 @@ Manage Jenkins -> Credentials -> System -> Global credentials
 1. `t813-agent-ssh`
 2. `robotws-ssh`
 3. `testline-config-ssh`
+
+### 8.4 如果 Jenkins 报 `Illegal base64 character 2e`
+
+典型报错类似：
+
+```text
+java.lang.IllegalArgumentException: Illegal base64 character 2e
+```
+
+这里的 `2e` 对应字符 `.`。
+
+这说明 Jenkins 当前读到的 `T813_AGENT_SSH_PRIVATE_KEY` 内容里，PEM 正文混入了不属于 base64 的字符。最常见的是下面几种情况：
+
+1. 把文档示例里的 `...这里粘贴 ...` 原样带进了真实 env 文件
+2. 复制私钥时混入了额外说明文字、缩进、点号或其它可见字符
+3. `-----BEGIN RSA PRIVATE KEY-----` 和 `-----END RSA PRIVATE KEY-----` 之间并不是完整原始私钥正文
+
+先检查 Controller 上原始私钥文件头尾是否正确：
+
+```bash
+head -n 1 ~/.ssh/jenkins_agent_rsa
+tail -n 1 ~/.ssh/jenkins_agent_rsa
+```
+
+输出应该是：
+
+```text
+-----BEGIN RSA PRIVATE KEY-----
+-----END RSA PRIVATE KEY-----
+```
+
+再检查真实 env 文件里有没有明显污染内容：
+
+```bash
+grep -n "T813_AGENT_SSH_PRIVATE_KEY\|这里粘贴\|\.\.\." /etc/default/jenkins-jcasc
+```
+
+如果 grep 结果里还能看到 `这里粘贴` 或 `...`，说明当前 Jenkins 读到的不是实际私钥，而是示例占位内容。
+
+修正后执行：
+
+```bash
+sudo systemctl restart jenkins
+```
+
+然后到 Jenkins 页面确认 `t813-agent-ssh` credential 已经刷新成最新值，再重新测试节点连接。
 
 ## 9. 最终推荐
 

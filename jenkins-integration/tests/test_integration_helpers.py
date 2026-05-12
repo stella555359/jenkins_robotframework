@@ -106,7 +106,7 @@ def test_checkout_plan_builds_clone_commands_when_repo_urls_exist(tmp_path: Path
     assert plan["operations"][0]["repo_url_env"] == "ROBOTWS_REPO_URL"
     assert 'ROBOTWS_EFFECTIVE_REPO_URL_DEFAULT=' in plan["shell_script_text"]
     assert 'run_git_robotws() {' in plan["shell_script_text"]
-    assert 'GIT_SSH_COMMAND="ssh -i \"${ROBOTWS_EFFECTIVE_SSH_KEY_PATH}\" -o IdentitiesOnly=yes -o StrictHostKeyChecking=no" git "$@"' in plan["shell_script_text"]
+    assert 'GIT_SSH_COMMAND="ssh -i ${ROBOTWS_EFFECTIVE_SSH_KEY_PATH} -o IdentitiesOnly=yes -o StrictHostKeyChecking=no" git "$@"' in plan["shell_script_text"]
     assert 'run_git_robotws clone --progress --branch "${ROBOTWS_EFFECTIVE_REF}" "${ROBOTWS_EFFECTIVE_REPO_URL}"' in plan["shell_script_text"]
     assert 'run_git_testline_configuration clone --progress --branch "${TESTLINE_CONFIGURATION_EFFECTIVE_REF}" "${TESTLINE_CONFIGURATION_EFFECTIVE_REPO_URL}"' in plan["shell_script_text"]
 

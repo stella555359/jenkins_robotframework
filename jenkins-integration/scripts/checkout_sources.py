@@ -140,7 +140,7 @@ def build_checkout_plan(request_payload: dict[str, Any], *, workspace_root: Path
         shell_lines.append(f"{git_runner}() {{")
         if credential_kind == "agent-local-key":
             shell_lines.append(f'  if [ -n "${{{effective_ssh_key_path_var}}}" ] && [ ! -r "${{{effective_ssh_key_path_var}}}" ]; then echo Missing readable SSH key for {spec["name"]}: "${{{effective_ssh_key_path_var}}}"; exit 1; fi')
-            shell_lines.append(f'  if [ -n "${{{effective_ssh_key_path_var}}}" ]; then GIT_SSH_COMMAND="ssh -i \"${{{effective_ssh_key_path_var}}}\" -o IdentitiesOnly=yes -o StrictHostKeyChecking=no" git "$@"; else git "$@"; fi')
+            shell_lines.append(f'  if [ -n "${{{effective_ssh_key_path_var}}}" ]; then GIT_SSH_COMMAND="ssh -i ${{{effective_ssh_key_path_var}}} -o IdentitiesOnly=yes -o StrictHostKeyChecking=no" git "$@"; else git "$@"; fi')
         else:
             shell_lines.append('  git "$@"')
         shell_lines.append("}")

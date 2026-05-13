@@ -102,6 +102,8 @@ def test_checkout_plan_builds_clone_commands_when_repo_urls_exist(tmp_path: Path
 
     assert len(plan["operations"]) == 2
     assert plan["operations"][0]["credential_kind"] == "sshagent"
+    assert plan["operations"][0]["credentials_id"] == "robotws-ssh"
+    assert plan["operations"][1]["credentials_id"] == "testline-config-ssh"
     assert plan["operations"][0]["ssh_key_path_env"] == "ROBOTWS_GIT_SSH_KEY_PATH"
     assert plan["operations"][0]["credentials_id_env"] == "ROBOTWS_CREDENTIALS_ID"
     assert plan["operations"][0]["repo_url_env"] == "ROBOTWS_REPO_URL"

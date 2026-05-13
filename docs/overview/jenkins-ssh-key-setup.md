@@ -248,25 +248,23 @@ JENKINS_ADMIN_EMAIL=admin@example.com
 T813_AGENT_SSH_USER=jenkins
 T813_AGENT_SSH_PRIVATE_KEY_PATH=/etc/jenkins/keys/jenkins_agent_rsa
 
-ROBOTWS_CREDENTIALS_ID=robotws-ssh
+ROBOTWS_GIT_SSH_KEY_PATH=/home/jenkins/.ssh/jenkins_gitlab_rsa
 
-TESTLINE_CONFIGURATION_CREDENTIALS_ID=testline-config-ssh
+TESTLINE_CONFIGURATION_GIT_SSH_KEY_PATH=/home/jenkins/.ssh/jenkins_gitlab_rsa
 EOF
 ```
 
-如果 `robotws` 和 `testline_configuration` 复用同一把 GitLab key，那么两个 Jenkins credential 使用同一把私钥也是正常的。
+如果 `robotws` 和 `testline_configuration` 复用同一把 GitLab key，那么最后两个 path 完全相同是正常的。
 
 ## 6. 这些值如何映射到 Jenkins credentials
 
-当前默认 checkout 模式重新回到 Jenkins credentials。JCasC 负责提供默认的 credential ID，实际私钥仍可在 Jenkins UI 中维护：
+当前默认 checkout 模式使用 agent-local key。JCasC 负责把 agent 本机 key path 注入到 `t813-agent` 的 node environment：
 
 | Jenkins credentials ID | 来源环境变量 | 用途 |
 |---|---|---|
 | `t813-agent-ssh` | `T813_AGENT_SSH_USER` + `T813_AGENT_SSH_PRIVATE_KEY_PATH` | Jenkins Controller 连接 `t813-agent` |
-| `robotws-ssh` | `ROBOTWS_CREDENTIALS_ID` | checkout `robotws` |
-| `testline-config-ssh` | `TESTLINE_CONFIGURATION_CREDENTIALS_ID` | checkout `testline_configuration` |
 
-如果以后需要排查或临时回到 agent-local key 模式，仍可以对单次 run 显式指定 `credential_kind=agent-local-key`。
+`robotws` 和 `testline_configuration` checkout 不再依赖 Jenkins credentials，而是由 `checkout-sources.sh` 在 agent 上使用 `ROBOTWS_GIT_SSH_KEY_PATH` / `TESTLINE_CONFIGURATION_GIT_SSH_KEY_PATH` 调用本机 `git`。
 
 ### 6.1 Script Console 打印旧 checkout credential 的公钥和指纹
 
@@ -317,7 +315,7 @@ ssh -i ~/.ssh/jenkins_agent_rsa jenkins@10.57.159.149 "hostname && whoami && jav
 
 ### 8.2 检查 GitLab checkout key
 
-在默认 Jenkins credential 模式下，优先验证 Jenkins 里 `robotws-ssh` / `testline-config-ssh` 是否可用；如需和 agent 本机文件做比对，可在 `t813-agent` 上执行：
+在默认 agent-local key 模式下，优先在 `t813-agent` 上验证这把本机 GitLab key：
 
 ```bash
 sudo su - jenkins
@@ -335,8 +333,6 @@ Manage Jenkins -> Credentials -> System -> Global credentials
 应该能看到：
 
 1. `t813-agent-ssh`
-2. `robotws-ssh`
-3. `testline-config-ssh`
 
 ### 8.4 如果 Jenkins 报 `Illegal base64 character 2e`
 

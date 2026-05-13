@@ -524,9 +524,8 @@ curl -s -k -X POST \
 ```text
 1. checkout_sources.py → 生成 source-checkout.json + checkout-sources.sh
 2. prepare_taf_environment.py → 生成 python-env.json + prepare-python-env.sh
-3. 默认从 source-checkout.json 提取 credential IDs
-4. 如果有 credential IDs → sshagent(credentials) { bash checkout-sources.sh }
-    只有显式指定 `credential_kind=agent-local-key` 时，checkout-sources.sh 才会改为在 agent 上直接使用 `GIT_SSH_COMMAND`
+3. 默认 agent-local-key 模式下，checkout-sources.sh 在 agent 上使用 `ROBOTWS_GIT_SSH_KEY_PATH` / `TESTLINE_CONFIGURATION_GIT_SSH_KEY_PATH` 调用 git
+4. 只有旧 Jenkins credentials 仍存在并显式指定 `credential_kind=sshagent` 时，才会从 source-checkout.json 提取 credential IDs 并进入 `sshagent(credentials) { ... }`
 5. bash prepare-python-env.sh
 ```
 
@@ -546,9 +545,9 @@ curl -s -k -X POST \
 #!/bin/bash
 set -euo pipefail
 echo "[checkout] robotws → git clone git@wrgitlab.ext.net.nokia.com:RAN/robotws.git robotws"
-git clone --branch master --single-branch git@wrgitlab.ext.net.nokia.com:RAN/robotws.git robotws
+GIT_SSH_COMMAND='ssh -i /home/jenkins/.ssh/jenkins_gitlab_rsa -o IdentitiesOnly=yes -o StrictHostKeyChecking=no' git clone --branch master --single-branch git@wrgitlab.ext.net.nokia.com:RAN/robotws.git robotws
 echo "[checkout] testline_configuration → git clone ..."
-git clone --branch master --single-branch git@...:RAN/.../testline_configuration.git testline_configuration
+GIT_SSH_COMMAND='ssh -i /home/jenkins/.ssh/jenkins_gitlab_rsa -o IdentitiesOnly=yes -o StrictHostKeyChecking=no' git clone --branch master --single-branch git@...:RAN/.../testline_configuration.git testline_configuration
 ```
 
 **prepare_taf_environment.py 逻辑：**
@@ -644,8 +643,8 @@ python -m robot \
 |---|---|
 | `ROBOTWS_REPO_URL` | `git@wrgitlab.ext.net.nokia.com:RAN/robotws.git` |
 | `TESTLINE_CONFIGURATION_REPO_URL` | `git@wrgitlab.ext.net.nokia.com:RAN/.../testline_configuration.git` |
-| `ROBOTWS_CREDENTIALS_ID` | `robotws-ssh` |
-| `TESTLINE_CONFIGURATION_CREDENTIALS_ID` | `testline-config-ssh` |
+| `ROBOTWS_GIT_SSH_KEY_PATH` | `/home/jenkins/.ssh/jenkins_gitlab_rsa` |
+| `TESTLINE_CONFIGURATION_GIT_SSH_KEY_PATH` | `/home/jenkins/.ssh/jenkins_gitlab_rsa` |
 | `PIP_INDEX_URL` | 内部 Artifactory PyPI URL |
 | `PIP_EXTRA_INDEX_URL` | 备用 Artifactory PyPI URL |
 | `PIP_TRUSTED_HOST` | Artifactory host 列表 |
@@ -655,8 +654,6 @@ python -m robot \
 | Credentials ID | 类型 | 用途 |
 |---|---|---|
 | `t813-agent-ssh` | SSH Username with private key | Master → Agent 连接 |
-| `robotws-ssh` | SSH Username with private key | checkout robotws |
-| `testline-config-ssh` | SSH Username with private key | checkout testline_configuration |
 
 ### 3.7 TLS 配置要点
 

@@ -101,12 +101,13 @@ def test_checkout_plan_builds_clone_commands_when_repo_urls_exist(tmp_path: Path
     )
 
     assert len(plan["operations"]) == 2
-    assert plan["operations"][0]["credential_kind"] == "agent-local-key"
+    assert plan["operations"][0]["credential_kind"] == "sshagent"
     assert plan["operations"][0]["ssh_key_path_env"] == "ROBOTWS_GIT_SSH_KEY_PATH"
+    assert plan["operations"][0]["credentials_id_env"] == "ROBOTWS_CREDENTIALS_ID"
     assert plan["operations"][0]["repo_url_env"] == "ROBOTWS_REPO_URL"
     assert 'ROBOTWS_EFFECTIVE_REPO_URL_DEFAULT=' in plan["shell_script_text"]
     assert 'run_git_robotws() {' in plan["shell_script_text"]
-    assert 'GIT_SSH_COMMAND="ssh -i ${ROBOTWS_EFFECTIVE_SSH_KEY_PATH} -o IdentitiesOnly=yes -o StrictHostKeyChecking=no" git "$@"' in plan["shell_script_text"]
+    assert '  git "$@"' in plan["shell_script_text"]
     assert 'run_git_robotws clone --progress --branch "${ROBOTWS_EFFECTIVE_REF}" "${ROBOTWS_EFFECTIVE_REPO_URL}"' in plan["shell_script_text"]
     assert 'run_git_testline_configuration clone --progress --branch "${TESTLINE_CONFIGURATION_EFFECTIVE_REF}" "${TESTLINE_CONFIGURATION_EFFECTIVE_REPO_URL}"' in plan["shell_script_text"]
 
@@ -131,6 +132,27 @@ def test_checkout_plan_keeps_sshagent_mode_when_explicitly_requested(tmp_path: P
     assert plan["operations"][0]["credential_kind"] == "sshagent"
     assert 'run_git_robotws() {' in plan["shell_script_text"]
     assert '  git "$@"' in plan["shell_script_text"]
+
+
+def test_checkout_plan_supports_agent_local_key_when_explicitly_requested(tmp_path: Path) -> None:
+    plan = checkout_module.build_checkout_plan(
+        {
+            "source_repos": {
+                "robotws": {
+                    "path": "robotws",
+                    "repo_url": "ssh://git/robotws.git",
+                    "ref": "master",
+                    "credential_kind": "agent-local-key",
+                    "ssh_key_path": "/home/jenkins/.ssh/jenkins_gitlab_rsa",
+                }
+            }
+        },
+        workspace_root=tmp_path,
+    )
+
+    assert plan["operations"][0]["credential_kind"] == "agent-local-key"
+    assert plan["operations"][0]["ssh_key_path"] == "/home/jenkins/.ssh/jenkins_gitlab_rsa"
+    assert 'GIT_SSH_COMMAND="ssh -i ${ROBOTWS_EFFECTIVE_SSH_KEY_PATH} -o IdentitiesOnly=yes -o StrictHostKeyChecking=no" git "$@"' in plan["shell_script_text"]
 
 
 def test_prepare_taf_environment_plan_supports_create_venv_install_mode() -> None:

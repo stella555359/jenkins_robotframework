@@ -17,6 +17,10 @@ jenkins:
             value: "git@wrgitlab.ext.net.nokia.com:RAN/robotws.git"
           - key: TESTLINE_CONFIGURATION_REPO_URL
             value: "git@wrgitlab.ext.net.nokia.com:RAN/configuration-management/testline_configuration.git"
+          - key: ROBOTWS_CREDENTIALS_ID
+            value: "robotws-ssh"
+          - key: TESTLINE_CONFIGURATION_CREDENTIALS_ID
+            value: "testline-config-ssh"
           # Keep pip values as controller environment variables because internal PyPI URLs can contain credentials/tokens.
           - key: PIP_INDEX_URL
             value: "${PIP_INDEX_URL}"

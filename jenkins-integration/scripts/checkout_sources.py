@@ -14,7 +14,7 @@ REPO_CONVENTIONS = {
         "ref_env": "ROBOTWS_GIT_REF",
         "credentials_id_env": "ROBOTWS_CREDENTIALS_ID",
         "ssh_key_path_env": "ROBOTWS_GIT_SSH_KEY_PATH",
-        "credential_kind": "agent-local-key",
+        "credential_kind": "sshagent",
     },
     "testline_configuration": {
         "path": "testline_configuration",
@@ -22,7 +22,7 @@ REPO_CONVENTIONS = {
         "ref_env": "TESTLINE_CONFIGURATION_GIT_REF",
         "credentials_id_env": "TESTLINE_CONFIGURATION_CREDENTIALS_ID",
         "ssh_key_path_env": "TESTLINE_CONFIGURATION_GIT_SSH_KEY_PATH",
-        "credential_kind": "agent-local-key",
+        "credential_kind": "sshagent",
     },
 }
 
@@ -95,7 +95,7 @@ def build_checkout_plan(request_payload: dict[str, Any], *, workspace_root: Path
         credentials_id_env = _clean_text(spec.get("credentials_id_env"))
         ssh_key_path = _clean_text(spec.get("ssh_key_path"))
         ssh_key_path_env = _clean_text(spec.get("ssh_key_path_env"))
-        credential_kind = _clean_text(spec.get("credential_kind")) or "agent-local-key"
+        credential_kind = _clean_text(spec.get("credential_kind")) or "sshagent"
         git_dir = repo_dir / ".git"
         env_prefix = spec["name"].upper()
         effective_repo_url_var = f"{env_prefix}_EFFECTIVE_REPO_URL"

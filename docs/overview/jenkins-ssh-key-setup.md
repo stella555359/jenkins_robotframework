@@ -248,25 +248,48 @@ JENKINS_ADMIN_EMAIL=admin@example.com
 T813_AGENT_SSH_USER=jenkins
 T813_AGENT_SSH_PRIVATE_KEY_PATH=/etc/jenkins/keys/jenkins_agent_rsa
 
-ROBOTWS_GIT_SSH_KEY_PATH=/home/jenkins/.ssh/jenkins_gitlab_rsa
+ROBOTWS_CREDENTIALS_ID=robotws-ssh
 
-TESTLINE_CONFIGURATION_GIT_SSH_KEY_PATH=/home/jenkins/.ssh/jenkins_gitlab_rsa
+TESTLINE_CONFIGURATION_CREDENTIALS_ID=testline-config-ssh
 EOF
 ```
 
-如果 `robotws` 和 `testline_configuration` 复用同一把 GitLab key，那么最后两个 path 完全相同是正常的。
-
-这里的 `/home/jenkins/.ssh/jenkins_gitlab_rsa` 只是示例。它必须替换成 `t813-agent` 本机真实存在、并且对 Jenkins agent 进程可读的路径。
+如果 `robotws` 和 `testline_configuration` 复用同一把 GitLab key，那么两个 Jenkins credential 使用同一把私钥也是正常的。
 
 ## 6. 这些值如何映射到 Jenkins credentials
 
-当前 JCasC 会创建 1 个 Jenkins credential。用户名来自 env，私钥内容由启动前渲染脚本从 controller 本机 path 读取后写入最终 JCasC：
+当前默认 checkout 模式重新回到 Jenkins credentials。JCasC 负责提供默认的 credential ID，实际私钥仍可在 Jenkins UI 中维护：
 
 | Jenkins credentials ID | 来源环境变量 | 用途 |
 |---|---|---|
 | `t813-agent-ssh` | `T813_AGENT_SSH_USER` + `T813_AGENT_SSH_PRIVATE_KEY_PATH` | Jenkins Controller 连接 `t813-agent` |
+| `robotws-ssh` | `ROBOTWS_CREDENTIALS_ID` | checkout `robotws` |
+| `testline-config-ssh` | `TESTLINE_CONFIGURATION_CREDENTIALS_ID` | checkout `testline_configuration` |
 
-`robotws` 和 `testline_configuration` checkout 不再依赖 Jenkins credentials，而是由 `checkout-sources.sh` 在 agent 上使用 `ROBOTWS_GIT_SSH_KEY_PATH` / `TESTLINE_CONFIGURATION_GIT_SSH_KEY_PATH` 调用本机 `git`。
+如果以后需要排查或临时回到 agent-local key 模式，仍可以对单次 run 显式指定 `credential_kind=agent-local-key`。
+
+### 6.1 Script Console 打印旧 checkout credential 的公钥和指纹
+
+仓库里已经提供了一份只打印公钥和指纹、不输出私钥正文的 Groovy：
+
+- [jenkins-integration/scripts/print_ssh_credential_pubkeys.groovy](c:/TA/jenkins_robotframework/jenkins-integration/scripts/print_ssh_credential_pubkeys.groovy)
+
+在 Jenkins UI 执行路径：
+
+```text
+Manage Jenkins -> Script Console
+```
+
+把脚本内容粘进去运行后，会打印：
+
+1. `robotws-ssh` 的 username / public key / fingerprint
+2. `testline-config-ssh` 的 username / public key / fingerprint
+
+然后再和 agent 上当前文件的指纹做比对：
+
+```bash
+sudo -u jenkins ssh-keygen -lf /home/jenkins/.ssh/jenkins_gitlab_rsa
+```
 
 ## 7. JCasC reload 与生效
 
@@ -294,7 +317,7 @@ ssh -i ~/.ssh/jenkins_agent_rsa jenkins@10.57.159.149 "hostname && whoami && jav
 
 ### 8.2 检查 GitLab checkout key
 
-在 `t813-agent` 上：
+在默认 Jenkins credential 模式下，优先验证 Jenkins 里 `robotws-ssh` / `testline-config-ssh` 是否可用；如需和 agent 本机文件做比对，可在 `t813-agent` 上执行：
 
 ```bash
 sudo su - jenkins
@@ -312,6 +335,8 @@ Manage Jenkins -> Credentials -> System -> Global credentials
 应该能看到：
 
 1. `t813-agent-ssh`
+2. `robotws-ssh`
+3. `testline-config-ssh`
 
 ### 8.4 如果 Jenkins 报 `Illegal base64 character 2e`
 

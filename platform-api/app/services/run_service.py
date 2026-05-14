@@ -297,10 +297,6 @@ def run_create(request: RunCreateRequest) -> RunCreateResponse:
         or _normalize_optional_text(request.robotcase_path)
     )
     metadata = dict(request.metadata)
-    if request.dispatch_backend:
-        metadata["dispatch_backend"] = request.dispatch_backend
-    elif request.executor_type == "python_orchestrator":
-        metadata.setdefault("dispatch_backend", "worker")
 
     record = {
         "executor_type": request.executor_type,
@@ -433,49 +429,10 @@ def trigger_run(run_id: str) -> RunTriggerResponse:
         raise HTTPException(status_code=409, detail=f"Run cannot be triggered from status {record['status']}.")
 
     metadata = dict(record.get("metadata") or {})
-    dispatch_backend = _normalize_optional_text(metadata.get("dispatch_backend"))
-    if record["executor_type"] == "robot":
+    if record["executor_type"] in ("robot", "python_orchestrator"):
         dispatch_backend = "jenkins"
-    elif record["executor_type"] == "python_orchestrator":
-        dispatch_backend = dispatch_backend or "worker"
     else:
         raise HTTPException(status_code=400, detail=f"Unsupported executor_type: {record['executor_type']}")
-
-    if dispatch_backend == "worker":
-        now = datetime.now(ZoneInfo("Asia/Shanghai")).isoformat()
-        metadata.update(
-            {
-                "dispatch_backend": "worker",
-                "worker_handoff": {
-                    "run_id": run_id,
-                    "detail_url": f"/api/runs/{run_id}",
-                    "callback_url": f"/api/runs/{run_id}/callbacks/worker",
-                },
-            }
-        )
-        updated = update_run_record(
-            run_id,
-            {
-                "status": "queued",
-                "message": "Run queued for Python orchestrator worker.",
-                "run_metadata_json": metadata,
-                "updated_at": now,
-            },
-        )
-        if updated is None:
-            raise HTTPException(status_code=404, detail="Run not found.")
-        normalized = _normalize_record(updated)
-        return RunTriggerResponse(
-            run_id=run_id,
-            executor_type=normalized["executor_type"],
-            status=normalized["status"],
-            message=normalized["message"],
-            scheduler="worker",
-            dispatch=metadata["worker_handoff"],
-        )
-
-    if dispatch_backend != "jenkins":
-        raise HTTPException(status_code=400, detail="dispatch_backend must be worker or jenkins.")
 
     parameters = (
         build_robot_jenkins_parameters(record)

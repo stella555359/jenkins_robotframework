@@ -71,16 +71,12 @@ export function WorkflowRunList() {
                 <th>Testline</th>
                 <th>Build</th>
                 <th>Status</th>
-                <th>Dispatch</th>
                 <th>Created</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {items.map((run) => {
-                const dispatch = (run as Record<string, unknown>).metadata
-                  ? String(((run as Record<string, unknown>).metadata as Record<string, unknown>)?.dispatch_backend || "-")
-                  : "-";
                 return (
                   <tr key={run.run_id}>
                     <td>
@@ -89,7 +85,6 @@ export function WorkflowRunList() {
                     <td>{run.testline}</td>
                     <td>{run.build || "-"}</td>
                     <td><StatusBadge status={run.status} /></td>
-                    <td>{dispatch}</td>
                     <td>{run.created_at ? new Date(run.created_at).toLocaleString() : "-"}</td>
                     <td>
                       <div className="actions">

@@ -1,6 +1,6 @@
 import { DragEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, DispatchBackend, OperationDescriptor, RunCreatePayload } from "../api";
+import { api, OperationDescriptor, RunCreatePayload } from "../api";
 
 type SelectedUe = {
   ue_index: number;
@@ -53,7 +53,6 @@ export function WorkflowBuilder() {
   const [testline, setTestline] = useState("7_5_UTE5G402T813");
   const [build, setBuild] = useState("");
   const [workflowName, setWorkflowName] = useState("Python KPI Runner Dry Run");
-  const [dispatchBackend, setDispatchBackend] = useState<DispatchBackend>("worker");
   const [selectedUeIndexes, setSelectedUeIndexes] = useState<number[]>([1, 2]);
   const [draggedModel, setDraggedModel] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -187,11 +186,9 @@ export function WorkflowBuilder() {
       const payload: RunCreatePayload = {
         testline: testline.trim(),
         executor_type: "python_orchestrator",
-        dispatch_backend: dispatchBackend,
         workflow_spec: workflowSpec,
         build: build.trim() || undefined,
         metadata: {
-          dispatch_backend: dispatchBackend,
           selected_ues: requiresUe ? selectedUes : [],
           runner_request: runnerRequest,
           portal_workflow_builder: "v2",
@@ -230,13 +227,6 @@ export function WorkflowBuilder() {
           <label>
             Workflow name
             <input value={workflowName} onChange={(event) => setWorkflowName(event.target.value)} required />
-          </label>
-          <label>
-            Dispatch backend
-            <select value={dispatchBackend} onChange={(event) => setDispatchBackend(event.target.value as DispatchBackend)}>
-              <option value="worker">worker</option>
-              <option value="jenkins">jenkins</option>
-            </select>
           </label>
           <label>
             Build

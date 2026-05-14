@@ -90,7 +90,6 @@ export function WorkflowRunDetail() {
 
   const metadata = run.metadata || {};
   const pipelineStages = (metadata.pipeline_stages as StageEntry[] | undefined) || [];
-  const dispatchBackend = String(metadata.dispatch_backend || "-");
   const statusCls = `badge status-${run.status.replace(/_/g, "-")}`;
 
   // Extract workflow spec stage summary
@@ -124,7 +123,6 @@ export function WorkflowRunDetail() {
         <div><span>Status</span><strong><span className={statusCls}>{run.status}</span></strong></div>
         <div><span>Testline</span><strong>{run.testline}</strong></div>
         <div><span>Build</span><strong>{run.build || "-"}</strong></div>
-        <div><span>Dispatch</span><strong>{dispatchBackend}</strong></div>
         <div><span>Created</span><strong>{run.created_at ? new Date(run.created_at).toLocaleString() : "-"}</strong></div>
         {run.started_at && <div><span>Started</span><strong>{new Date(run.started_at).toLocaleString()}</strong></div>}
         {run.finished_at && <div><span>Finished</span><strong>{new Date(run.finished_at).toLocaleString()}</strong></div>}

@@ -393,80 +393,150 @@ tbody tr:hover {
 
 /* ── Workflow builder ─────────────────────────────────── */
 
-.workflow-layout {
-  display: grid;
-  gap: 16px;
-  grid-template-columns: 260px minmax(0, 1fr);
+/* ── Workflow Builder: Supported Operations ──────────── */
+
+.supported-operations {
+  background: #f5f9ff;
+  border: 1px solid #d8e2ef;
+  border-radius: 12px;
   margin-top: 18px;
+  padding: 16px;
 }
 
-.operation-palette,
-.stage-board {
-  display: grid;
+.supported-operations h3 {
+  margin: 0 0 10px;
+}
+
+.operation-chip-grid {
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px;
 }
 
-.operation-palette {
-  align-content: start;
-}
-
-.operation-palette h3 {
-  margin: 0 0 4px;
-}
-
-.operation-card {
-  align-items: flex-start;
-  background: #f5f9ff;
+.operation-chip {
+  align-items: center;
+  background: #fff;
   border: 1px solid #d8e2ef;
+  border-radius: 8px;
   color: #1a2233;
   cursor: grab;
-  display: grid;
-  gap: 2px;
-  justify-content: stretch;
-  padding: 10px;
+  display: inline-flex;
+  gap: 8px;
+  padding: 8px 14px;
   text-align: left;
+  transition: background 0.15s, box-shadow 0.15s;
 }
 
-.operation-card:hover {
+.operation-chip:hover {
   background: #eaf3ff;
+  box-shadow: 0 2px 6px rgba(26, 109, 212, 0.1);
 }
 
-.operation-card span {
-  color: #6b7f9e;
+.operation-chip strong {
+  font-size: 13px;
+}
+
+.chip-tag {
+  background: #e0ecfa;
+  border-radius: 4px;
+  color: #3d6fa7;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+}
+
+/* ── Workflow Builder: Selected Operations ────────────── */
+
+.selected-operations {
+  background: #f8fbff;
+  border: 1px solid #d8e2ef;
+  border-radius: 12px;
+  margin-top: 14px;
+  padding: 16px;
+}
+
+.selected-operations-header {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.selected-operations-header h3 {
+  margin: 0;
+}
+
+.workflow-row {
+  background: #fff;
+  border: 1px dashed #b8c8dd;
+  border-radius: 10px;
+  margin-bottom: 10px;
+  min-height: 48px;
+  padding: 10px 14px;
+}
+
+.workflow-row-new {
+  border-style: dotted;
+  background: #f0f5fc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.workflow-row-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.row-label {
+  color: #4a6a92;
   font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.workflow-row-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.workflow-row-item {
+  align-items: center;
+  background: #eaf3ff;
+  border: 1px solid #c5d9f0;
+  border-radius: 8px;
+  display: inline-flex;
+  gap: 8px;
+  padding: 6px 12px;
+}
+
+.workflow-row-item span {
+  font-size: 13px;
   font-weight: 600;
 }
 
-.stage-card {
-  background: #f8fbff;
-  border: 1px dashed #b8c8dd;
-  border-radius: 12px;
-  display: grid;
-  gap: 8px;
-  min-height: 82px;
-  padding: 12px;
+.workflow-row-item button {
+  background: none;
+  border: none;
+  color: #8a9ab5;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 2px;
 }
 
-.stage-card-header {
-  align-items: center;
-  display: flex;
-  gap: 10px;
-  justify-content: space-between;
+.workflow-row-item button:hover {
+  color: #d44;
 }
 
-.stage-card-header select {
-  max-width: 120px;
-  padding: 5px 8px;
-}
-
-.stage-item {
-  align-items: center;
-  background: #fff;
-  border: 1px solid #dfe7f3;
-  border-radius: 8px;
-  display: flex;
-  justify-content: space-between;
-  padding: 8px 10px;
+.drop-hint {
+  margin: 0;
+  padding: 6px 0;
 }
 
 .ue-grid {

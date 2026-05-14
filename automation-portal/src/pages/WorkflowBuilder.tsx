@@ -9,23 +9,17 @@ type SelectedUe = {
   ue_family?: string;
 };
 
-type WorkflowItemDraft = {
+type RowItem = {
   item_id: string;
   model: string;
   label: string;
-  enabled: boolean;
-  order: number;
-  execution_mode: "serial" | "parallel";
-  continue_on_failure: boolean;
   ue_scope: Record<string, unknown>;
   params: Record<string, unknown>;
 };
 
-type StageDraft = {
-  stage_id: number;
-  stage_name: string;
-  execution_mode: "serial" | "parallel";
-  items: WorkflowItemDraft[];
+type WorkflowRow = {
+  row_id: string;
+  items: RowItem[];
 };
 
 const DEFAULT_UES: SelectedUe[] = [
@@ -38,28 +32,11 @@ const DEFAULT_UES: SelectedUe[] = [
   { ue_index: 7, label: "_sigspark_6", ue_type: "huawei_sigspark", ue_family: "pioneer" },
 ];
 
-const INITIAL_STAGES: StageDraft[] = [
-  { stage_id: 1, stage_name: "prepare-ue", execution_mode: "serial", items: [] },
-  { stage_id: 2, stage_name: "attach", execution_mode: "serial", items: [] },
-  { stage_id: 3, stage_name: "optional-operation", execution_mode: "parallel", items: [] },
-  { stage_id: 4, stage_name: "detach", execution_mode: "serial", items: [] },
-  { stage_id: 5, stage_name: "kpi-followup", execution_mode: "serial", items: [] },
-];
-
-function stageIdForOperation(operation: OperationDescriptor, stages: StageDraft[]): number {
-  const matched = stages.find((stage) => stage.stage_name === operation.default_stage);
-  return matched?.stage_id || stages[0].stage_id;
-}
-
-function makeItem(operation: OperationDescriptor, order: number): WorkflowItemDraft {
+function makeRowItem(operation: OperationDescriptor): RowItem {
   return {
-    item_id: `${operation.model}-${Date.now()}-${order}`,
+    item_id: `${operation.model}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     model: operation.model,
     label: operation.label,
-    enabled: true,
-    order,
-    execution_mode: operation.default_execution_mode,
-    continue_on_failure: operation.model === "detach",
     ue_scope: { ...operation.default_ue_scope },
     params: { ...operation.default_params },
   };
@@ -72,7 +49,7 @@ function JsonPreview({ value }: { value: unknown }) {
 export function WorkflowBuilder() {
   const navigate = useNavigate();
   const [catalog, setCatalog] = useState<OperationDescriptor[]>([]);
-  const [stages, setStages] = useState<StageDraft[]>(INITIAL_STAGES);
+  const [rows, setRows] = useState<WorkflowRow[]>([{ row_id: "row-1", items: [] }]);
   const [testline, setTestline] = useState("7_5_UTE5G402T813");
   const [build, setBuild] = useState("");
   const [workflowName, setWorkflowName] = useState("Python KPI Runner Dry Run");
@@ -94,29 +71,33 @@ export function WorkflowBuilder() {
     [selectedUeIndexes],
   );
 
+  const allModels = useMemo(() => rows.flatMap((row) => row.items.map((item) => item.model)), [rows]);
+
   const requiresUe = useMemo(() => {
     const requires = new Set(catalog.filter((item) => item.requires_ue).map((item) => item.model));
-    return stages.some((stage) => stage.items.some((item) => item.enabled && requires.has(item.model)));
-  }, [catalog, stages]);
+    return allModels.some((model) => requires.has(model));
+  }, [catalog, allModels]);
 
   const workflowSpec = useMemo(
     () => ({
       name: workflowName,
-      stages: stages.map((stage) => ({
-        stage_id: stage.stage_id,
-        stage_name: stage.stage_name,
-        execution_mode: stage.execution_mode,
-        items: stage.items.map((item, index) => ({
-          item_id: item.item_id,
-          model: item.model,
-          enabled: item.enabled,
-          order: (index + 1) * 10,
-          execution_mode: item.execution_mode,
-          continue_on_failure: item.continue_on_failure,
-          ue_scope: item.ue_scope,
-          params: item.params,
+      stages: rows
+        .filter((row) => row.items.length > 0)
+        .map((row, index) => ({
+          stage_id: index + 1,
+          stage_name: `step-${index + 1}`,
+          execution_mode: row.items.length > 1 ? ("parallel" as const) : ("serial" as const),
+          items: row.items.map((item, itemIndex) => ({
+            item_id: item.item_id,
+            model: item.model,
+            enabled: true,
+            order: (itemIndex + 1) * 10,
+            execution_mode: row.items.length > 1 ? ("parallel" as const) : ("serial" as const),
+            continue_on_failure: item.model === "detach",
+            ue_scope: item.ue_scope,
+            params: item.params,
+          })),
         })),
-      })),
       runtime_options: {
         dry_run: true,
         stop_on_failure: true,
@@ -125,7 +106,7 @@ export function WorkflowBuilder() {
       },
       portal_followups: {},
     }),
-    [stages, workflowName],
+    [rows, workflowName],
   );
 
   const runnerRequest = useMemo(
@@ -142,38 +123,55 @@ export function WorkflowBuilder() {
     [requiresUe, selectedUes, testline, workflowSpec],
   );
 
-  function addOperationToStage(operation: OperationDescriptor, targetStageId?: number) {
-    setStages((current) => {
-      const stageId = targetStageId || stageIdForOperation(operation, current);
-      return current.map((stage) => {
-        if (stage.stage_id !== stageId) return stage;
-        return {
-          ...stage,
-          items: [...stage.items, makeItem(operation, (stage.items.length + 1) * 10)],
-        };
-      });
+  function addOperationToRow(operation: OperationDescriptor, rowId: string) {
+    setRows((current) =>
+      current.map((row) =>
+        row.row_id === rowId ? { ...row, items: [...row.items, makeRowItem(operation)] } : row,
+      ),
+    );
+  }
+
+  function addNewRow() {
+    setRows((current) => [...current, { row_id: `row-${Date.now()}`, items: [] }]);
+  }
+
+  function removeRow(rowId: string) {
+    setRows((current) => {
+      const filtered = current.filter((row) => row.row_id !== rowId);
+      return filtered.length === 0 ? [{ row_id: `row-${Date.now()}`, items: [] }] : filtered;
     });
   }
 
-  function handleDrop(event: DragEvent<HTMLDivElement>, stageId: number) {
+  function removeItem(rowId: string, itemId: string) {
+    setRows((current) =>
+      current.map((row) =>
+        row.row_id === rowId ? { ...row, items: row.items.filter((item) => item.item_id !== itemId) } : row,
+      ),
+    );
+  }
+
+  function handleDropOnRow(event: DragEvent<HTMLDivElement>, rowId: string) {
     event.preventDefault();
     const model = draggedModel || event.dataTransfer.getData("text/plain");
     const operation = catalog.find((item) => item.model === model);
-    if (operation) addOperationToStage(operation, stageId);
+    if (operation) addOperationToRow(operation, rowId);
+    setDraggedModel(null);
+  }
+
+  function handleDropOnNewRow(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const model = draggedModel || event.dataTransfer.getData("text/plain");
+    const operation = catalog.find((item) => item.model === model);
+    if (operation) {
+      const newRowId = `row-${Date.now()}`;
+      setRows((current) => [...current, { row_id: newRowId, items: [makeRowItem(operation)] }]);
+    }
     setDraggedModel(null);
   }
 
   function toggleUe(ueIndex: number) {
     setSelectedUeIndexes((current) =>
       current.includes(ueIndex) ? current.filter((item) => item !== ueIndex) : [...current, ueIndex].sort((a, b) => a - b),
-    );
-  }
-
-  function removeItem(stageId: number, itemId: string) {
-    setStages((current) =>
-      current.map((stage) =>
-        stage.stage_id === stageId ? { ...stage, items: stage.items.filter((item) => item.item_id !== itemId) } : stage,
-      ),
     );
   }
 
@@ -186,7 +184,6 @@ export function WorkflowBuilder() {
     }
     setIsSubmitting(true);
     try {
-      const models = stages.flatMap((stage) => stage.items.filter((item) => item.enabled).map((item) => item.model));
       const payload: RunCreatePayload = {
         testline: testline.trim(),
         executor_type: "python_orchestrator",
@@ -197,10 +194,10 @@ export function WorkflowBuilder() {
           dispatch_backend: dispatchBackend,
           selected_ues: requiresUe ? selectedUes : [],
           runner_request: runnerRequest,
-          portal_workflow_builder: "mvp",
+          portal_workflow_builder: "v2",
         },
-        enable_kpi_generator: models.includes("kpi_generator"),
-        enable_kpi_anomaly_detector: models.includes("kpi_detector"),
+        enable_kpi_generator: allModels.includes("kpi_generator"),
+        enable_kpi_anomaly_detector: allModels.includes("kpi_detector"),
       };
       const created = await api.createRun(payload);
       await api.triggerRun(created.run_id);
@@ -219,7 +216,9 @@ export function WorkflowBuilder() {
           <p className="eyebrow">Test Workflow</p>
           <h2>Python KPI Workflow Builder</h2>
         </div>
-        <p className="muted">Drag operations into stages. UE selection is only required when selected operations need UE.</p>
+        <p className="muted">
+          Drag operations to Selected Operations. Same row = parallel, different rows = serial (top to bottom).
+        </p>
       </div>
 
       <form onSubmit={handleSubmit}>
@@ -245,15 +244,19 @@ export function WorkflowBuilder() {
           </label>
         </div>
 
-        <div className="workflow-layout">
-          <div className="operation-palette">
-            <h3>Operations</h3>
+        {/* ── Supported Operations ─────────────────────── */}
+        <div className="supported-operations">
+          <h3>Supported Operations</h3>
+          <div className="operation-chip-grid">
             {catalog.map((operation) => (
               <button
-                className="operation-card"
+                className="operation-chip"
                 draggable
                 key={operation.model}
-                onClick={() => addOperationToStage(operation)}
+                onClick={() => {
+                  const lastRow = rows[rows.length - 1];
+                  addOperationToRow(operation, lastRow.row_id);
+                }}
                 onDragStart={(event) => {
                   setDraggedModel(operation.model);
                   event.dataTransfer.setData("text/plain", operation.model);
@@ -261,48 +264,65 @@ export function WorkflowBuilder() {
                 type="button"
               >
                 <strong>{operation.label}</strong>
-                <span>{operation.requires_ue ? "Requires UE" : "No UE"}</span>
+                <span className="chip-tag">{operation.requires_ue ? "UE" : "No UE"}</span>
               </button>
             ))}
           </div>
+        </div>
 
-          <div className="stage-board">
-            {stages.map((stage) => (
-              <div
-                className="stage-card"
-                key={stage.stage_id}
-                onDragOver={(event) => event.preventDefault()}
-                onDrop={(event) => handleDrop(event, stage.stage_id)}
-              >
-                <div className="stage-card-header">
-                  <strong>{stage.stage_id}. {stage.stage_name}</strong>
-                  <select
-                    value={stage.execution_mode}
-                    onChange={(event) =>
-                      setStages((current) =>
-                        current.map((item) =>
-                          item.stage_id === stage.stage_id
-                            ? { ...item, execution_mode: event.target.value as "serial" | "parallel" }
-                            : item,
-                        ),
-                      )
-                    }
-                  >
-                    <option value="serial">serial</option>
-                    <option value="parallel">parallel</option>
-                  </select>
-                </div>
-                {stage.items.length === 0 ? <p className="muted">Drop operations here.</p> : null}
-                {stage.items.map((item) => (
-                  <div className="stage-item" key={item.item_id}>
-                    <span>{item.label}</span>
-                    <button className="small secondary" type="button" onClick={() => removeItem(stage.stage_id, item.item_id)}>
-                      Remove
-                    </button>
-                  </div>
-                ))}
+        {/* ── Selected Operations ─────────────────────── */}
+        <div className="selected-operations">
+          <div className="selected-operations-header">
+            <h3>Selected Operations</h3>
+            <button className="small" type="button" onClick={addNewRow}>+ Add Row</button>
+          </div>
+          <p className="muted" style={{ margin: "0 0 8px" }}>
+            Each row executes in parallel. Rows run serially from top to bottom.
+          </p>
+
+          {rows.map((row, rowIndex) => (
+            <div
+              className="workflow-row"
+              key={row.row_id}
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => handleDropOnRow(event, row.row_id)}
+            >
+              <div className="workflow-row-header">
+                <span className="row-label">
+                  Row {rowIndex + 1}
+                  {row.items.length > 1 ? " (parallel)" : row.items.length === 1 ? " (serial)" : ""}
+                </span>
+                <button className="small secondary" type="button" onClick={() => removeRow(row.row_id)}>
+                  Remove Row
+                </button>
               </div>
-            ))}
+              <div className="workflow-row-items">
+                {row.items.length === 0 ? (
+                  <p className="muted drop-hint">Drop operations here</p>
+                ) : (
+                  row.items.map((item) => (
+                    <div className="workflow-row-item" key={item.item_id}>
+                      <span>{item.label}</span>
+                      <button
+                        className="small secondary"
+                        type="button"
+                        onClick={() => removeItem(row.row_id, item.item_id)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          ))}
+
+          <div
+            className="workflow-row workflow-row-new"
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={handleDropOnNewRow}
+          >
+            <p className="muted">Drop here to create a new row</p>
           </div>
         </div>
 

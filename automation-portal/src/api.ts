@@ -251,4 +251,21 @@ export const api = {
       method: "POST",
     });
   },
+  async uploadFile(file: File): Promise<{ path: string }> {
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await fetch(`${apiBaseUrl}/uploads`, {
+      method: "POST",
+      body: formData,
+    });
+    if (!response.ok) {
+      let message = `${response.status} ${response.statusText}`;
+      try {
+        const payload = (await response.json()) as { detail?: string };
+        if (payload.detail) message = payload.detail;
+      } catch { /* keep HTTP status */ }
+      throw new Error(message);
+    }
+    return (await response.json()) as { path: string };
+  },
 };

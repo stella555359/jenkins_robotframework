@@ -4,7 +4,7 @@ import { api } from "../api";
 
 export function KpiDetectorForm() {
   const navigate = useNavigate();
-  const [sourceFile, setSourceFile] = useState("");
+  const [sourceFile, setSourceFile] = useState<File | null>(null);
   const [testline, setTestline] = useState("");
   const [build, setBuild] = useState("");
   const [sheetName, setSheetName] = useState("");
@@ -15,14 +15,17 @@ export function KpiDetectorForm() {
 
   async function submit() {
     setError(null);
-    if (!sourceFile.trim()) {
-      setError("Source File is required.");
+    if (!sourceFile) {
+      setError("Please select a source file (.xlsx).");
       return;
     }
     setSubmitting(true);
     try {
+      // Upload file first, then create run with the server-side path
+      const uploaded = await api.uploadFile(sourceFile);
+
       const payload: Record<string, unknown> = {
-        source_file: sourceFile.trim(),
+        source_file: uploaded.path,
         generate_html: generateHtml ? "true" : "false",
         allow_scout_summary: allowScoutSummary ? "true" : "false",
       };
@@ -56,7 +59,12 @@ export function KpiDetectorForm() {
       <div className="form-grid" style={{ marginTop: 16 }}>
         <label className="span-2">
           Source File (xlsx) *
-          <input value={sourceFile} onChange={(e) => setSourceFile(e.target.value)} placeholder="Absolute path to KPI report xlsx" />
+          <input
+            type="file"
+            accept=".xlsx,.xls"
+            onChange={(e) => setSourceFile(e.target.files?.[0] ?? null)}
+          />
+          {sourceFile && <span className="muted" style={{ fontSize: 13 }}>{sourceFile.name}</span>}
         </label>
         <label>
           Testline
@@ -84,7 +92,7 @@ export function KpiDetectorForm() {
 
       <div className="actions" style={{ marginTop: 20 }}>
         <button onClick={submit} disabled={submitting}>
-          {submitting ? "Creating…" : "Create Detector Run"}
+          {submitting ? "Uploading & Creating…" : "Create Detector Run"}
         </button>
         <button className="secondary" onClick={() => navigate("/kpi/detector")} type="button">
           Cancel

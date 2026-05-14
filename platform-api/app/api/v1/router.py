@@ -1,6 +1,8 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, UploadFile
+from pathlib import Path
 
 from app.schemas.health import HealthResponse
+from app.core.config import settings
 from app.services.run_service import (
     apply_run_callback,
     delete_run,
@@ -137,4 +139,25 @@ def get_progress(run_id: str) -> RunProgressResponse:
 @router.post("/runs/{run_id}/progress", response_model=ProgressUpdateResponse, tags=["run"])
 def push_progress(run_id: str, request: ProgressUpdateRequest) -> ProgressUpdateResponse:
     return update_run_progress(run_id, request)
+
+
+UPLOAD_DIR = Path(settings.runs_db_path).parent / "uploads"
+
+
+@router.post("/uploads", tags=["upload"])
+async def upload_file(file: UploadFile) -> dict[str, str]:
+    filename = Path(file.filename or "upload").name  # sanitize: name only, no path traversal
+    if not filename:
+        filename = "upload"
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    dest = UPLOAD_DIR / filename
+    # Avoid overwriting: append timestamp if file exists
+    if dest.exists():
+        import time
+        stem = dest.stem
+        suffix = dest.suffix
+        dest = UPLOAD_DIR / f"{stem}_{int(time.time())}{suffix}"
+    content = await file.read()
+    dest.write_bytes(content)
+    return {"path": str(dest.resolve())}
 

@@ -218,6 +218,118 @@ def test_create_python_orchestrator_run_persists_workflow_spec(client, fetch_run
 
 
 @allure.feature("Run API")
+@allure.story("Trigger run")
+@allure.title("POST /api/runs/{run_id}/trigger queues python orchestrator runs for worker")
+def test_trigger_python_orchestrator_run_queues_worker(client, fetch_run_record) -> None:
+    create_response = client.post(
+        "/api/runs",
+        json={
+            "testline": "T813",
+            "executor_type": "python_orchestrator",
+            "dispatch_backend": "worker",
+            "workflow_spec": {
+                "name": "GNB WebUI Dry Run",
+                "stages": [
+                    {
+                        "stage_id": 1,
+                        "stage_name": "gnb-webui-operation",
+                        "execution_mode": "serial",
+                        "items": [
+                            {
+                                "item_id": "ru-reset",
+                                "model": "ru_reset",
+                                "ue_scope": {"mode": "none"},
+                                "params": {"repeat_count": 3},
+                            }
+                        ],
+                    }
+                ],
+                "runtime_options": {"dry_run": True},
+            },
+        },
+    )
+    run_id = create_response.json()["run_id"]
+
+    trigger_response = client.post(f"/api/runs/{run_id}/trigger")
+
+    assert trigger_response.status_code == 200
+    payload = trigger_response.json()
+    assert payload["scheduler"] == "worker"
+    assert payload["status"] == "queued"
+    assert payload["dispatch"]["detail_url"] == f"/api/runs/{run_id}"
+    assert payload["dispatch"]["callback_url"] == f"/api/runs/{run_id}/callbacks/worker"
+
+    row = fetch_run_record(run_id)
+    assert row is not None
+    assert row["status"] == "queued"
+    assert row["message"] == "Run queued for Python orchestrator worker."
+    assert row["run_metadata_json"]["dispatch_backend"] == "worker"
+
+
+@allure.feature("Run API")
+@allure.story("Trigger run")
+@allure.title("POST /api/runs/{run_id}/trigger dispatches python orchestrator runs to Jenkins")
+def test_trigger_python_orchestrator_run_dispatches_to_jenkins(client, fetch_run_record, monkeypatch) -> None:
+    captured: dict[str, str] = {}
+
+    def fake_trigger_jenkins_job(*, parameters: dict[str, str]) -> dict[str, object]:
+        captured.update(parameters)
+        return {
+            "url": "https://jenkins.example/job/robot/job/robot-execution/buildWithParameters",
+            "http_status": 201,
+            "queue_url": "https://jenkins.example/queue/item/77/",
+            "parameters": parameters,
+        }
+
+    monkeypatch.setattr("app.services.run_service.trigger_jenkins_job", fake_trigger_jenkins_job)
+    create_response = client.post(
+        "/api/runs",
+        json={
+            "testline": "T813",
+            "executor_type": "python_orchestrator",
+            "dispatch_backend": "jenkins",
+            "workflow_spec": {
+                "name": "UE KPI Dry Run",
+                "stages": [],
+                "runtime_options": {"dry_run": True},
+            },
+        },
+    )
+    run_id = create_response.json()["run_id"]
+
+    trigger_response = client.post(f"/api/runs/{run_id}/trigger")
+
+    assert trigger_response.status_code == 200
+    payload = trigger_response.json()
+    assert payload["scheduler"] == "jenkins"
+    assert payload["status"] == "triggered"
+    assert captured["RUN_ID"] == run_id
+    assert captured["EXECUTOR_TYPE"] == "python_orchestrator"
+    assert captured["TESTLINE"] == "T813"
+    assert '"name": "UE KPI Dry Run"' in captured["WORKFLOW_SPEC_JSON"]
+    assert captured["DRY_RUN"] == "true"
+
+    row = fetch_run_record(run_id)
+    assert row is not None
+    assert row["status"] == "triggered"
+
+
+@allure.feature("Workflow")
+@allure.story("Operation catalog")
+@allure.title("GET /api/workflow/operation-catalog returns UI operation rules")
+def test_operation_catalog_returns_operation_rules(client) -> None:
+    response = client.get("/api/workflow/operation-catalog")
+
+    assert response.status_code == 200
+    items = response.json()["items"]
+    by_model = {item["model"]: item for item in items}
+    assert by_model["attach"]["requires_ue"] is True
+    assert by_model["ru_reset"]["requires_ue"] is False
+    assert by_model["ru_reset"]["default_ue_scope"] == {"mode": "none"}
+    assert by_model["kpi_generator"]["category"] == "followup"
+
+
+@allure.feature("Run API")
 @allure.story("List runs")
 @allure.title("GET /api/runs returns latest runs first")
 def test_list_runs_returns_latest_first(client, create_run_via_api) -> None:

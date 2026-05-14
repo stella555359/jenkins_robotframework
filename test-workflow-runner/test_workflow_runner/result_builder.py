@@ -32,6 +32,7 @@ class ResultBuilder:
             },
             "kpi_test_starttime": state.kpi_test_starttime,
             "kpi_test_endtime": state.kpi_test_endtime,
+            "kpi_window": self._build_kpi_window(state),
             "timestamps": timestamps,
             "artifacts": artifacts,
             "artifact_manifest": self._build_artifact_manifest(artifacts, all_results),
@@ -67,6 +68,7 @@ class ResultBuilder:
             },
             "kpi_test_starttime": state.kpi_test_starttime,
             "kpi_test_endtime": state.kpi_test_endtime,
+            "kpi_window": self._build_kpi_window(state),
             "timestamps": timestamps,
             "artifacts": artifacts,
             "artifact_manifest": self._build_artifact_manifest(artifacts, all_results),
@@ -195,6 +197,14 @@ class ResultBuilder:
                     manifest.append(normalized)
 
         return self._deduplicate_artifacts(manifest)
+
+    def _build_kpi_window(self, state: OrchestratorState) -> dict[str, Any]:
+        return {
+            "business_start_time": state.business_starttime or state.kpi_test_starttime,
+            "business_end_time": state.business_endtime or state.kpi_test_endtime,
+            "workflow_start_time": state.kpi_test_starttime,
+            "workflow_end_time": state.kpi_test_endtime,
+        }
 
     def _normalize_artifact(
         self,

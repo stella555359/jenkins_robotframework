@@ -1,0 +1,80 @@
+{
+  "testline": "7_5_UTE5G402T813",
+  "ue_selection": {
+    "selected_ues": []
+  },
+  "traffic_plan": {
+    "stages": [
+      {
+        "stage_id": 1,
+        "stage_name": "gnb-webui-operation",
+        "execution_mode": "serial",
+        "items": [
+          {
+            "item_id": "ru-reset-loop",
+            "model": "ru_reset",
+            "enabled": true,
+            "order": 10,
+            "execution_mode": "serial",
+            "continue_on_failure": false,
+            "ue_scope": {
+              "mode": "none"
+            },
+            "params": {
+              "gnb_id": "gnb-1",
+              "ru_id": "ru-1",
+              "repeat_count": 5,
+              "timeout_seconds": 600
+            }
+          }
+        ]
+      },
+      {
+        "stage_id": 2,
+        "stage_name": "post-operation-observation",
+        "execution_mode": "parallel",
+        "items": [
+          {
+            "item_id": "alarm-check",
+            "model": "alarm_check",
+            "enabled": true,
+            "order": 10,
+            "execution_mode": "parallel",
+            "continue_on_failure": false,
+            "ue_scope": {
+              "mode": "none"
+            },
+            "params": {
+              "window_source": "workflow",
+              "severity": "major"
+            }
+          },
+          {
+            "item_id": "syslog-check",
+            "model": "syslog_check",
+            "enabled": true,
+            "order": 20,
+            "execution_mode": "parallel",
+            "continue_on_failure": false,
+            "ue_scope": {
+              "mode": "none"
+            },
+            "params": {
+              "window_source": "workflow",
+              "severity_levels": [
+                "error",
+                "warn"
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "runtime_options": {
+    "dry_run": true,
+    "stop_on_failure": true,
+    "max_parallel_workers": 2,
+    "log_level": "INFO"
+  }
+}

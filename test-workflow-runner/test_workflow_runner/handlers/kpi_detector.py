@@ -13,6 +13,13 @@ class KpiDetectorHandler(BaseHandler):
         params = dict(context.item.params)
         params.setdefault("environment", context.testline_context.resolved_config.config_id)
         params.setdefault("test_line", context.request.testline)
+        params.setdefault(
+            "workflow_window",
+            {
+                "business_start_time": context.state.business_starttime or context.state.kpi_test_starttime,
+                "business_end_time": context.state.business_endtime or context.state.kpi_test_endtime,
+            },
+        )
         if context.request.runtime_options.dry_run:
             return self.build_success(
                 context,
@@ -22,6 +29,7 @@ class KpiDetectorHandler(BaseHandler):
                     "environment": params["environment"],
                     "test_line": params["test_line"],
                     "source_file": params.get("source_file") or params.get("input_file"),
+                    "workflow_window": params.get("workflow_window"),
                 },
             )
 

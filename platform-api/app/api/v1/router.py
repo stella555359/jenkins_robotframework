@@ -8,6 +8,7 @@ from app.services.run_service import (
     get_run_detail,
     get_run_kpi,
     get_run_list,
+    get_operation_catalog,
     get_run_progress,
     get_tool_run_list,
     get_tool_run_list_filtered,
@@ -22,6 +23,7 @@ from app.services.health_service import get_health_payload
 from app.schemas.run import (
     ProgressUpdateRequest,
     ProgressUpdateResponse,
+    OperationCatalogResponse,
     RunArtifactsResponse,
     RunCallbackRequest,
     RunCallbackResponse,
@@ -75,6 +77,11 @@ def list_tool_runs(
 @router.get("/runs", response_model=RunListResponse, tags=["run"])
 def list_runs() -> RunListResponse:
     return get_run_list()
+
+
+@router.get("/workflow/operation-catalog", response_model=OperationCatalogResponse, tags=["workflow"])
+def operation_catalog() -> OperationCatalogResponse:
+    return get_operation_catalog()
 
 
 @router.get("/runs/{run_id}", response_model=RunDetailResponse, tags=["run"])

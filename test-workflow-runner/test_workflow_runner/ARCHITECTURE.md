@@ -35,11 +35,13 @@ test_workflow_runner/
   models.py            请求/阶段/Item/UE/状态/ResolvedConfig 等数据类；SUPPORTED_TRAFFIC_MODELS
   request_loader.py    JSON → KpiTestModelRequest；validate_payload；与 safety 联动
   config_resolver.py   env_map + testline_configuration → TestlineContext
-  ue_extractor.py      从 tl 对象抽取 NormalizedUe 列表
-  safety.py            MODEL_RESOURCE_DOMAINS；validate_parallel_stage
+  ue_extractor.py      从 tl 对象抽取 NormalizedUe 列表；推断 UE type/family
+  safety.py            MODEL_RESOURCE_DOMAINS；validate_parallel_stage；resource_keys_for_item
   runner.py            OrchestratorRunner；handler_registry；串/并行 stage
   taf_gateway.py       动态 import bindings_module；execute(action, context)
   result_builder.py    OrchestratorState → 顶层 result dict + timeline + manifest
+  bindings/
+    taf_power_ue.py    可注入的 TAF/robotws Python binding skeleton
   handlers/
     __init__.py        导出各 Handler 类
     base.py            HandlerContext、BaseHandler、build_*、execute_taf_action、execute_command
@@ -51,12 +53,15 @@ test_workflow_runner/
 | 文件 | `model_name` | `result_bucket` | 说明 |
 |------|----------------|-----------------|------|
 | `apply_preconditions.py` | `apply_preconditions` | `preconditions` | 前置条件 |
+| `prepare_ue.py` | `prepare_ue` | `traffic`（继承 base） | UE 准备 |
 | `attach.py` | `attach` | `traffic`（继承 base） | UE 附着等 |
 | `handover.py` | `handover` | `traffic` | 切换 |
 | `dl_traffic.py` | `dl_traffic` | `traffic` | 下行流量脚本 |
 | `ul_traffic.py` | `ul_traffic` | `traffic` | 上行流量脚本 |
 | `swap.py` | `swap` | `traffic` | |
 | `detach.py` | `detach` | `traffic` | |
+| `gnb_control.py` | `site_reset` / `rf_reset` / `cell_lock` / `cell_unlock` | `traffic` | gNB / cell 控制 |
+| `alarm_check.py` | `alarm_check` | `sidecars` | 告警观察 |
 | `syslog_check.py` | `syslog_check` | `sidecars` | 旁路观察 |
 | `kpi_generator.py` | `kpi_generator` | `followups` | 调 `internal_tools.kpi_generator` |
 | `kpi_detector.py` | `kpi_detector` | `followups` | 调 `internal_tools.kpi_detector` |
@@ -138,8 +143,9 @@ sequenceDiagram
 
 - 构造 **`TafGateway(request.runtime_options.bindings_module)`** 一次，传入各 **`HandlerContext`**。
 - 每 stage：**`validate_parallel_stage`** → **`state.validation_warnings`**；仅 **`enabled`** items 执行。
+- 每 item：根据 UE / gNB / cell / appserver / followup 生成 **resource lock key**，parallel stage 内同资源自动互斥。
 - **`_execute_stage`**：`parallel` 且多 item 时用 **`ThreadPoolExecutor`**；否则顺序执行，并按 **`stop_on_failure` / `continue_on_failure`** 决定是否中断。
-- **`_execute_item`**：`handler_registry[item.model].run(HandlerContext(...))`；异常 → **`failed`** 的 **`HandlerResult`**。
+- **`_execute_item`**：加锁后执行 `handler_registry[item.model].run(HandlerContext(...))`；异常 → **`failed`** 的 **`HandlerResult`**。
 - **`_append_result`**：按 handler 的 **`result_bucket`** 写入 **`precondition_results` / `traffic_results` / `sidecar_results` / `followup_results`**。
 
 ```mermaid
@@ -158,7 +164,7 @@ flowchart LR
 
 ### 6.1 `HandlerContext`
 
-携带 **`request`**、**`testline_context`**、**`item`**（params 中含 **`_stage_id`**）、**`selected_ues`**、**`write_stdout` / `write_stderr`**、**`gateway`**。
+携带 **`request`**、**`testline_context`**、**`item`**（params 中含 **`_stage_id`** 和 **`_resource_keys`**）、**`selected_ues`**、**`write_stdout` / `write_stderr`**、**`gateway`**、**`state`**。
 
 ### 6.2 `execute_taf_action`（dry-run / TAF）
 
@@ -204,7 +210,7 @@ flowchart TD
 
 ## 7. `ResultBuilder` 输出形状（摘要）
 
-- **`build_success` / `build_failure`**：聚合四类 **`results`**、**`timeline`**、**`artifact_manifest`**、**`resolved_config`**、**`validation_warnings`** 等。
+- **`build_success` / `build_failure`**：聚合四类 **`results`**、**`timeline`**、**`artifact_manifest`**、**`kpi_window`**、**`resolved_config`**、**`validation_warnings`** 等。
 - **`HandlerResult`** 由 **`dataclasses.asdict`** 序列化进 **`results.*`**。
 
 ---

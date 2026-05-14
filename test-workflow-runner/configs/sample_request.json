@@ -4,14 +4,16 @@
     "selected_ues": [
       {
         "ue_index": 1,
-        "ue_type": "phone",
-        "label": "ue-1",
+        "ue_type": "qct_dx50",
+        "ue_family": "qualcomm",
+        "label": "_android",
         "ue_ip": "10.0.0.1"
       },
       {
         "ue_index": 2,
-        "ue_type": "phone",
-        "label": "ue-2",
+        "ue_type": "pioneer",
+        "ue_family": "pioneer",
+        "label": "_sigspark_1",
         "ue_ip": "10.0.0.2"
       }
     ]
@@ -24,6 +26,22 @@
         "execution_mode": "serial",
         "items": [
           {
+            "item_id": "prepare-1",
+            "model": "prepare_ue",
+            "enabled": true,
+            "order": 5,
+            "execution_mode": "serial",
+            "continue_on_failure": false,
+            "ue_scope": {
+              "mode": "all_selected_ues"
+            },
+            "params": {
+              "attach_mode": "default",
+              "retry": 1,
+              "timeout_seconds": 300
+            }
+          },
+          {
             "item_id": "attach-1",
             "model": "attach",
             "enabled": true,
@@ -35,6 +53,21 @@
             },
             "params": {
               "attach_timeout_seconds": 120
+            }
+          },
+          {
+            "item_id": "alarm-1",
+            "model": "alarm_check",
+            "enabled": true,
+            "order": 15,
+            "execution_mode": "serial",
+            "continue_on_failure": false,
+            "ue_scope": {
+              "mode": "all_selected_ues"
+            },
+            "params": {
+              "window_source": "workflow",
+              "severity": "major"
             }
           },
           {

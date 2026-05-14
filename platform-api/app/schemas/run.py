@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 ExecutorType = Literal["robot", "python_orchestrator", "internal_tool"]
 ExecutionMode = Literal["serial", "parallel"]
 ToolKind = Literal["kpi_generator", "kpi_detector"]
+DispatchBackend = Literal["worker", "jenkins"]
 
 
 class ArtifactDescriptor(BaseModel):
@@ -60,6 +61,7 @@ class RunCreateRequest(BaseModel):
     testline: str = Field(min_length=1)
     robotcase_path: str | None = None
     executor_type: ExecutorType = "robot"
+    dispatch_backend: DispatchBackend | None = None
     workflow_spec: WorkflowSpec | None = None
     build: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
@@ -243,4 +245,21 @@ class RunProgressResponse(BaseModel):
     run_id: str
     status: str
     events: list[ProgressEvent] = Field(default_factory=list)
+
+
+class OperationDescriptor(BaseModel):
+    model: str
+    label: str
+    category: str
+    requires_ue: bool
+    default_stage: str
+    default_execution_mode: ExecutionMode = "serial"
+    resource_domain: str
+    default_ue_scope: dict[str, Any] = Field(default_factory=dict)
+    default_params: dict[str, Any] = Field(default_factory=dict)
+    description: str = ""
+
+
+class OperationCatalogResponse(BaseModel):
+    items: list[OperationDescriptor]
 

@@ -17,6 +17,8 @@
 - [Step 3 Test Automation](step-03-test-automation.md)
 - [Step 4 Test Automation](step-04-test-automation.md)
 - [Step 5 Test Automation](step-05-test-automation.md)
+- [Step 7 Test Automation](step-07-test-automation.md)
+- [Step 8 Test Automation](step-08-test-automation.md)
 
 ## 当前约定
 
@@ -30,6 +32,8 @@
 - runtime contract
 - result builder
 - followup handler
+- Python KPI Runner UE resolution / resource locks / KPI window
+- Portal workflow builder dispatch contract
 
 ### 2. SQLite
 

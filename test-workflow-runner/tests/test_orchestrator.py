@@ -14,6 +14,7 @@ from test_workflow_runner.models import HandlerResult, OrchestratorState
 from test_workflow_runner.request_loader import RequestLoader, RequestValidationError
 from test_workflow_runner.result_builder import ResultBuilder
 from test_workflow_runner.runner import OrchestratorRunner
+from test_workflow_runner.ue_extractor import UeExtractor
 
 
 @pytest.fixture
@@ -164,14 +165,42 @@ def test_request_loader_accepts_valid_payload(orchestrator_repo: Path) -> None:
     assert len(request.traffic_stages()) == 3
 
 
+def test_ue_extractor_resolves_t813_capability_based_types() -> None:
+    class Ue:
+        def __init__(self, capabilities: list[str]):
+            self.capabilities = capabilities
+
+    _android = Ue(["qct_dx50"])
+    _sigspark_1 = Ue(["pioneer", "huawei_sigspark"])
+    _sigspark_2 = Ue(["huawei_sigspark"])
+
+    class TL:
+        ues = [_android, _sigspark_1, _sigspark_2]
+
+    extracted = UeExtractor().extract(
+        TL(),
+        module_globals={
+            "_android": _android,
+            "_sigspark_1": _sigspark_1,
+            "_sigspark_2": _sigspark_2,
+        },
+    )
+
+    assert [(ue.label, ue.ue_type, ue.ue_family) for ue in extracted] == [
+        ("_android", "qct_dx50", "qualcomm"),
+        ("_sigspark_1", "pioneer", "pioneer"),
+        ("_sigspark_2", "huawei_sigspark", "pioneer"),
+    ]
+
+
 def test_request_loader_rejects_protected_parallel_stage(orchestrator_repo: Path) -> None:
     loader = RequestLoader(orchestrator_repo)
     payload = build_request_payload()
     payload["traffic_plan"]["stages"][0]["execution_mode"] = "parallel"
     payload["traffic_plan"]["stages"][0]["items"].append(
         {
-            "item_id": "handover-1",
-            "model": "handover",
+            "item_id": "detector-1",
+            "model": "kpi_detector",
             "enabled": True,
             "order": 30,
             "execution_mode": "parallel",
@@ -180,10 +209,137 @@ def test_request_loader_rejects_protected_parallel_stage(orchestrator_repo: Path
             "params": {},
         }
     )
-    payload["traffic_plan"]["stages"][0]["items"][0]["model"] = "swap"
+    payload["traffic_plan"]["stages"][0]["items"][0]["model"] = "kpi_generator"
 
     with pytest.raises(RequestValidationError):
         loader.load_dict(payload)
+
+
+def test_request_loader_accepts_python_kpi_runner_models(orchestrator_repo: Path) -> None:
+    loader = RequestLoader(orchestrator_repo)
+    payload = build_request_payload()
+    payload["traffic_plan"]["stages"][0]["items"].insert(
+        0,
+        {
+            "item_id": "prepare-1",
+            "model": "prepare_ue",
+            "enabled": True,
+            "order": 5,
+            "execution_mode": "serial",
+            "continue_on_failure": False,
+            "ue_scope": {"mode": "ue_families", "ue_families": ["phone"]},
+            "params": {"attach_mode": "default", "retry": 1, "timeout_seconds": 300},
+        },
+    )
+    payload["traffic_plan"]["stages"][0]["items"].append(
+        {
+            "item_id": "alarm-1",
+            "model": "alarm_check",
+            "enabled": True,
+            "order": 30,
+            "execution_mode": "serial",
+            "continue_on_failure": False,
+            "ue_scope": {"mode": "all_selected_ues"},
+            "params": {"window_source": "workflow", "severity": "major"},
+        }
+    )
+    payload["traffic_plan"]["stages"].append(
+        {
+            "stage_id": 4,
+            "stage_name": "cell-control",
+            "execution_mode": "serial",
+            "items": [
+                {
+                    "item_id": "cell-lock-1",
+                    "model": "cell_lock",
+                    "enabled": True,
+                    "order": 10,
+                    "execution_mode": "serial",
+                    "continue_on_failure": False,
+                    "ue_scope": {"mode": "all_selected_ues"},
+                    "params": {"cell_id": "cell-1"},
+                }
+            ],
+        }
+    )
+
+    request = loader.load_dict(payload)
+
+    assert {item.model for stage in request.traffic_stages() for item in stage.items} >= {
+        "prepare_ue",
+        "alarm_check",
+        "cell_lock",
+    }
+
+
+def test_request_loader_accepts_gnb_only_dry_run_without_selected_ues(orchestrator_repo: Path) -> None:
+    loader = RequestLoader(orchestrator_repo)
+    payload = {
+        "testline": "7_5_UTE5G402T813",
+        "ue_selection": {"selected_ues": []},
+        "traffic_plan": {
+            "stages": [
+                {
+                    "stage_id": 1,
+                    "stage_name": "gnb-webui-operation",
+                    "execution_mode": "serial",
+                    "items": [
+                        {
+                            "item_id": "ru-reset-1",
+                            "model": "ru_reset",
+                            "enabled": True,
+                            "order": 10,
+                            "execution_mode": "serial",
+                            "continue_on_failure": False,
+                            "ue_scope": {"mode": "none"},
+                            "params": {"gnb_id": "gnb-1", "ru_id": "ru-1", "repeat_count": 3},
+                        }
+                    ],
+                },
+                {
+                    "stage_id": 2,
+                    "stage_name": "observation",
+                    "execution_mode": "parallel",
+                    "items": [
+                        {
+                            "item_id": "alarm-1",
+                            "model": "alarm_check",
+                            "enabled": True,
+                            "order": 10,
+                            "execution_mode": "parallel",
+                            "continue_on_failure": False,
+                            "ue_scope": {"mode": "none"},
+                            "params": {"window_source": "workflow", "severity": "major"},
+                        },
+                        {
+                            "item_id": "syslog-1",
+                            "model": "syslog_check",
+                            "enabled": True,
+                            "order": 20,
+                            "execution_mode": "parallel",
+                            "continue_on_failure": False,
+                            "ue_scope": {"mode": "none"},
+                            "params": {"window_source": "workflow", "severity_levels": ["error"]},
+                        },
+                    ],
+                },
+            ]
+        },
+        "runtime_options": {"dry_run": True, "stop_on_failure": True, "max_parallel_workers": 2},
+    }
+
+    request = loader.load_dict(payload)
+    resolver = EnvConfigResolver(orchestrator_repo)
+    context = resolver.load_testline_context(request.testline)
+    state = OrchestratorRunner().execute(request, context, OrchestratorState())
+
+    assert request.selected_ue_indexes() == []
+    assert state.status == "completed"
+    assert len(state.traffic_results) == 1
+    assert state.traffic_results[0].model == "ru_reset"
+    assert state.traffic_results[0].used_ues == []
+    assert state.traffic_results[0].summary["repeat_count"] == 3
+    assert {result.model for result in state.sidecar_results} == {"alarm_check", "syslog_check"}
 
 
 def test_orchestrator_runner_executes_dry_run_workflow(orchestrator_repo: Path) -> None:
@@ -475,6 +631,8 @@ def test_result_builder_adds_timeline_and_artifact_manifest(orchestrator_repo: P
 
     assert result["timeline"][0]["event"] == "workflow_started"
     assert result["timeline"][-1]["event"] == "workflow_completed"
+    assert result["kpi_window"]["business_start_time"] == "2026-04-22T10:00:00+08:00"
+    assert result["kpi_window"]["business_end_time"] == "2026-04-22T10:00:20+08:00"
     assert any(entry.get("item_id") == "generator-1" for entry in result["timeline"])
     assert result["artifact_manifest"][0]["kind"] == "workflow_request_json"
     assert result["artifact_manifest"][1]["kind"] == "workflow_result_json"

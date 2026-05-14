@@ -9,6 +9,10 @@
     "confidence": "high",
     "allowed_script_roots": [
       "scripts/traffic"
-    ]
+    ],
+    "external_repositories": {
+      "testline_configuration": "/opt/testline_configuration",
+      "robotws": "/opt/robotws"
+    }
   }
 }

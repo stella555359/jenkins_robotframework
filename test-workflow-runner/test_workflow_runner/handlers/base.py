@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from ..models import HandlerResult, KpiTestModelRequest, NormalizedUe, TestlineContext, TrafficItem
+from ..models import HandlerResult, KpiTestModelRequest, NormalizedUe, OrchestratorState, TestlineContext, TrafficItem
 from ..taf_gateway import TafGateway
 
 
@@ -23,6 +23,7 @@ class HandlerContext:
     write_stdout: callable
     write_stderr: callable
     gateway: TafGateway
+    state: OrchestratorState
 
 
 class BaseHandler:

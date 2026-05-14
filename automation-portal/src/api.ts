@@ -1,5 +1,6 @@
 export type ExecutorType = "robot" | "python_orchestrator" | "internal_tool";
 export type ToolKind = "kpi_generator" | "kpi_detector";
+export type DispatchBackend = "worker" | "jenkins";
 
 export type ArtifactDescriptor = {
   kind: string;
@@ -49,10 +50,15 @@ export type RunKpi = {
 
 export type RunCreatePayload = {
   testline: string;
-  robotcase_path: string;
-  executor_type: "robot";
+  robotcase_path?: string;
+  executor_type: "robot" | "python_orchestrator";
+  dispatch_backend?: DispatchBackend;
+  workflow_spec?: Record<string, unknown>;
   build?: string;
   metadata: Record<string, unknown>;
+  enable_kpi_generator?: boolean;
+  enable_kpi_anomaly_detector?: boolean;
+  kpi_config?: Record<string, unknown>;
 };
 
 export type RunCreateResponse = {
@@ -69,6 +75,19 @@ export type RunTriggerResponse = {
   message: string;
   scheduler: string;
   dispatch: Record<string, unknown>;
+};
+
+export type OperationDescriptor = {
+  model: string;
+  label: string;
+  category: string;
+  requires_ue: boolean;
+  default_stage: string;
+  default_execution_mode: "serial" | "parallel";
+  resource_domain: string;
+  default_ue_scope: Record<string, unknown>;
+  default_params: Record<string, unknown>;
+  description: string;
 };
 
 export type ToolRunCreatePayload = {
@@ -197,6 +216,9 @@ export const api = {
   },
   getKpi(runId: string) {
     return requestJson<RunKpi>(`/runs/${encodeURIComponent(runId)}/kpi`);
+  },
+  getOperationCatalog() {
+    return requestJson<{ items: OperationDescriptor[] }>("/workflow/operation-catalog");
   },
   createToolRun(payload: ToolRunCreatePayload) {
     return requestJson<ToolRunCreateResponse>("/kpi/tool-runs", {

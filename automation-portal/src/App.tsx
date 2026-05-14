@@ -22,9 +22,7 @@ export default function App() {
 
         <div className="sidebar-section">
           <div className="sidebar-section-label">Test Workflow</div>
-          <span className="disabled-link">
-            KPI Test Model <span className="coming-soon-tag">Soon</span>
-          </span>
+          <NavLink to="/workflows/new">KPI Workflow Builder</NavLink>
         </div>
       </aside>
       <main className="main-content">

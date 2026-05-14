@@ -168,7 +168,7 @@ export function RunDetail() {
     }
   }
 
-  const canRetryTrigger = detail?.executor_type === "robot" && ["created", "trigger_failed"].includes(detail.status);
+  const canRetryTrigger = detail && ["robot", "python_orchestrator"].includes(detail.executor_type) && ["created", "trigger_failed"].includes(detail.status);
 
   // Find the primary log.html artifact for quick access
   const logHtmlArtifact = artifacts.find(
@@ -235,6 +235,14 @@ export function RunDetail() {
             <div>
               <span>Robot case</span>
               <strong>{detail.robotcase_path || "-"}</strong>
+            </div>
+            <div>
+              <span>Executor</span>
+              <strong>{detail.executor_type}</strong>
+            </div>
+            <div>
+              <span>Dispatch</span>
+              <strong>{String(detail.metadata?.dispatch_backend || (detail.executor_type === "robot" ? "jenkins" : "-"))}</strong>
             </div>
             <div>
               <span>Jenkins Build</span>
@@ -328,6 +336,24 @@ export function RunDetail() {
                 <details open>
                   <summary>Metadata</summary>
                   <pre className="json-compact">{JSON.stringify(detail.metadata, null, 2)}</pre>
+                </details>
+                <details open={detail.executor_type === "python_orchestrator"}>
+                  <summary>Workflow Spec</summary>
+                  <pre className="json-compact">{JSON.stringify(detail.workflow_spec || {}, null, 2)}</pre>
+                </details>
+                <details open={detail.executor_type === "python_orchestrator"}>
+                  <summary>Runner Request / Result</summary>
+                  <pre className="json-compact">
+                    {JSON.stringify(
+                      {
+                        runner_request: detail.metadata?.runner_request || {},
+                        runner_result: detail.metadata?.runner_result || detail.metadata?.workflow_result || {},
+                        worker_handoff: detail.metadata?.worker_handoff || {},
+                      },
+                      null,
+                      2,
+                    )}
+                  </pre>
                 </details>
                 <details>
                   <summary>KPI Summary</summary>

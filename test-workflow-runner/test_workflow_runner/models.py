@@ -9,12 +9,20 @@ from typing import Any, Optional
 
 SUPPORTED_TRAFFIC_MODELS = (
     "apply_preconditions",
+    "prepare_ue",
     "attach",
     "handover",
     "dl_traffic",
     "ul_traffic",
     "swap",
     "detach",
+    "site_reset",
+    "ru_reset",
+    "rf_reset",
+    "cell_lock",
+    "cell_unlock",
+    "cell_lock_unlock",
+    "alarm_check",
     "syslog_check",
     "kpi_generator",
     "kpi_detector",
@@ -50,6 +58,8 @@ class NormalizedUe:
     ue_type: str
     ue_ip: Optional[str]
     label: str
+    ue_family: Optional[str] = None
+    object_name: Optional[str] = None
     serial_number: Optional[str] = None
     capabilities: list[str] = field(default_factory=list)
     raw_object: Any = None
@@ -83,6 +93,7 @@ class UeScope:
     mode: str = "all_selected_ues"
     ue_indexes: list[int] = field(default_factory=list)
     ue_types: list[str] = field(default_factory=list)
+    ue_families: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -125,6 +136,8 @@ class OrchestratorState:
     status: str = "queued"
     kpi_test_starttime: Optional[str] = None
     kpi_test_endtime: Optional[str] = None
+    business_starttime: Optional[str] = None
+    business_endtime: Optional[str] = None
     precondition_results: list[HandlerResult] = field(default_factory=list)
     traffic_results: list[HandlerResult] = field(default_factory=list)
     sidecar_results: list[HandlerResult] = field(default_factory=list)
@@ -159,6 +172,11 @@ class KpiTestModelRequest:
                             mode=str(ue_scope_payload.get("mode") or "all_selected_ues").strip(),
                             ue_indexes=[int(value) for value in list(ue_scope_payload.get("ue_indexes") or [])],
                             ue_types=[str(value).strip().lower() for value in list(ue_scope_payload.get("ue_types") or []) if str(value).strip()],
+                            ue_families=[
+                                str(value).strip().lower()
+                                for value in list(ue_scope_payload.get("ue_families") or [])
+                                if str(value).strip()
+                            ],
                         ),
                         params=dict(item.get("params") or {}),
                     )

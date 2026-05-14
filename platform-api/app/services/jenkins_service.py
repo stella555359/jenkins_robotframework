@@ -115,3 +115,29 @@ def build_robot_jenkins_parameters(record: dict[str, Any]) -> dict[str, Any]:
         ).lower(),
     }
     return params
+
+
+def build_python_orchestrator_jenkins_parameters(record: dict[str, Any]) -> dict[str, Any]:
+    metadata = dict(record.get("metadata") or {})
+    workflow_spec = record.get("workflow_spec") or {}
+    params = {
+        "RUN_ID": record["run_id"],
+        "TESTLINE": record["testline"],
+        "EXECUTOR_TYPE": "python_orchestrator",
+        "WORKFLOW_SPEC_JSON": json.dumps(workflow_spec, ensure_ascii=False),
+        "WORKFLOW_NAME": record.get("workflow_name") or "",
+        "BUILD": record.get("build") or "",
+        "PLATFORM_API_BASE_URL": metadata.get("platform_api_base_url") or settings.public_base_url,
+        "CALLBACK_URL": f"{(metadata.get('platform_api_base_url') or settings.public_base_url).rstrip('/')}/api/runs/{record['run_id']}/callbacks/jenkins",
+        "DRY_RUN": str((workflow_spec.get("runtime_options") or {}).get("dry_run", True)).lower()
+        if isinstance(workflow_spec, dict)
+        else "true",
+        "RUNNER_REPOSITORY_ROOT": metadata.get("runner_repository_root") or "",
+        "RESULT_JSON_PATH": metadata.get("result_json_path") or "",
+        "CALLBACK_INSECURE_TLS": str(
+            metadata.get("callback_insecure_tls")
+            if metadata.get("callback_insecure_tls") is not None
+            else settings.jenkins_callback_insecure_tls
+        ).lower(),
+    }
+    return params

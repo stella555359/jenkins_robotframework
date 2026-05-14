@@ -70,7 +70,7 @@ class EnvConfigResolver:
             resolved_config=resolved,
             tl=tl,
             repository_root=self.repository_root,
-            ues=extractor.extract(tl),
+            ues=extractor.extract(tl, module_globals=vars(module)),
             gnbs=list(getattr(tl, "gnbs", []) or []),
             enbs=list(getattr(tl, "enbs", []) or []),
             appserver=getattr(tl, "appserver", None),

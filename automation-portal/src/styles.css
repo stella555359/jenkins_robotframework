@@ -391,6 +391,109 @@ tbody tr:hover {
   text-decoration: underline;
 }
 
+/* ── Workflow builder ─────────────────────────────────── */
+
+.workflow-layout {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 260px minmax(0, 1fr);
+  margin-top: 18px;
+}
+
+.operation-palette,
+.stage-board {
+  display: grid;
+  gap: 10px;
+}
+
+.operation-palette {
+  align-content: start;
+}
+
+.operation-palette h3 {
+  margin: 0 0 4px;
+}
+
+.operation-card {
+  align-items: flex-start;
+  background: #f5f9ff;
+  border: 1px solid #d8e2ef;
+  color: #1a2233;
+  cursor: grab;
+  display: grid;
+  gap: 2px;
+  justify-content: stretch;
+  padding: 10px;
+  text-align: left;
+}
+
+.operation-card:hover {
+  background: #eaf3ff;
+}
+
+.operation-card span {
+  color: #6b7f9e;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.stage-card {
+  background: #f8fbff;
+  border: 1px dashed #b8c8dd;
+  border-radius: 12px;
+  display: grid;
+  gap: 8px;
+  min-height: 82px;
+  padding: 12px;
+}
+
+.stage-card-header {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.stage-card-header select {
+  max-width: 120px;
+  padding: 5px 8px;
+}
+
+.stage-item {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #dfe7f3;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 10px;
+}
+
+.ue-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.checkbox-card {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #dfe7f3;
+  border-radius: 8px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  padding: 10px;
+}
+
+.checkbox-card input {
+  grid-row: span 2;
+}
+
+.checkbox-card small {
+  color: #6b7f9e;
+  font-weight: 500;
+}
+
 /* ── Info table (compact key-value) ───────────────────── */
 
 .info-table {

@@ -68,6 +68,8 @@ def build_dry_run_context(request: KpiTestModelRequest) -> TestlineContext:
                 ue_type=str(ue["ue_type"]).strip().lower(),
                 ue_ip=ue.get("ue_ip"),
                 label=str(ue.get("label") or f"ue-{ue_index}"),
+                ue_family=ue.get("ue_family") or ue.get("ue_type"),
+                object_name=ue.get("object_name"),
                 serial_number=ue.get("serial_number"),
                 capabilities=[str(value) for value in ue.get("capabilities") or []],
                 raw_object=dict(ue),

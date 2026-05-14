@@ -1,0 +1,193 @@
+{
+  "testline": "7_5_UTE5G402T813",
+  "ue_selection": {
+    "selected_ues": [
+      {
+        "ue_index": 1,
+        "ue_type": "qct_dx50",
+        "ue_family": "qualcomm",
+        "label": "_android"
+      },
+      {
+        "ue_index": 2,
+        "ue_type": "huawei_sigspark",
+        "ue_family": "pioneer",
+        "label": "_sigspark_1"
+      }
+    ]
+  },
+  "traffic_plan": {
+    "stages": [
+      {
+        "stage_id": 1,
+        "stage_name": "prepare-ue",
+        "execution_mode": "serial",
+        "items": [
+          {
+            "item_id": "prepare-all",
+            "model": "prepare_ue",
+            "enabled": true,
+            "order": 10,
+            "execution_mode": "serial",
+            "continue_on_failure": false,
+            "ue_scope": {
+              "mode": "all_selected_ues"
+            },
+            "params": {
+              "attach_mode": "default",
+              "retry": 1,
+              "timeout_seconds": 300
+            }
+          }
+        ]
+      },
+      {
+        "stage_id": 2,
+        "stage_name": "attach",
+        "execution_mode": "serial",
+        "items": [
+          {
+            "item_id": "attach-all",
+            "model": "attach",
+            "enabled": true,
+            "order": 10,
+            "execution_mode": "serial",
+            "continue_on_failure": false,
+            "ue_scope": {
+              "mode": "all_selected_ues"
+            },
+            "params": {
+              "attach_timeout_seconds": 120
+            }
+          }
+        ]
+      },
+      {
+        "stage_id": 3,
+        "stage_name": "optional-traffic-or-mobility",
+        "execution_mode": "parallel",
+        "items": [
+          {
+            "item_id": "dl-traffic",
+            "model": "dl_traffic",
+            "enabled": true,
+            "order": 10,
+            "execution_mode": "parallel",
+            "continue_on_failure": false,
+            "ue_scope": {
+              "mode": "all_selected_ues"
+            },
+            "params": {
+              "script_path": "scripts/traffic/dl.py",
+              "appserver_id": "appserver-1"
+            }
+          },
+          {
+            "item_id": "ul-traffic",
+            "model": "ul_traffic",
+            "enabled": false,
+            "order": 20,
+            "execution_mode": "parallel",
+            "continue_on_failure": false,
+            "ue_scope": {
+              "mode": "all_selected_ues"
+            },
+            "params": {
+              "script_path": "scripts/traffic/ul.py",
+              "appserver_id": "appserver-1"
+            }
+          },
+          {
+            "item_id": "handover",
+            "model": "handover",
+            "enabled": false,
+            "order": 30,
+            "execution_mode": "parallel",
+            "continue_on_failure": false,
+            "ue_scope": {
+              "mode": "all_selected_ues"
+            },
+            "params": {}
+          },
+          {
+            "item_id": "swap",
+            "model": "swap",
+            "enabled": false,
+            "order": 40,
+            "execution_mode": "parallel",
+            "continue_on_failure": false,
+            "ue_scope": {
+              "mode": "all_selected_ues"
+            },
+            "params": {}
+          }
+        ]
+      },
+      {
+        "stage_id": 4,
+        "stage_name": "detach",
+        "execution_mode": "serial",
+        "items": [
+          {
+            "item_id": "detach-all",
+            "model": "detach",
+            "enabled": true,
+            "order": 10,
+            "execution_mode": "serial",
+            "continue_on_failure": true,
+            "ue_scope": {
+              "mode": "all_selected_ues"
+            },
+            "params": {}
+          }
+        ]
+      },
+      {
+        "stage_id": 5,
+        "stage_name": "kpi-followup",
+        "execution_mode": "serial",
+        "items": [
+          {
+            "item_id": "kpi-generator",
+            "model": "kpi_generator",
+            "enabled": true,
+            "order": 10,
+            "execution_mode": "serial",
+            "continue_on_failure": false,
+            "ue_scope": {
+              "mode": "all_selected_ues"
+            },
+            "params": {
+              "build": "SBTS26R3.ENB.9999.260319.000005",
+              "scenario": "UE_KPI_DRY_RUN",
+              "template_names": [
+                "Throughput"
+              ]
+            }
+          },
+          {
+            "item_id": "kpi-detector",
+            "model": "kpi_detector",
+            "enabled": false,
+            "order": 20,
+            "execution_mode": "serial",
+            "continue_on_failure": false,
+            "ue_scope": {
+              "mode": "all_selected_ues"
+            },
+            "params": {
+              "source_file": "artifacts/generated.xlsx",
+              "generate_html": true
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "runtime_options": {
+    "dry_run": true,
+    "stop_on_failure": true,
+    "max_parallel_workers": 4,
+    "log_level": "INFO"
+  }
+}

@@ -24,5 +24,7 @@ class UlTrafficHandler(BaseHandler):
             {
                 "traffic_profile": params.get("traffic_profile"),
                 "duration_seconds": int(params.get("duration_seconds") or 300),
+                "appserver_id": params.get("appserver_id") or params.get("server_id") or params.get("iperf_server"),
+                "direction": "ul",
             },
         )

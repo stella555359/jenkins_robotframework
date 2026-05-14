@@ -13,6 +13,10 @@ class KpiGeneratorHandler(BaseHandler):
         params = dict(context.item.params)
         params.setdefault("environment", context.testline_context.resolved_config.config_id)
         params.setdefault("test_line", context.request.testline)
+        business_start = context.state.business_starttime or context.state.kpi_test_starttime
+        business_end = context.state.business_endtime or context.state.kpi_test_endtime
+        if business_start and business_end:
+            params.setdefault("report_timestamps_list", [[business_start, business_end]])
         if context.request.runtime_options.dry_run:
             return self.build_success(
                 context,
@@ -21,6 +25,7 @@ class KpiGeneratorHandler(BaseHandler):
                     "action": "kpi_generator",
                     "environment": params["environment"],
                     "test_line": params["test_line"],
+                    "report_timestamps_list": params.get("report_timestamps_list"),
                     "requested_output_dir": params.get("output_dir"),
                 },
             )

@@ -48,8 +48,8 @@ class RequestLoader:
         if not isinstance(ue_selection, dict):
             raise RequestValidationError("ue_selection must be an object.")
         selected_ues = ue_selection.get("selected_ues") or []
-        if not isinstance(selected_ues, list) or not selected_ues:
-            raise RequestValidationError("selected_ues must contain at least one UE object.")
+        if not isinstance(selected_ues, list):
+            raise RequestValidationError("selected_ues must be a list.")
         seen_ue_indexes: set[int] = set()
         for selected_ue in selected_ues:
             if not isinstance(selected_ue, dict):
@@ -107,13 +107,47 @@ class RequestLoader:
                 if item_mode not in {"serial", "parallel"}:
                     raise RequestValidationError(f"{item_id}.execution_mode must be serial or parallel.")
                 ue_scope = item.get("ue_scope") or {}
-                if not isinstance(ue_scope, dict) or str(ue_scope.get("mode") or "").strip() == "":
-                    raise RequestValidationError(f"{item_id}.ue_scope.mode is required.")
+                if not isinstance(ue_scope, dict):
+                    raise RequestValidationError(f"{item_id}.ue_scope must be an object.")
+                scope_mode = str(ue_scope.get("mode") or "all_selected_ues").strip()
+                if scope_mode not in {"none", "all_selected_ues", "ue_indexes", "ue_types", "ue_families"}:
+                    raise RequestValidationError(
+                        f"{item_id}.ue_scope.mode must be none, all_selected_ues, ue_indexes, ue_types, or ue_families."
+                    )
+                if model_name in {"prepare_ue", "attach", "detach", "dl_traffic", "ul_traffic", "handover", "swap"}:
+                    if not selected_ues:
+                        raise RequestValidationError(f"{model_name} requires ue_selection.selected_ues.")
+                    if scope_mode == "none":
+                        raise RequestValidationError(f"{item_id}.ue_scope.mode cannot be none for {model_name}.")
                 if model_name in {"dl_traffic", "ul_traffic"}:
                     params = item.get("params") or {}
                     script_path = str(params.get("script_path") or "").strip()
                     if script_path and self.require_env_map:
                         self.config_resolver.validate_script_path(testline, script_path)
+                if model_name in {"site_reset", "ru_reset", "rf_reset", "cell_lock_unlock"} and stage_mode == "parallel":
+                    raise RequestValidationError(f"{model_name} must be placed in a serial stage.")
+                if model_name in {"cell_lock", "cell_unlock", "cell_lock_unlock"}:
+                    params = item.get("params") or {}
+                    if not str(params.get("cell_id") or params.get("cell_name") or "").strip():
+                        raise RequestValidationError(f"{item_id}.params.cell_id is required for {model_name}.")
+                if model_name in {"site_reset", "ru_reset", "rf_reset", "cell_lock", "cell_unlock", "cell_lock_unlock"}:
+                    params = item.get("params") or {}
+                    try:
+                        repeat_count = int(params.get("repeat_count") or params.get("count") or 1)
+                    except (TypeError, ValueError) as exc:
+                        raise RequestValidationError(f"{item_id}.params.repeat_count must be an integer.") from exc
+                    if repeat_count <= 0:
+                        raise RequestValidationError(f"{item_id}.params.repeat_count must be greater than 0.")
+                if model_name in {"alarm_check", "syslog_check"}:
+                    params = item.get("params") or {}
+                    window_source = str(params.get("window_source") or "workflow").strip()
+                    if window_source not in {"workflow", "stage", "custom"}:
+                        raise RequestValidationError(f"{item_id}.params.window_source must be workflow, stage, or custom.")
+                    if window_source == "custom":
+                        if not str(params.get("start_time") or "").strip() or not str(params.get("end_time") or "").strip():
+                            raise RequestValidationError(
+                                f"{item_id}.params.start_time and params.end_time are required for custom window checks."
+                            )
 
         request = KpiTestModelRequest.from_dict(payload)
         warnings: list[str] = []

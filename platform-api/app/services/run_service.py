@@ -14,10 +14,13 @@ from app.repositories.run_repository import (
 )
 from app.services.jenkins_service import (
     JenkinsDispatchError,
+    build_python_orchestrator_jenkins_parameters,
     build_robot_jenkins_parameters,
     trigger_jenkins_job,
 )
 from app.schemas.run import (
+    OperationCatalogResponse,
+    OperationDescriptor,
     ProgressEvent,
     ProgressUpdateRequest,
     ProgressUpdateResponse,
@@ -39,6 +42,178 @@ from app.schemas.run import (
     ToolExecutionHandoff,
     ToolRunCreateRequest,
     ToolRunCreateResponse,
+)
+
+
+OPERATION_CATALOG: tuple[dict[str, Any], ...] = (
+    {
+        "model": "prepare_ue",
+        "label": "Prepare UE",
+        "category": "ue_lifecycle",
+        "requires_ue": True,
+        "default_stage": "prepare-ue",
+        "default_execution_mode": "serial",
+        "resource_domain": "ue_lifecycle",
+        "default_ue_scope": {"mode": "all_selected_ues"},
+        "default_params": {"attach_mode": "default", "retry": 1, "timeout_seconds": 300},
+        "description": "Prepare selected UE objects before attach.",
+    },
+    {
+        "model": "attach",
+        "label": "UE Attach",
+        "category": "ue_lifecycle",
+        "requires_ue": True,
+        "default_stage": "attach",
+        "default_execution_mode": "serial",
+        "resource_domain": "ue_lifecycle",
+        "default_ue_scope": {"mode": "all_selected_ues"},
+        "default_params": {"attach_timeout_seconds": 120},
+        "description": "Attach selected UEs.",
+    },
+    {
+        "model": "dl_traffic",
+        "label": "DL Traffic",
+        "category": "traffic",
+        "requires_ue": True,
+        "default_stage": "optional-operation",
+        "default_execution_mode": "parallel",
+        "resource_domain": "traffic_plane",
+        "default_ue_scope": {"mode": "all_selected_ues"},
+        "default_params": {"script_path": "scripts/traffic/dl.py", "appserver_id": "appserver-1"},
+        "description": "Run downlink traffic.",
+    },
+    {
+        "model": "ul_traffic",
+        "label": "UL Traffic",
+        "category": "traffic",
+        "requires_ue": True,
+        "default_stage": "optional-operation",
+        "default_execution_mode": "parallel",
+        "resource_domain": "traffic_plane",
+        "default_ue_scope": {"mode": "all_selected_ues"},
+        "default_params": {"script_path": "scripts/traffic/ul.py", "appserver_id": "appserver-1"},
+        "description": "Run uplink traffic.",
+    },
+    {
+        "model": "handover",
+        "label": "Handover",
+        "category": "mobility",
+        "requires_ue": True,
+        "default_stage": "optional-operation",
+        "default_execution_mode": "parallel",
+        "resource_domain": "gnb_control",
+        "default_ue_scope": {"mode": "all_selected_ues"},
+        "default_params": {},
+        "description": "Run a handover operation for selected UEs.",
+    },
+    {
+        "model": "swap",
+        "label": "Swap",
+        "category": "mobility",
+        "requires_ue": True,
+        "default_stage": "optional-operation",
+        "default_execution_mode": "parallel",
+        "resource_domain": "gnb_control",
+        "default_ue_scope": {"mode": "all_selected_ues"},
+        "default_params": {},
+        "description": "Run a swap operation for selected UEs.",
+    },
+    {
+        "model": "detach",
+        "label": "UE Detach",
+        "category": "ue_lifecycle",
+        "requires_ue": True,
+        "default_stage": "detach",
+        "default_execution_mode": "serial",
+        "resource_domain": "ue_lifecycle",
+        "default_ue_scope": {"mode": "all_selected_ues"},
+        "default_params": {},
+        "description": "Detach selected UEs.",
+    },
+    {
+        "model": "site_reset",
+        "label": "Site Reset",
+        "category": "gnb_webui",
+        "requires_ue": False,
+        "default_stage": "gnb-webui-operation",
+        "default_execution_mode": "serial",
+        "resource_domain": "gnb_control",
+        "default_ue_scope": {"mode": "none"},
+        "default_params": {"gnb_id": "gnb-1", "repeat_count": 1, "timeout_seconds": 900},
+        "description": "Reset a gNB site through WebUI or OAM adapter.",
+    },
+    {
+        "model": "ru_reset",
+        "label": "RU Reset",
+        "category": "gnb_webui",
+        "requires_ue": False,
+        "default_stage": "gnb-webui-operation",
+        "default_execution_mode": "serial",
+        "resource_domain": "gnb_control",
+        "default_ue_scope": {"mode": "none"},
+        "default_params": {"gnb_id": "gnb-1", "ru_id": "ru-1", "repeat_count": 1, "timeout_seconds": 600},
+        "description": "Reset one RU repeatedly.",
+    },
+    {
+        "model": "cell_lock_unlock",
+        "label": "Cell Lock/Unlock",
+        "category": "gnb_webui",
+        "requires_ue": False,
+        "default_stage": "gnb-webui-operation",
+        "default_execution_mode": "serial",
+        "resource_domain": "gnb_control",
+        "default_ue_scope": {"mode": "none"},
+        "default_params": {"gnb_id": "gnb-1", "cell_id": "cell-1", "repeat_count": 1, "lock_duration_seconds": 30},
+        "description": "Lock and unlock one cell repeatedly.",
+    },
+    {
+        "model": "alarm_check",
+        "label": "Alarm Check",
+        "category": "observation",
+        "requires_ue": False,
+        "default_stage": "observation",
+        "default_execution_mode": "parallel",
+        "resource_domain": "observation",
+        "default_ue_scope": {"mode": "none"},
+        "default_params": {"window_source": "workflow", "severity": "major"},
+        "description": "Check alarms in the selected time window.",
+    },
+    {
+        "model": "syslog_check",
+        "label": "Syslog Check",
+        "category": "observation",
+        "requires_ue": False,
+        "default_stage": "observation",
+        "default_execution_mode": "parallel",
+        "resource_domain": "observation",
+        "default_ue_scope": {"mode": "none"},
+        "default_params": {"window_source": "workflow", "severity_levels": ["error", "warn"]},
+        "description": "Check gNB syslog in the selected time window.",
+    },
+    {
+        "model": "kpi_generator",
+        "label": "KPI Generator",
+        "category": "followup",
+        "requires_ue": False,
+        "default_stage": "kpi-followup",
+        "default_execution_mode": "serial",
+        "resource_domain": "followup",
+        "default_ue_scope": {"mode": "none"},
+        "default_params": {"template_names": ["Throughput"]},
+        "description": "Generate KPI report for the business window.",
+    },
+    {
+        "model": "kpi_detector",
+        "label": "KPI Detector",
+        "category": "followup",
+        "requires_ue": False,
+        "default_stage": "kpi-followup",
+        "default_execution_mode": "serial",
+        "resource_domain": "followup",
+        "default_ue_scope": {"mode": "none"},
+        "default_params": {"source_file": "artifacts/generated.xlsx", "generate_html": True},
+        "description": "Run KPI anomaly detection.",
+    },
 )
 
 
@@ -108,6 +283,8 @@ def _validate_run_create_request(request: RunCreateRequest) -> None:
         raise HTTPException(status_code=400, detail="KPI options are only supported when executor_type is python_orchestrator.")
     if request.executor_type == "python_orchestrator" and request.workflow_spec is None:
         raise HTTPException(status_code=400, detail="workflow_spec is required when executor_type is python_orchestrator.")
+    if request.executor_type == "robot" and request.dispatch_backend and request.dispatch_backend != "jenkins":
+        raise HTTPException(status_code=400, detail="robot runs only support dispatch_backend=jenkins.")
 
 
 def run_create(request: RunCreateRequest) -> RunCreateResponse:
@@ -119,6 +296,12 @@ def run_create(request: RunCreateRequest) -> RunCreateResponse:
         (request.workflow_spec.name if request.workflow_spec else None)
         or _normalize_optional_text(request.robotcase_path)
     )
+    metadata = dict(request.metadata)
+    if request.dispatch_backend:
+        metadata["dispatch_backend"] = request.dispatch_backend
+    elif request.executor_type == "python_orchestrator":
+        metadata.setdefault("dispatch_backend", "worker")
+
     record = {
         "executor_type": request.executor_type,
         "workflow_name": workflow_name or "",
@@ -131,7 +314,7 @@ def run_create(request: RunCreateRequest) -> RunCreateResponse:
         "enable_kpi_generator": request.enable_kpi_generator,
         "enable_kpi_anomaly_detector": request.enable_kpi_anomaly_detector,
         "workflow_spec_json": request.workflow_spec.model_dump(mode="json") if request.workflow_spec else {},
-        "run_metadata_json": request.metadata,
+        "run_metadata_json": metadata,
         "artifact_manifest_json": [],
         "kpi_config_json": request.kpi_config.model_dump(mode="json") if request.kpi_config else {},
         "kpi_summary_json": {},
@@ -218,6 +401,10 @@ def get_run_list() -> RunListResponse:
     return RunListResponse(items=[RunListItem(**record) for record in records])
 
 
+def get_operation_catalog() -> OperationCatalogResponse:
+    return OperationCatalogResponse(items=[OperationDescriptor(**item) for item in OPERATION_CATALOG])
+
+
 def get_tool_run_list(status: str | None = None) -> RunListResponse:
     normalized_status = _normalize_optional_text(status)
     records = [
@@ -237,12 +424,59 @@ def trigger_run(run_id: str) -> RunTriggerResponse:
     record = _get_required_record(run_id)
     if record["executor_type"] == "internal_tool":
         raise HTTPException(status_code=400, detail="Internal tool runs are executed by the worker.")
-    if record["executor_type"] != "robot":
-        raise HTTPException(status_code=400, detail="Only robot runs can be triggered directly.")
     if record["status"] not in {"created", "trigger_failed"}:
         raise HTTPException(status_code=409, detail=f"Run cannot be triggered from status {record['status']}.")
 
-    parameters = build_robot_jenkins_parameters(record)
+    metadata = dict(record.get("metadata") or {})
+    dispatch_backend = _normalize_optional_text(metadata.get("dispatch_backend"))
+    if record["executor_type"] == "robot":
+        dispatch_backend = "jenkins"
+    elif record["executor_type"] == "python_orchestrator":
+        dispatch_backend = dispatch_backend or "worker"
+    else:
+        raise HTTPException(status_code=400, detail=f"Unsupported executor_type: {record['executor_type']}")
+
+    if dispatch_backend == "worker":
+        now = datetime.now(ZoneInfo("Asia/Shanghai")).isoformat()
+        metadata.update(
+            {
+                "dispatch_backend": "worker",
+                "worker_handoff": {
+                    "run_id": run_id,
+                    "detail_url": f"/api/runs/{run_id}",
+                    "callback_url": f"/api/runs/{run_id}/callbacks/worker",
+                },
+            }
+        )
+        updated = update_run_record(
+            run_id,
+            {
+                "status": "queued",
+                "message": "Run queued for Python orchestrator worker.",
+                "run_metadata_json": metadata,
+                "updated_at": now,
+            },
+        )
+        if updated is None:
+            raise HTTPException(status_code=404, detail="Run not found.")
+        normalized = _normalize_record(updated)
+        return RunTriggerResponse(
+            run_id=run_id,
+            executor_type=normalized["executor_type"],
+            status=normalized["status"],
+            message=normalized["message"],
+            scheduler="worker",
+            dispatch=metadata["worker_handoff"],
+        )
+
+    if dispatch_backend != "jenkins":
+        raise HTTPException(status_code=400, detail="dispatch_backend must be worker or jenkins.")
+
+    parameters = (
+        build_robot_jenkins_parameters(record)
+        if record["executor_type"] == "robot"
+        else build_python_orchestrator_jenkins_parameters(record)
+    )
     now = datetime.now(ZoneInfo("Asia/Shanghai")).isoformat()
     try:
         dispatch = trigger_jenkins_job(parameters=parameters)

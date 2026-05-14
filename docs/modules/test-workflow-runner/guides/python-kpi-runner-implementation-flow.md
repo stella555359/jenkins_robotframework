@@ -472,7 +472,7 @@ stage 5: kpi_generator / kpi_detector
 - 如果真实 UE 对象没有 `prepare_ue / attach / detach` 同名方法，需要在 binding 中改成调用真实 helper。
 - 如果 `testline_configuration` 是 package 目录而不是单文件，需要确认 `config_path` 指向 `__init__.py`。
 - 如果某些 UE 类型只有 Robot keyword，没有 Python API，需要做薄 adapter 或临时 fallback。
-- 当前 resource lock 是 runner 进程内锁；如果未来多个 worker 同时跑同一 testline，需要平台层或外部锁。
+- 当前 resource lock 是 runner 进程内锁；如果未来多个 Jenkins build 同时跑同一 testline，需要 Jenkins 层、平台层或外部锁做跨进程互斥。
 
 ## 10. 服务器验证命令
 

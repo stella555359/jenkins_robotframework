@@ -33,7 +33,7 @@
 - [x] 已补第一版 `robot` command helper 和最小 Pipeline 模板
 - [x] `robot` 路径的 checkout / request materialize / callback helper 已落地
 - [x] 已补 controller / node / credentials 级别的 `jenkins.yaml` 示例，以及 `robot` job 参数模板文档和实际 Job DSL 文件
-- [ ] `python_orchestrator` 的 `workflow_spec -> request.json` 物化仍未落地
+- [x] 已补 `python_orchestrator` 的 KPI runner Job DSL、Jenkinsfile 和 `workflow_spec -> request.json` 物化脚本
 
 ## 目录入口
 
@@ -43,7 +43,9 @@
 - [jobs 目录说明](../../../jenkins-integration/jobs/README.md)
 - [Robot Job 模板文档](../../../jenkins-integration/jobs/robot-execution-job-template.md)
 - [Robot Job DSL](../../../jenkins-integration/jobs/robot-execution-job.groovy)
+- [KPI Runner Job DSL](../../../jenkins-integration/jobs/kpi-runner-job.groovy)
 - [pipelines 目录说明](../../../jenkins-integration/pipelines/README.md)
+- [KPI Runner Jenkinsfile](../../../jenkins-integration/pipelines/kpi-runner.Jenkinsfile)
 - [scripts 目录说明](../../../jenkins-integration/scripts/README.md)
 - [Jenkins Integration Layer 与执行流程](guides/jenkins-integration-layer-and-flow.md)
 - [Robot 最小执行路径](guides/robot-minimal-execution-path.md)

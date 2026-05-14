@@ -16,6 +16,9 @@
 	- 从 `testline + robotcase_path + workspace` 构建 `python -m robot ...` 命令计划
 - `materialize_run_request.py`
 	- 把 `platform-api` run detail 或 ad-hoc 输入物化成稳定的 internal robot request
+- `materialize_python_orchestrator_request.py`
+	- 把 `platform-api` python_orchestrator run detail、`WORKFLOW_SPEC_JSON` 或 Portal `metadata.runner_request` 物化成 `test-workflow-runner` CLI request
+	- 保留 `BUILD` 字段，并自动补到 `kpi_generator` item 的 `params.build`
 - `checkout_sources.py`
 	- 为 `robotws` 和 `testline_configuration` 生成 checkout plan，并承接 repo URL / branch / credentials 约定
 - `prepare_taf_environment.py`

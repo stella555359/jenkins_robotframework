@@ -21,7 +21,7 @@ platform-api 传来的 run 语义
 Jenkins job 需要的参数、标签、凭据和执行模式
 ```
 
-这里先不写死所有 job 名，但 `robot` 路径已经补了“模板文档 + 实际 Job DSL 文件”两层入口：
+这里先不写死所有 job 名，但 `robot` 路径已经补了“模板文档 + 实际 Job DSL 文件”两层入口，`python_orchestrator` 路径也已补 KPI runner Job DSL：
 
 - [robot-execution-job-template.md](robot-execution-job-template.md)
 	- 固定 seed job / job 参数模板思路
@@ -31,3 +31,7 @@ Jenkins job 需要的参数、标签、凭据和执行模式
 	- 可直接放进 seed job 流程的实际 Job DSL 文件
 	- 参数列表与 `pipelines/robot-execution.Jenkinsfile` 当前定义保持一一对应
 	- 把 `robot/robot-execution` 这个 pipeline job 真正物化出来
+- [kpi-runner-job.groovy](kpi-runner-job.groovy)
+	- 创建 `CIT/KPI_Testing/<SBTS>/<testline>` 和 `CRT/KPI_Testing/<SBTS>/<testline>` 两个 KPI runner job
+	- 参数列表与 `pipelines/kpi-runner.Jenkinsfile` 当前定义保持一一对应
+	- `BUILD` 是一等参数，用于表示本次 KPI testing 的 CIT 包 / 软件包版本

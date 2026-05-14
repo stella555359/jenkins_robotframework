@@ -33,21 +33,21 @@ def _auth_header() -> dict[str, str]:
     return {"Authorization": f"Basic {encoded}"}
 
 
-def trigger_jenkins_job(*, parameters: dict[str, Any]) -> dict[str, Any]:
+def trigger_jenkins_job(*, parameters: dict[str, Any], job_path: str | None = None) -> dict[str, Any]:
     base_url = _clean_text(settings.jenkins_base_url)
     if not base_url:
         raise JenkinsDispatchError("jenkins_base_url is not configured.")
 
-    job_path = _clean_text(settings.jenkins_robot_job_path)
-    if not job_path:
-        raise JenkinsDispatchError("jenkins_robot_job_path is not configured.")
+    resolved_job_path = _clean_text(job_path) or _clean_text(settings.jenkins_robot_job_path)
+    if not resolved_job_path:
+        raise JenkinsDispatchError("Jenkins job path is not configured.")
 
     request_params = {key: str(value) for key, value in parameters.items() if value is not None}
     trigger_token = _clean_text(settings.jenkins_trigger_token)
     if trigger_token:
         request_params.setdefault("token", trigger_token)
 
-    url = _join_url(base_url, job_path, "buildWithParameters")
+    url = _join_url(base_url, resolved_job_path, "buildWithParameters")
     body = parse.urlencode(request_params).encode("utf-8")
     headers = {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -134,6 +134,18 @@ def build_python_orchestrator_jenkins_parameters(record: dict[str, Any]) -> dict
         else "true",
         "RUNNER_REPOSITORY_ROOT": metadata.get("runner_repository_root") or "",
         "RESULT_JSON_PATH": metadata.get("result_json_path") or "",
+        "TAF_MODE": metadata.get("taf_mode") or "reuse",
+        "PYTHON_ENV_ROOT": metadata.get("python_env_root") or "",
+        "ROBOTWS_ROOT": metadata.get("robotws_root") or "",
+        "TESTLINE_VARIABLES_PATH": metadata.get("testline_variables_path") or "",
+        "ROBOTWS_REPO_URL_OVERRIDE": metadata.get("robotws_repo_url") or "",
+        "ROBOTWS_GIT_REF": metadata.get("robotws_ref") or metadata.get("robotws_branch") or "master",
+        "ROBOTWS_CREDENTIALS_ID_OVERRIDE": metadata.get("robotws_credentials_id") or "",
+        "TESTLINE_CONFIGURATION_REPO_URL_OVERRIDE": metadata.get("testline_configuration_repo_url") or "",
+        "TESTLINE_CONFIGURATION_GIT_REF": metadata.get("testline_configuration_ref") or metadata.get("testline_configuration_branch") or "master",
+        "TESTLINE_CONFIGURATION_CREDENTIALS_ID_OVERRIDE": metadata.get("testline_configuration_credentials_id") or "",
+        "ARTIFACT_LABEL": metadata.get("artifact_label") or "kpi-runner",
+        "RETRY_INDEX": metadata.get("retry_index") or "0",
         "CALLBACK_INSECURE_TLS": str(
             metadata.get("callback_insecure_tls")
             if metadata.get("callback_insecure_tls") is not None

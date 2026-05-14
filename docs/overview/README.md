@@ -26,6 +26,7 @@
 - [GNB KPI Regression Architecture](gnb-kpi-regression-architecture.md)
 - [GNB KPI System Runtime](gnb-kpi-system-runtime.md)
 - [Automation Portal 触发真实 Robot Case 流程](automation-portal-robot-case-flow.md)
+- [Jenkins CI/CD Flow](Jenkins_ci_cd_flow.md)
 
 ## 当前推荐推进顺序
 

@@ -58,4 +58,8 @@ automation-portal / caller
 
 当前仍待继续补：
 
-- `python_orchestrator` 路径的 job / request 物化对接
+- `python_orchestrator` 路径已经补第一版 Jenkins 入口：
+  - `jobs/kpi-runner-job.groovy`
+  - `pipelines/kpi-runner.Jenkinsfile`
+  - `scripts/materialize_python_orchestrator_request.py`
+- 后续仍需在服务器 seed job 中实际生成 `CIT/KPI_Testing/<SBTS>/<testline>` / `CRT/KPI_Testing/<SBTS>/<testline>` job 并做 Jenkins smoke 验证

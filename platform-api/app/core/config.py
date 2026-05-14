@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     public_base_url: str = "http://127.0.0.1:8000"
     jenkins_base_url: str = ""
     jenkins_robot_job_path: str = "job/robot/job/robot-execution"
+    jenkins_python_orchestrator_job_path: str = "job/CIT/job/KPI_Testing/job/SBTS26R1/job/7_5_UTE5G402T813"
     jenkins_username: str = ""
     jenkins_api_token: str = ""
     jenkins_trigger_token: str = ""

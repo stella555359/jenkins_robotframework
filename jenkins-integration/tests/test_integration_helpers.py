@@ -16,6 +16,7 @@ def _load_module(script_name: str):
 
 
 materialize_module = _load_module("materialize_run_request.py")
+materialize_python_module = _load_module("materialize_python_orchestrator_request.py")
 checkout_module = _load_module("checkout_sources.py")
 taf_module = _load_module("prepare_taf_environment.py")
 callback_module = _load_module("post_run_callback.py")
@@ -56,6 +57,62 @@ def test_materialize_robot_request_promotes_metadata_and_sources(tmp_path: Path)
     assert request_payload["source_repos"]["testline_configuration"]["credentials_id"] == "testline-ssh-key"
     assert request_payload["taf"]["mode"] == "create-venv"
     assert request_payload["callback"]["path"] == "/api/runs/run-20260429120000000/callbacks/jenkins"
+
+
+def test_materialize_python_orchestrator_request_promotes_build_and_runner_request(tmp_path: Path) -> None:
+    request_payload = materialize_python_module.materialize_python_orchestrator_request(
+        {
+            "run_id": "run-20260514120000000",
+            "executor_type": "python_orchestrator",
+            "testline": "7_5_UTE5G402T813",
+            "workflow_name": "UE KPI Dry Run",
+            "build": "SBTS26R1.ENB.9999",
+            "metadata": {
+                "selected_ues": [{"ue_index": 1, "ue_type": "qct_dx50", "label": "_android"}],
+                "robotws_ref": "feature/robotws-kpi",
+                "testline_configuration_ref": "feature/t813-config",
+                "taf_mode": "reuse",
+            },
+            "workflow_spec": {
+                "name": "UE KPI Dry Run",
+                "stages": [
+                    {
+                        "stage_id": 1,
+                        "stage_name": "kpi-followup",
+                        "execution_mode": "serial",
+                        "items": [
+                            {
+                                "item_id": "kpi-generator",
+                                "model": "kpi_generator",
+                                "enabled": True,
+                                "order": 10,
+                                "execution_mode": "serial",
+                                "ue_scope": {"mode": "all_selected_ues"},
+                                "params": {},
+                            }
+                        ],
+                    }
+                ],
+                "runtime_options": {"dry_run": True},
+            },
+        },
+        workflow_spec={},
+        testline=None,
+        workflow_name=None,
+        build=None,
+        dry_run=True,
+        workspace_root=tmp_path,
+    )
+
+    assert request_payload["run_id"] == "run-20260514120000000"
+    assert request_payload["testline"] == "7_5_UTE5G402T813"
+    assert request_payload["build"] == "SBTS26R1.ENB.9999"
+    assert request_payload["source_repos"]["robotws"]["ref"] == "feature/robotws-kpi"
+    assert request_payload["source_repos"]["testline_configuration"]["ref"] == "feature/t813-config"
+    assert request_payload["taf"]["mode"] == "reuse"
+    assert request_payload["runtime_options"]["dry_run"] is True
+    assert request_payload["traffic_plan"]["stages"][0]["items"][0]["params"]["build"] == "SBTS26R1.ENB.9999"
+    assert request_payload["runner_repository_root"] == str((tmp_path / "test-workflow-runner").resolve())
 
 
 def test_materialize_fetch_json_can_disable_tls_verification(monkeypatch) -> None:

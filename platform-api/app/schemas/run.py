@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 ExecutorType = Literal["robot", "python_orchestrator", "internal_tool"]
 ExecutionMode = Literal["serial", "parallel"]
 ToolKind = Literal["kpi_generator", "kpi_detector"]
-DispatchBackend = Literal["worker", "jenkins"]
+DispatchBackend = Literal["jenkins"]
 
 
 class ArtifactDescriptor(BaseModel):

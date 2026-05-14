@@ -18,6 +18,7 @@ from app.services.jenkins_service import (
     build_robot_jenkins_parameters,
     trigger_jenkins_job,
 )
+from app.core.config import settings
 from app.schemas.run import (
     OperationCatalogResponse,
     OperationDescriptor,
@@ -285,6 +286,8 @@ def _validate_run_create_request(request: RunCreateRequest) -> None:
         raise HTTPException(status_code=400, detail="workflow_spec is required when executor_type is python_orchestrator.")
     if request.executor_type == "robot" and request.dispatch_backend and request.dispatch_backend != "jenkins":
         raise HTTPException(status_code=400, detail="robot runs only support dispatch_backend=jenkins.")
+    if request.executor_type == "python_orchestrator" and request.dispatch_backend and request.dispatch_backend != "jenkins":
+        raise HTTPException(status_code=400, detail="python_orchestrator runs only support dispatch_backend=jenkins.")
 
 
 def run_create(request: RunCreateRequest) -> RunCreateResponse:
@@ -439,9 +442,14 @@ def trigger_run(run_id: str) -> RunTriggerResponse:
         if record["executor_type"] == "robot"
         else build_python_orchestrator_jenkins_parameters(record)
     )
+    job_path = (
+        settings.jenkins_robot_job_path
+        if record["executor_type"] == "robot"
+        else settings.jenkins_python_orchestrator_job_path
+    )
     now = datetime.now(ZoneInfo("Asia/Shanghai")).isoformat()
     try:
-        dispatch = trigger_jenkins_job(parameters=parameters)
+        dispatch = trigger_jenkins_job(parameters=parameters, job_path=job_path)
     except JenkinsDispatchError as exc:
         update_run_record(
             run_id,

@@ -41,7 +41,7 @@
 - [x] Step 5：接入 `generator / detector` 作为 execution 后处理模块
 - [x] Step 6：增加 `internal_tools.tool_runner`，支持 Portal standalone 工具 run
 - [x] Step 7：Python KPI Runner MVP：UE type/family、TAF binding skeleton、resource locks、KPI window
-- [x] Step 8：Portal Workflow Builder 与 worker/Jenkins 双调度入口
+- [x] Step 8：Portal Workflow Builder 与 Jenkins 调度入口
 
 当前 Step 5 的参数约定与接入方式，已经补到独立 step：
 
@@ -66,7 +66,7 @@
 - [Step 5：generator / detector internal API params contract](steps/step-05-generator-detector-internal-api-contract.md)
 - [Step 6：internal tools standalone tool runner](steps/step-06-internal-tools-standalone-tool-runner.md)
 - [Step 7：Python KPI Runner MVP](steps/step-07-python-kpi-runner-mvp.md)
-- [Step 8：Portal Workflow Builder 与双调度入口](steps/step-08-platform-portal-workflow-builder-dispatch.md)
+- [Step 8：Portal Workflow Builder 与 Jenkins 调度入口](steps/step-08-platform-portal-workflow-builder-dispatch.md)
 
 测试自动化入口：
 

@@ -116,6 +116,7 @@ Jenkins integration layer 负责：
 - checkout `testline_configuration`
 - checkout bindings 依赖代码
 - 把 `workflow_spec` 物化成 `request.json`
+- 保留 `BUILD` 作为本次 KPI testing 的 CIT 包 / 软件包版本
 - 调 `python -m test_workflow_runner.cli`
 - 统一 callback
 
@@ -149,3 +150,35 @@ Jenkins integration layer 负责：
 - `jenkins-integration`
 
 它的作用不是增加新的业务执行器，而是把“公共 Jenkins 调度和桥接逻辑”从具体执行器里拆出来。
+
+## Python KPI Runner 当前落地
+
+当前 `python_orchestrator` Jenkins 路径已经补第一版：
+
+```text
+platform-api
+  -> Jenkins job: CIT/KPI_Testing/<SBTS>/<testline> 或 CRT/KPI_Testing/<SBTS>/<testline>
+  -> materialize_python_orchestrator_request.py
+  -> checkout_sources.py
+  -> prepare_taf_environment.py
+  -> python -m test_workflow_runner.cli
+  -> post_run_callback.py
+```
+
+对应文件：
+
+- `jenkins-integration/jobs/kpi-runner-job.groovy`
+- `jenkins-integration/pipelines/kpi-runner.Jenkinsfile`
+- `jenkins-integration/scripts/materialize_python_orchestrator_request.py`
+
+关键字段：
+
+- `RUN_ID`
+- `TESTLINE`
+- `BUILD`
+- `WORKFLOW_SPEC_JSON`
+- `DRY_RUN`
+- `RUNNER_REPOSITORY_ROOT`
+- `RESULT_JSON_PATH`
+
+`BUILD` 会进入 runner request 顶层字段，并补到 `kpi_generator` item 的 `params.build`，避免 KPI followup 阶段拿不到本次 CIT 包版本。

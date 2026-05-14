@@ -47,8 +47,9 @@ def test_create_run_persists_record(client, fetch_run_record) -> None:
 def test_trigger_robot_run_dispatches_to_jenkins(client, fetch_run_record, monkeypatch) -> None:
     captured: dict[str, str] = {}
 
-    def fake_trigger_jenkins_job(*, parameters: dict[str, str]) -> dict[str, object]:
+    def fake_trigger_jenkins_job(*, parameters: dict[str, str], job_path: str | None = None) -> dict[str, object]:
         captured.update(parameters)
+        captured["JOB_PATH"] = job_path or ""
         return {
             "url": "https://jenkins.example/job/robot/job/robot-execution/buildWithParameters",
             "http_status": 201,
@@ -92,6 +93,7 @@ def test_trigger_robot_run_dispatches_to_jenkins(client, fetch_run_record, monke
     assert captured["TAF_MODE"] == "create-venv"
     assert captured["CALLBACK_INSECURE_TLS"] == "true"
     assert captured["ROBOTWS_GIT_REF"] == "feature/robot"
+    assert captured["JOB_PATH"] == "job/robot/job/robot-execution"
 
     row = fetch_run_record(run_id)
     assert row is not None
@@ -106,7 +108,7 @@ def test_trigger_robot_run_dispatches_to_jenkins(client, fetch_run_record, monke
 def test_trigger_robot_run_stores_trigger_failed(client, fetch_run_record, monkeypatch) -> None:
     from app.services.jenkins_service import JenkinsDispatchError
 
-    def fake_trigger_jenkins_job(*, parameters: dict[str, str]) -> dict[str, object]:
+    def fake_trigger_jenkins_job(*, parameters: dict[str, str], job_path: str | None = None) -> dict[str, object]:
         raise JenkinsDispatchError("Jenkins is unavailable.")
 
     monkeypatch.setattr("app.services.run_service.trigger_jenkins_job", fake_trigger_jenkins_job)
@@ -219,61 +221,13 @@ def test_create_python_orchestrator_run_persists_workflow_spec(client, fetch_run
 
 @allure.feature("Run API")
 @allure.story("Trigger run")
-@allure.title("POST /api/runs/{run_id}/trigger queues python orchestrator runs for worker")
-def test_trigger_python_orchestrator_run_queues_worker(client, fetch_run_record) -> None:
-    create_response = client.post(
-        "/api/runs",
-        json={
-            "testline": "T813",
-            "executor_type": "python_orchestrator",
-            "dispatch_backend": "worker",
-            "workflow_spec": {
-                "name": "GNB WebUI Dry Run",
-                "stages": [
-                    {
-                        "stage_id": 1,
-                        "stage_name": "gnb-webui-operation",
-                        "execution_mode": "serial",
-                        "items": [
-                            {
-                                "item_id": "ru-reset",
-                                "model": "ru_reset",
-                                "ue_scope": {"mode": "none"},
-                                "params": {"repeat_count": 3},
-                            }
-                        ],
-                    }
-                ],
-                "runtime_options": {"dry_run": True},
-            },
-        },
-    )
-    run_id = create_response.json()["run_id"]
-
-    trigger_response = client.post(f"/api/runs/{run_id}/trigger")
-
-    assert trigger_response.status_code == 200
-    payload = trigger_response.json()
-    assert payload["scheduler"] == "worker"
-    assert payload["status"] == "queued"
-    assert payload["dispatch"]["detail_url"] == f"/api/runs/{run_id}"
-    assert payload["dispatch"]["callback_url"] == f"/api/runs/{run_id}/callbacks/worker"
-
-    row = fetch_run_record(run_id)
-    assert row is not None
-    assert row["status"] == "queued"
-    assert row["message"] == "Run queued for Python orchestrator worker."
-    assert row["run_metadata_json"]["dispatch_backend"] == "worker"
-
-
-@allure.feature("Run API")
-@allure.story("Trigger run")
 @allure.title("POST /api/runs/{run_id}/trigger dispatches python orchestrator runs to Jenkins")
 def test_trigger_python_orchestrator_run_dispatches_to_jenkins(client, fetch_run_record, monkeypatch) -> None:
     captured: dict[str, str] = {}
 
-    def fake_trigger_jenkins_job(*, parameters: dict[str, str]) -> dict[str, object]:
+    def fake_trigger_jenkins_job(*, parameters: dict[str, str], job_path: str | None = None) -> dict[str, object]:
         captured.update(parameters)
+        captured["JOB_PATH"] = job_path or ""
         return {
             "url": "https://jenkins.example/job/robot/job/robot-execution/buildWithParameters",
             "http_status": 201,
@@ -288,6 +242,13 @@ def test_trigger_python_orchestrator_run_dispatches_to_jenkins(client, fetch_run
             "testline": "T813",
             "executor_type": "python_orchestrator",
             "dispatch_backend": "jenkins",
+            "build": "SBTS26R1.ENB.9999",
+            "metadata": {
+                "taf_mode": "reuse",
+                "robotws_ref": "feature/robotws-kpi",
+                "testline_configuration_ref": "feature/t813-config",
+                "artifact_label": "kpi-smoke",
+            },
             "workflow_spec": {
                 "name": "UE KPI Dry Run",
                 "stages": [],
@@ -306,8 +267,14 @@ def test_trigger_python_orchestrator_run_dispatches_to_jenkins(client, fetch_run
     assert captured["RUN_ID"] == run_id
     assert captured["EXECUTOR_TYPE"] == "python_orchestrator"
     assert captured["TESTLINE"] == "T813"
+    assert captured["BUILD"] == "SBTS26R1.ENB.9999"
     assert '"name": "UE KPI Dry Run"' in captured["WORKFLOW_SPEC_JSON"]
     assert captured["DRY_RUN"] == "true"
+    assert captured["TAF_MODE"] == "reuse"
+    assert captured["ROBOTWS_GIT_REF"] == "feature/robotws-kpi"
+    assert captured["TESTLINE_CONFIGURATION_GIT_REF"] == "feature/t813-config"
+    assert captured["ARTIFACT_LABEL"] == "kpi-smoke"
+    assert captured["JOB_PATH"] == "job/CIT/job/KPI_Testing/job/SBTS26R1/job/7_5_UTE5G402T813"
 
     row = fetch_run_record(run_id)
     assert row is not None

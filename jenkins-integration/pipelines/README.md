@@ -25,3 +25,8 @@
 
 - `robot-execution.Jenkinsfile`
 	- 最小 Robot 执行 Pipeline 模板
+- `kpi-runner.Jenkinsfile`
+	- Python KPI Runner 执行 Pipeline
+	- 复用 `checkout_sources.py` 和 `prepare_taf_environment.py`
+	- 执行 `python -m test_workflow_runner.cli`
+	- 归档 artifacts 并 callback `platform-api`

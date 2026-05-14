@@ -1,6 +1,6 @@
 export type ExecutorType = "robot" | "python_orchestrator" | "internal_tool";
 export type ToolKind = "kpi_generator" | "kpi_detector";
-export type DispatchBackend = "worker" | "jenkins";
+export type DispatchBackend = "jenkins";
 
 export type ArtifactDescriptor = {
   kind: string;

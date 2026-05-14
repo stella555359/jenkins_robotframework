@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useLocation, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { api, ArtifactDescriptor, jenkinsArtifactUrl, jenkinsJobUrl, RunDetail as RunDetailModel, RunKpi } from "../api";
 
 type LocationState = {
@@ -106,6 +106,7 @@ function InfoTable({ items }: { items: [string, string | null | undefined][] }) 
 
 export function RunDetail() {
   const { runId = "" } = useParams();
+  const navigate = useNavigate();
   const location = useLocation();
   const triggerError = (location.state as LocationState | null)?.triggerError;
   const [detail, setDetail] = useState<RunDetailModel | null>(null);
@@ -170,6 +171,16 @@ export function RunDetail() {
 
   const canRetryTrigger = detail && ["robot", "python_orchestrator"].includes(detail.executor_type) && ["created", "trigger_failed"].includes(detail.status);
 
+  async function handleDelete() {
+    if (!runId || !confirm(`Delete run ${runId}?`)) return;
+    try {
+      await api.deleteRun(runId);
+      navigate("/runs");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   // Find the primary log.html artifact for quick access
   const logHtmlArtifact = artifacts.find(
     (a) => a.label === "log.html" || a.label.endsWith("/log.html")
@@ -201,6 +212,9 @@ export function RunDetail() {
           <Link className="button secondary" to={`/runs/new?from=${runId}`}>
             Rebuild
           </Link>
+          <button type="button" className="secondary danger-btn" onClick={() => void handleDelete()}>
+            Delete
+          </button>
           <Link className="button secondary" to="/runs">
             Back
           </Link>

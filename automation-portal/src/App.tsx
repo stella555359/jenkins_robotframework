@@ -22,6 +22,7 @@ export default function App() {
 
         <div className="sidebar-section">
           <div className="sidebar-section-label">Test Workflow</div>
+          <NavLink to="/workflows">Workflow Runs</NavLink>
           <NavLink to="/workflows/new">KPI Workflow Builder</NavLink>
         </div>
       </aside>

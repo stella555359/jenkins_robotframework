@@ -75,8 +75,8 @@ def list_tool_runs(
 
 
 @router.get("/runs", response_model=RunListResponse, tags=["run"])
-def list_runs() -> RunListResponse:
-    return get_run_list()
+def list_runs(executor_type: str | None = None) -> RunListResponse:
+    return get_run_list(executor_type=executor_type)
 
 
 @router.get("/workflow/operation-catalog", response_model=OperationCatalogResponse, tags=["workflow"])

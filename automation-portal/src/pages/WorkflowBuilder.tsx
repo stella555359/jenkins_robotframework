@@ -201,7 +201,7 @@ export function WorkflowBuilder() {
       };
       const created = await api.createRun(payload);
       await api.triggerRun(created.run_id);
-      navigate(`/runs/${created.run_id}`);
+      navigate(`/workflows/${created.run_id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to submit workflow.");
     } finally {

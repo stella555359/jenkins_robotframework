@@ -396,8 +396,13 @@ def tool_run_create(request: ToolRunCreateRequest) -> ToolRunCreateResponse:
     )
 
 
-def get_run_list() -> RunListResponse:
-    records = [_normalize_record(record) for record in list_run_records()]
+def get_run_list(*, executor_type: str | None = None) -> RunListResponse:
+    normalized_executor_type = _normalize_optional_text(executor_type)
+    records = [
+        _normalize_record(record)
+        for record in list_run_records()
+        if normalized_executor_type is None or record.get("executor_type") == normalized_executor_type
+    ]
     return RunListResponse(items=[RunListItem(**record) for record in records])
 
 

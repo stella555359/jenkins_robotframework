@@ -10,6 +10,8 @@ import { KpiDetectorForm } from "./pages/KpiDetectorForm";
 import { KpiToolRunList } from "./pages/KpiToolRunList";
 import { KpiToolRunDetail } from "./pages/KpiToolRunDetail";
 import { WorkflowBuilder } from "./pages/WorkflowBuilder";
+import { WorkflowRunList } from "./pages/WorkflowRunList";
+import { WorkflowRunDetail } from "./pages/WorkflowRunDetail";
 import "./styles.css";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
@@ -53,7 +55,9 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
             path="kpi/detector/:runId"
             element={<KpiToolRunDetail toolKind="kpi_detector" listPath="/kpi/detector" />}
           />
+          <Route path="workflows" element={<WorkflowRunList />} />
           <Route path="workflows/new" element={<WorkflowBuilder />} />
+          <Route path="workflows/:runId" element={<WorkflowRunDetail />} />
         </Route>
       </Routes>
     </BrowserRouter>

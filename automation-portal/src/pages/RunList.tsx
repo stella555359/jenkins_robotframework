@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { api, jenkinsJobUrl, RunListItem } from "../api";
 
 function StatusBadge({ status }: { status: string }) {
@@ -21,10 +21,20 @@ export function RunList() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  async function handleDelete(runId: string) {
+    if (!confirm(`Delete run ${runId}?`)) return;
+    try {
+      await api.deleteRun(runId);
+      setItems((prev) => prev.filter((r) => r.run_id !== runId));
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   async function loadRuns() {
     setError(null);
     try {
-      const response = await api.listRuns();
+      const response = await api.listRuns({ executor_type: "robot" });
       setItems(response.items);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load runs.");
@@ -86,9 +96,14 @@ export function RunList() {
                 <td>{item.updated_at}</td>
                 <td className="muted">{item.robotcase_path || "-"}</td>
                 <td>
-                  <Link className="button small secondary" to={`/runs/new?from=${item.run_id}`}>
-                    Rebuild
-                  </Link>
+                  <div className="actions">
+                    <Link className="button small secondary" to={`/runs/new?from=${item.run_id}`}>
+                      Rebuild
+                    </Link>
+                    <button className="small danger-btn" onClick={() => handleDelete(item.run_id)}>
+                      Delete
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

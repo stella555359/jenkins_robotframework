@@ -203,8 +203,11 @@ export const api = {
       method: "POST"
     });
   },
-  listRuns() {
-    return requestJson<{ items: RunListItem[] }>("/runs");
+  listRuns(params?: { executor_type?: string }) {
+    const query = new URLSearchParams();
+    if (params?.executor_type) query.set("executor_type", params.executor_type);
+    const qs = query.toString();
+    return requestJson<{ items: RunListItem[] }>(`/runs${qs ? `?${qs}` : ""}`);
   },
   getRun(runId: string) {
     return requestJson<RunDetail>(`/runs/${encodeURIComponent(runId)}`);

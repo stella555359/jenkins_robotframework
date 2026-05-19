@@ -1565,3 +1565,764 @@ Jenkins 页面验证：
 5. 如果 Jenkins build 已经进入 Run Test Workflow Runner stage 后失败，应该看 seed job log 还是 KPI runner job log？
 ```
 
+## 18. 本轮实践记录：Step 1 服务器代码资产齐全检查
+
+本节解决的问题：
+
+```text
+在真正 reload JCasC 或运行 seed job 之前，先确认 Jenkins 服务器上的 jenkins-integration 相关代码文件已经齐全，避免后续 seed job 因找不到 Jenkinsfile、Job DSL 或 helper scripts 而失败。
+```
+
+本次确认的文件：
+
+```text
+jenkins-integration/jcasc/jenkins.yaml
+jenkins-integration/pipelines/seed-jobs.Jenkinsfile
+jenkins-integration/jobs/robot-execution-job.groovy
+jenkins-integration/jobs/kpi-runner-job.groovy
+jenkins-integration/pipelines/kpi-runner.Jenkinsfile
+jenkins-integration/scripts/materialize_python_orchestrator_request.py
+jenkins-integration/scripts/checkout_sources.py
+jenkins-integration/scripts/prepare_taf_environment.py
+jenkins-integration/scripts/post_run_callback.py
+```
+
+用户验证结果：
+
+```text
+代码文件已经齐全。
+```
+
+这一步的意义：
+
+```text
+JCasC 只负责创建 seed job；
+seed job 需要 checkout 本仓库并读取 seed-jobs.Jenkinsfile；
+seed job 再执行 jobs/*.groovy；
+KPI runner job 后续需要 kpi-runner.Jenkinsfile 和 scripts/*.py。
+
+因此，服务器代码资产齐全是后续 reload JCasC、运行 seed job 和生成 KPI Runner Job 的前置条件。
+```
+
+下一步：
+
+```text
+确认 Jenkins controller 实际加载的 JCasC 文件里已经包含 seed/jenkins-robotframework-seed，
+并确认 Jenkins 页面中 seed job 是否存在、参数和 Pipeline scriptPath 是否正确。
+```
+
+## 19. 本轮实践记录：Step 2 当前 rendered JCasC 未包含 seed job
+
+本节解决的问题：
+
+```text
+确认 Jenkins 当前是否已经通过 JCasC 启动，以及实际加载的 rendered JCasC 文件是否已经包含 seed job 定义。
+```
+
+用户执行结果：
+
+```text
+sudo systemctl show jenkins --property=Environment --no-pager
+
+Environment=... JENKINS_PREFIX=/jenkins CASC_JENKINS_CONFIG=/var/lib/jenkins/casc_configs/jenkins.rendered.yaml
+```
+
+说明：
+
+```text
+Jenkins 已经设置 CASC_JENKINS_CONFIG，
+当前实际加载文件是：
+/var/lib/jenkins/casc_configs/jenkins.rendered.yaml
+```
+
+随后检查 rendered YAML：
+
+```bash
+grep -n "jenkins-robotframework-seed" /var/lib/jenkins/casc_configs/jenkins.rendered.yaml
+grep -n "seed-jobs.Jenkinsfile" /var/lib/jenkins/casc_configs/jenkins.rendered.yaml
+grep -n "JENKINS_ROBOTFRAMEWORK_REPO_URL" /var/lib/jenkins/casc_configs/jenkins.rendered.yaml
+grep -n "JOB_DSL_TARGETS" /var/lib/jenkins/casc_configs/jenkins.rendered.yaml
+```
+
+用户验证结果：
+
+```text
+以上 grep 均无输出。
+```
+
+当前判断：
+
+```text
+仓库里的 jenkins-integration/jcasc/jenkins.yaml 已经包含 seed/jenkins-robotframework-seed；
+但 Jenkins 实际加载的 /var/lib/jenkins/casc_configs/jenkins.rendered.yaml 没有包含 seed job。
+
+因此当前问题不是仓库模板缺失，而是 rendered JCasC 没有用当前模板重新生成，
+或者 Jenkins systemd override 没有执行 render_jcasc.py 的 ExecStartPre。
+```
+
+下一步：
+
+```text
+先检查 Jenkins systemd unit / drop-in 是否包含：
+EnvironmentFile=-/etc/default/jenkins-jcasc
+ExecStartPre=/usr/bin/python3 /opt/jenkins_robotframework/jenkins-integration/scripts/render_jcasc.py ...
+
+确认 render 链路后，再决定是否执行 systemctl daemon-reload / restart jenkins。
+```
+
+## 20. 本轮实践记录：Step 3 systemd override 已包含 JCasC render 链路
+
+本节解决的问题：
+
+```text
+确认 Jenkins systemd override 是否已经配置 CASC_JENKINS_CONFIG、JCasC env file 和 render_jcasc.py。
+```
+
+用户提供的实际配置：
+
+```ini
+# /etc/systemd/system/jenkins.service.d/override.conf
+[Service]
+Environment="JENKINS_PREFIX=/jenkins"
+Environment="CASC_JENKINS_CONFIG=/var/lib/jenkins/casc_configs/jenkins.rendered.yaml"
+EnvironmentFile=-/etc/default/jenkins-jcasc
+ExecStartPre=/usr/bin/python3 /opt/jenkins_robotframework/jenkins-integration/scripts/render_jcasc.py --template /opt/jenkins_robotframework/jenkins-integration/jcasc/jenkins.yaml --output /var/lib/jenkins/casc_configs/jenkins.rendered.yaml
+```
+
+当前判断：
+
+```text
+systemd override 配置方向正确：
+
+1. Jenkins prefix 仍然是 /jenkins。
+2. Jenkins 会从 /var/lib/jenkins/casc_configs/jenkins.rendered.yaml 加载 JCasC。
+3. Jenkins 启动前会执行 render_jcasc.py。
+4. render 脚本会读取仓库里的 jenkins-integration/jcasc/jenkins.yaml 模板。
+5. render 脚本会把私钥占位符替换后写入 rendered YAML。
+```
+
+但上一轮 grep 证明：
+
+```text
+当前 /var/lib/jenkins/casc_configs/jenkins.rendered.yaml 仍未包含 seed/jenkins-robotframework-seed。
+```
+
+因此当前更可能是：
+
+```text
+1. Jenkins 在仓库更新后还没有 restart，所以 ExecStartPre 没重新执行；
+2. 或者 render 执行过，但使用的是旧模板；
+3. 或者 render 依赖的 /etc/default/jenkins-jcasc / 私钥读取存在问题，但 Jenkins 当前进程仍沿用旧 rendered YAML。
+```
+
+下一步不要直接重启 Jenkins，先做离线 render 到临时文件：
+
+```bash
+sudo -E /usr/bin/python3 /opt/jenkins_robotframework/jenkins-integration/scripts/render_jcasc.py \
+  --template /opt/jenkins_robotframework/jenkins-integration/jcasc/jenkins.yaml \
+  --output /tmp/jenkins.rendered.check.yaml
+
+grep -n "jenkins-robotframework-seed" /tmp/jenkins.rendered.check.yaml
+grep -n "seed-jobs.Jenkinsfile" /tmp/jenkins.rendered.check.yaml
+grep -n "JENKINS_ROBOTFRAMEWORK_REPO_URL" /tmp/jenkins.rendered.check.yaml
+grep -n "JOB_DSL_TARGETS" /tmp/jenkins.rendered.check.yaml
+```
+
+预期结果：
+
+```text
+临时 rendered YAML 能 grep 到 seed job、seed Jenkinsfile、JENKINS_ROBOTFRAMEWORK_REPO_URL 和 JOB_DSL_TARGETS。
+```
+
+常见失败：
+
+```text
+Missing required environment variable: T813_AGENT_SSH_PRIVATE_KEY_PATH
+  -> 当前 shell 没加载 /etc/default/jenkins-jcasc，需要先 source 或用 env 文件方式执行。
+
+Permission denied
+  -> 当前用户读不到 T813_AGENT_SSH_PRIVATE_KEY_PATH 指向的私钥文件。
+
+grep 仍无输出
+  -> 服务器上的 /opt/jenkins_robotframework/jenkins-integration/jcasc/jenkins.yaml 不是最新模板。
+```
+
+## 21. 本轮实践记录：Step 4 restart 后 Jenkins 启动失败定位
+
+本节解决的问题：
+
+```text
+执行 sudo systemctl restart jenkins 后 Jenkins 启动失败，需要判断失败点是 JCasC render、JCasC 配置本身，还是 Jenkins 插件 / agent 启动链路。
+```
+
+用户执行结果：
+
+```text
+sudo systemctl restart jenkins
+Job for jenkins.service failed because the control process exited with error code.
+```
+
+随后查看状态：
+
+```text
+ExecStartPre=/usr/bin/python3 ... render_jcasc.py ... (code=exited, status=0/SUCCESS)
+```
+
+说明：
+
+```text
+render_jcasc.py 已成功执行。
+当前失败不是 env 文件缺失，也不是私钥读取失败。
+```
+
+日志中的关键错误：
+
+```text
+Failed ConfigurationAsCode.init
+ConfigurationAsCodeBootFailure
+SSH Launch of t813-agent on 10.57.159.149 failed
+java.lang.ClassNotFoundException: com.trilead.ssh2.packets.PacketChannelOpenConfirmation
+java.lang.NoClassDefFoundError: com/trilead/ssh2/packets/PacketChannelOpenConfirmation
+java.lang.ClassNotFoundException: com.trilead.ssh2.packets.PacketDisconnect
+java.lang.NoClassDefFoundError: com/trilead/ssh2/packets/PacketDisconnect
+```
+
+当前判断：
+
+```text
+JCasC rendered 文件已能生成；
+Jenkins 启动失败点集中在 JCasC 加载 nodes / SSH launcher 后，尝试启动 t813-agent 时触发 trilead-api / SSH Build Agents 插件依赖异常。
+```
+
+短期恢复原则：
+
+```text
+先让 Jenkins controller 恢复启动；
+暂时不要让 JCasC 自动创建 / 启动 t813-agent 的 SSH node；
+保留 seed job 相关配置，后续再单独修复 SSH agent 插件或 node 配置。
+```
+
+推荐恢复路径：
+
+```text
+1. 先备份当前 jenkins.yaml。
+2. 临时从 JCasC 模板中移除 top-level nodes: 配置块。
+3. 保留 global env、credentials、jobs/seed job。
+4. 重启 Jenkins。
+5. 确认 Jenkins 能启动，且 rendered YAML 包含 seed job。
+6. 再回头处理 t813-agent 的 SSH launcher / trilead-api 插件问题。
+```
+
+验证命令：
+
+```bash
+sudo systemctl status jenkins --no-pager
+curl -k -I https://127.0.0.1/jenkins/
+grep -n "jenkins-robotframework-seed" /var/lib/jenkins/casc_configs/jenkins.rendered.yaml
+```
+
+预期结果：
+
+```text
+Jenkins service 进入 active/running。
+/jenkins/ 返回 HTTP 响应。
+rendered YAML 里仍能看到 seed/jenkins-robotframework-seed。
+```
+
+后续待处理：
+
+```text
+重新检查 SSH Build Agents / trilead-api 插件版本兼容性；
+确认 Jenkins 当前 Java 版本、Jenkins core 版本和插件版本；
+再决定是升级插件、重装插件，还是把 t813-agent 改回 UI 手工配置 / inbound node 配置。
+```
+
+## 22. 本轮实践记录：Step 5 改为优先修复 SSH / trilead 插件问题
+
+用户确认：
+
+```text
+当前没有 job 在跑，可以先解决插件问题。
+```
+
+因此本轮不先临时禁用 `nodes:`，而是优先排查并修复 Jenkins SSH agent 相关插件。
+
+当前怀疑点：
+
+```text
+Jenkins 加载 JCasC 中的 t813-agent SSH launcher 后，尝试连接 10.57.159.149:22。
+此时 trilead-api 插件加载 com.trilead.ssh2.packets.* 类失败。
+
+这通常指向：
+1. trilead-api 插件文件损坏；
+2. ssh-slaves / ssh-build-agents 与 trilead-api 版本不兼容；
+3. 插件升级不完整，存在 .jpi / .hpi / .bak / .pinned 混乱；
+4. Jenkins core / Java / 插件组合不匹配。
+```
+
+第一步只做诊断，不删除插件：
+
+```bash
+java -version
+sudo java -jar /usr/share/java/jenkins.war --version
+
+sudo ls -l /var/lib/jenkins/plugins | grep -E "trilead|ssh|credentials|configuration-as-code"
+
+sudo find /var/lib/jenkins/plugins -maxdepth 2 -iname "*trilead*" -o -iname "*ssh*"
+
+sudo grep -R "Plugin-Version" /var/lib/jenkins/plugins/trilead-api* 2>/dev/null || true
+sudo grep -R "Plugin-Version" /var/lib/jenkins/plugins/ssh-slaves* 2>/dev/null || true
+sudo grep -R "Plugin-Version" /var/lib/jenkins/plugins/ssh-credentials* 2>/dev/null || true
+```
+
+预期要确认：
+
+```text
+Jenkins core 版本。
+Java 版本。
+trilead-api 插件是否存在。
+ssh-slaves / SSH Build Agents 插件是否存在。
+ssh-credentials 插件是否存在。
+是否存在多个同名插件文件或异常备份文件。
+```
+
+下一步根据诊断结果决定：
+
+```text
+如果插件缺失或损坏：重装 / 更新 trilead-api 与 SSH Build Agents 相关插件。
+如果版本不兼容：统一升级关联插件。
+如果 Jenkins 当前插件目录混乱：先备份，再清理明确的旧残留文件。
+```
+
+## 23. 本轮实践记录：Step 6 Jenkins / Java / SSH 插件版本确认
+
+本节解决的问题：
+
+```text
+确认 Jenkins core、Java、SSH Build Agents、trilead-api、ssh-credentials、Configuration as Code 插件版本，
+判断 NoClassDefFoundError 更可能是插件缺失、版本组合不兼容，还是插件解包目录损坏。
+```
+
+用户验证结果：
+
+```text
+Java: OpenJDK 21.0.10
+Jenkins core: 2.541.3
+
+configuration-as-code: 2074.va_57f83f7a_10b_
+credentials: 已安装
+credentials-binding: 已安装
+plain-credentials: 已安装
+ssh-agent: 已安装
+ssh-credentials: 372.va_250881b_08cd
+ssh-slaves: 3.1097.v868116049892
+trilead-api: 2.284.v1974ea_324382
+mina-sshd-api-common/core: 已安装
+```
+
+当前关键错误仍是：
+
+```text
+ClassNotFoundException: com.trilead.ssh2.packets.PacketChannelOpenConfirmation
+NoClassDefFoundError: com/trilead/ssh2/packets/PacketChannelOpenConfirmation
+ClassNotFoundException: com.trilead.ssh2.packets.PacketDisconnect
+NoClassDefFoundError: com/trilead/ssh2/packets/PacketDisconnect
+```
+
+当前判断：
+
+```text
+trilead-api 插件存在，ssh-slaves 插件也存在。
+但运行时找不到 trilead-api 里应提供的 packets class。
+
+下一步优先判断：
+1. trilead-api.jpi 包里是否包含这些 class；
+2. 如果 .jpi 包里有，但 /var/lib/jenkins/plugins/trilead-api 解包目录没有，说明插件解包目录可能是旧的或损坏；
+3. 如果 .jpi 包里也没有，说明当前 trilead-api 插件版本与 ssh-slaves 期望不匹配，需要升级 / 重装相关插件。
+```
+
+下一步诊断命令：
+
+```bash
+sudo jar tf /var/lib/jenkins/plugins/trilead-api.jpi | grep -E "PacketChannelOpenConfirmation|PacketDisconnect" || true
+
+sudo find /var/lib/jenkins/plugins/trilead-api -name "*PacketChannelOpenConfirmation*" -o -name "*PacketDisconnect*"
+
+sudo grep -R "Short-Name\|Plugin-Version\|Jenkins-Version" \
+  /var/lib/jenkins/plugins/trilead-api/META-INF/MANIFEST.MF \
+  /var/lib/jenkins/plugins/ssh-slaves/META-INF/MANIFEST.MF \
+  /var/lib/jenkins/plugins/ssh-credentials/META-INF/MANIFEST.MF
+```
+
+预期判断：
+
+```text
+如果 jar tf 能看到缺失 class，但 find 看不到：
+  -> 优先备份并移走 exploded plugin dir，让 Jenkins 重启时从 .jpi 重新解包。
+
+如果 jar tf 也看不到缺失 class：
+  -> 当前 trilead-api.jpi 与 ssh-slaves 不兼容或插件包不完整，需要重装 / 升级 trilead-api 与 ssh-slaves。
+```
+
+## 24. 本轮实践记录：Step 7 trilead-api 顶层未直接发现缺失 class
+
+用户验证结果：
+
+```text
+sudo jar tf /var/lib/jenkins/plugins/trilead-api.jpi | grep -E "PacketChannelOpenConfirmation|PacketDisconnect" || true
+
+无输出。
+
+sudo find /var/lib/jenkins/plugins/trilead-api -name "*PacketChannelOpenConfirmation*" -o -name "*PacketDisconnect*"
+
+无输出。
+```
+
+插件 manifest：
+
+```text
+trilead-api:
+  Plugin-Version: 2.284.v1974ea_324382
+  Jenkins-Version: 2.504.1
+
+ssh-slaves:
+  Plugin-Version: 3.1097.v868116049892
+  Jenkins-Version: 2.504.1
+
+ssh-credentials:
+  Plugin-Version: 372.va_250881b_08cd
+  Jenkins-Version: 2.479.1
+```
+
+当前判断：
+
+```text
+缺失 class 没有出现在 trilead-api.jpi 顶层列表，也没有作为普通 .class 文件出现在 exploded plugin 目录。
+
+但这还不能直接判定插件包坏了，因为 Jenkins 插件可能把依赖 class 放在 WEB-INF/lib/*.jar 里。
+下一步需要检查 trilead-api 插件内嵌 jar 是否包含这些 class。
+```
+
+下一步诊断命令：
+
+```bash
+sudo jar tf /var/lib/jenkins/plugins/trilead-api.jpi | grep -E "WEB-INF/lib|trilead|ssh"
+
+sudo find /var/lib/jenkins/plugins/trilead-api -maxdepth 4 -type f | sort
+
+for f in /var/lib/jenkins/plugins/trilead-api/WEB-INF/lib/*.jar; do
+  echo "== $f"
+  sudo jar tf "$f" | grep -E "PacketChannelOpenConfirmation|PacketDisconnect" || true
+done
+```
+
+预期判断：
+
+```text
+如果 WEB-INF/lib 内嵌 jar 包含缺失 class：
+  -> 重点怀疑 exploded plugin / classpath 加载异常，可尝试清理解包目录后让 Jenkins 重新解包。
+
+如果 WEB-INF/lib 内嵌 jar 也不包含缺失 class：
+  -> 重点怀疑当前 trilead-api 与 ssh-slaves 插件版本组合不兼容或插件包本身异常，需要重装 / 升级相关插件。
+```
+
+## 25. 本轮实践记录：Step 8 缺失 class 实际存在于 trilead 内嵌 jar
+
+用户验证结果：
+
+```text
+trilead-api.jpi 包含：
+
+WEB-INF/lib/trilead-api.jar
+WEB-INF/lib/trilead-putty-extension-1.2.jar
+WEB-INF/lib/trilead-ssh2-build-217-jenkins-371.vc1d30dc5a_b_32.jar
+```
+
+继续检查内嵌 jar 后确认：
+
+```text
+WEB-INF/lib/trilead-ssh2-build-217-jenkins-371.vc1d30dc5a_b_32.jar
+  com/trilead/ssh2/packets/PacketChannelOpenConfirmation.class
+  com/trilead/ssh2/packets/PacketDisconnect.class
+```
+
+当前判断：
+
+```text
+缺失 class 实际存在于 trilead-api 插件的 WEB-INF/lib 内嵌 jar 中。
+因此当前不再优先判断为 trilead-api 插件包缺 class。
+
+更可能的问题变成：
+1. Jenkins 插件解包目录 / classpath 加载异常；
+2. trilead-api exploded plugin 目录与 .jpi 状态不一致；
+3. 插件加载缓存异常；
+4. ssh-slaves 与 trilead-api 的运行时加载顺序或依赖解析异常。
+```
+
+下一步先做非破坏性 classpath 诊断：
+
+```bash
+sudo grep -E "Plugin-Dependencies|Libraries|Class-Path|Short-Name|Plugin-Version" \
+  /var/lib/jenkins/plugins/trilead-api/META-INF/MANIFEST.MF
+
+sudo grep -E "Plugin-Dependencies|Libraries|Class-Path|Short-Name|Plugin-Version" \
+  /var/lib/jenkins/plugins/ssh-slaves/META-INF/MANIFEST.MF
+
+sudo jar tf /var/lib/jenkins/plugins/ssh-slaves.jpi | grep -E "trilead|PacketChannelOpenConfirmation|PacketDisconnect" || true
+```
+
+如果 manifest 看起来正常，下一步再考虑：
+
+```text
+备份并移走 /var/lib/jenkins/plugins/trilead-api 解包目录，
+保留 trilead-api.jpi，
+让 Jenkins 下次启动时重新解包 trilead-api。
+```
+
+注意：
+
+```text
+这一步虽然不是删除 .jpi 插件包，但会移动 Jenkins 的 exploded plugin 目录。
+操作前必须备份，且只针对 trilead-api 目录，不动其他插件。
+```
+
+## 26. 本轮实践记录：Step 9 manifest 检查后决定重建插件解包目录
+
+用户验证结果：
+
+```text
+trilead-api manifest:
+  Short-Name: trilead-api
+  Plugin-Version: 2.284.v1974ea_324382
+  Plugin-Dependencies: eddsa-api..., gson-api...
+
+ssh-slaves manifest:
+  Short-Name: ssh-slaves
+  Plugin-Version: 3.1097.v868116049892
+  Plugin-Dependencies: commons-lang3-api..., credentials...
+
+ssh-slaves.jpi 中未直接包含 trilead / PacketChannelOpenConfirmation / PacketDisconnect。
+```
+
+当前判断：
+
+```text
+ssh-slaves 不直接携带 trilead class 是正常的，它通过插件依赖使用 trilead-api。
+trilead-api 的缺失 class 已确认存在于 trilead-api/WEB-INF/lib/trilead-ssh2-build-217-jenkins-371...jar。
+
+因此下一步优先按 exploded plugin 解包目录 / classpath 加载异常处理。
+```
+
+推荐操作：
+
+```text
+保留 /var/lib/jenkins/plugins/trilead-api.jpi；
+备份并移走 /var/lib/jenkins/plugins/trilead-api 解包目录；
+让 Jenkins 下次启动时从 .jpi 重新解包 trilead-api。
+```
+
+服务器操作命令：
+
+```bash
+sudo systemctl stop jenkins
+
+sudo mkdir -p /var/lib/jenkins/plugins-backup
+sudo mv /var/lib/jenkins/plugins/trilead-api \
+  /var/lib/jenkins/plugins-backup/trilead-api.exploded.$(date +%Y%m%d%H%M%S)
+
+sudo test -f /var/lib/jenkins/plugins/trilead-api.jpi
+sudo chown jenkins:jenkins /var/lib/jenkins/plugins/trilead-api.jpi
+
+sudo systemctl start jenkins
+sudo systemctl status jenkins --no-pager
+```
+
+启动后验证：
+
+```bash
+curl -k -I https://127.0.0.1/jenkins/
+grep -n "jenkins-robotframework-seed" /var/lib/jenkins/casc_configs/jenkins.rendered.yaml
+sudo journalctl -u jenkins -n 120 -l --no-pager | grep -E "NoClassDefFoundError|trilead|ConfigurationAsCode|BootFailure|SEVERE|Failed" || true
+```
+
+预期结果：
+
+```text
+Jenkins 能进入 active/running。
+/jenkins/ 能返回 HTTP 响应。
+rendered YAML 中包含 seed/jenkins-robotframework-seed。
+不再出现 PacketChannelOpenConfirmation / PacketDisconnect 的 NoClassDefFoundError。
+```
+
+如果仍失败：
+
+```text
+说明不只是 trilead-api 解包目录问题；
+下一步需要同时重建 ssh-slaves 解包目录，或升级 / 重装 ssh-slaves + trilead-api 插件组合。
+```
+
+## 27. 本轮实践记录：Step 10 重建 trilead-api 解包目录后仍失败
+
+用户验证结果：
+
+```text
+移动 /var/lib/jenkins/plugins/trilead-api 解包目录并保留 trilead-api.jpi 后，
+重新 start Jenkins 仍失败。
+```
+
+新日志仍然是同类错误：
+
+```text
+Failed ConfigurationAsCode.init
+ConfigurationAsCodeBootFailure
+SSH Launch of t813-agent on 10.57.159.149 failed
+ClassNotFoundException: com.trilead.ssh2.packets.PacketChannelOpenConfirmation
+NoClassDefFoundError: com/trilead/ssh2/packets/PacketChannelOpenConfirmation
+ClassNotFoundException: com.trilead.ssh2.packets.PacketDisconnect
+NoClassDefFoundError: com/trilead/ssh2/packets/PacketDisconnect
+```
+
+当前判断：
+
+```text
+可以排除“单个 trilead-api exploded plugin 目录损坏”这一类原因。
+
+下一步更适合按插件组合问题处理：
+1. ssh-slaves / trilead-api / ssh-credentials / credentials 之间存在版本组合不兼容；
+2. 或 Jenkins 2.541.3 + Java 21 + 当前 SSH 插件组合触发运行时 classloader 问题；
+3. 或 JCasC 在启动阶段自动 launch t813-agent，放大了 SSH 插件问题，导致 Jenkins controller 无法完成启动。
+```
+
+接下来的两条路线：
+
+```text
+路线 A：先恢复 Jenkins controller
+  - 临时禁用 JCasC 的 nodes: 配置块
+  - Jenkins 先启动起来
+  - seed job / Job DSL 先继续学习实践
+  - SSH agent 插件后续在 Jenkins 页面或离线插件管理中修复
+
+路线 B：继续修插件组合
+  - 备份并重建 ssh-slaves / trilead-api / ssh-credentials 解包目录
+  - 如仍失败，统一下载并替换兼容版本插件
+```
+
+当前建议：
+
+```text
+如果目标是继续学习 Jenkins CI/CD seed job 流程，优先走路线 A，先让 Jenkins controller 恢复。
+如果目标是彻底修复 t813-agent SSH launcher，再走路线 B。
+```
+
+## 28. 本轮实践记录：Step 11 重建 SSH 插件解包目录后仍失败，切回 controller 恢复路线
+
+用户验证结果：
+
+```text
+重建 trilead-api / ssh-slaves / ssh-credentials 三个 exploded plugin 目录后，
+Jenkins 重新 start 仍失败。
+```
+
+日志仍然是同一类错误：
+
+```text
+Trilead_TransportManager_receiveThread_10.57.159.149:22_0 died unexpectedly
+ClassNotFoundException: com.trilead.ssh2.packets.PacketChannelOpenConfirmation
+NoClassDefFoundError: com/trilead/ssh2/packets/PacketChannelOpenConfirmation
+SSH Launch of t813-agent on 10.57.159.149 failed
+ClassNotFoundException: com.trilead.ssh2.packets.PacketDisconnect
+NoClassDefFoundError: com/trilead/ssh2/packets/PacketDisconnect
+```
+
+同时确认三个解包目录已重新生成：
+
+```text
+/var/lib/jenkins/plugins/ssh-credentials
+/var/lib/jenkins/plugins/ssh-slaves
+/var/lib/jenkins/plugins/trilead-api
+```
+
+当前判断：
+
+```text
+可以基本排除单纯 exploded plugin 目录损坏。
+当前问题更像 Jenkins 2.541.3 + Java 21 + ssh-slaves / trilead-api 插件组合在 JCasC 启动阶段自动 launch SSH agent 时触发的插件兼容性 / classloader 问题。
+```
+
+当前恢复原则：
+
+```text
+先恢复 Jenkins controller。
+临时禁用 JCasC 模板中的 nodes: 配置块，避免 Jenkins 启动时自动 launch t813-agent。
+保留 global env / credentials / seed job。
+Jenkins 启动成功后，再通过插件管理或离线插件安装方式修复 SSH agent 插件组合。
+```
+
+恢复命令：
+
+```bash
+sudo systemctl stop jenkins || true
+sudo systemctl reset-failed jenkins
+
+sudo cp /opt/jenkins_robotframework/jenkins-integration/jcasc/jenkins.yaml \
+  /opt/jenkins_robotframework/jenkins-integration/jcasc/jenkins.yaml.bak.$(date +%Y%m%d%H%M%S)
+
+sudo python3 - <<'PY'
+from pathlib import Path
+
+p = Path("/opt/jenkins_robotframework/jenkins-integration/jcasc/jenkins.yaml")
+lines = p.read_text(encoding="utf-8").splitlines()
+out = []
+skip = False
+
+for line in lines:
+    if line.startswith("  nodes:"):
+        skip = True
+        out.append("  # nodes temporarily disabled: SSH launcher/trilead plugin boot failure")
+        continue
+
+    if skip:
+        if line and not line.startswith(" "):
+            skip = False
+            out.append(line)
+        else:
+            continue
+    else:
+        out.append(line)
+
+p.write_text("\n".join(out) + "\n", encoding="utf-8")
+PY
+
+grep -n "nodes:" /opt/jenkins_robotframework/jenkins-integration/jcasc/jenkins.yaml || true
+grep -n "jenkins-robotframework-seed" /opt/jenkins_robotframework/jenkins-integration/jcasc/jenkins.yaml
+
+sudo systemctl start jenkins
+sudo systemctl status jenkins --no-pager
+```
+
+启动后验证：
+
+```bash
+curl -k -I https://127.0.0.1/jenkins/
+grep -n "jenkins-robotframework-seed" /var/lib/jenkins/casc_configs/jenkins.rendered.yaml
+grep -n "seed-jobs.Jenkinsfile" /var/lib/jenkins/casc_configs/jenkins.rendered.yaml
+sudo journalctl -u jenkins -n 120 -l --no-pager | grep -E "NoClassDefFoundError|trilead|ConfigurationAsCode|BootFailure|SEVERE|Failed" || true
+```
+
+预期结果：
+
+```text
+Jenkins controller 能恢复 active/running。
+/jenkins/ 能访问。
+rendered YAML 仍包含 seed/jenkins-robotframework-seed。
+不再在启动阶段自动连接 t813-agent。
+```
+
+后续再处理：
+
+```text
+1. 进入 Jenkins 页面检查插件管理器中的 SSH Build Agents / trilead-api 更新建议。
+2. 确认当前插件组合与 Jenkins 2.541.3 / Java 21 的兼容性。
+3. 修复后再把 nodes: 配置重新纳入 JCasC，或者改用 UI 手工 node / inbound node 方式。
+```
+

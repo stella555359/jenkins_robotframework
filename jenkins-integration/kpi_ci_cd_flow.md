@@ -3195,3 +3195,104 @@ seed job 仍使用旧 Jenkinsfile
   -> seed job checkout 的分支不是当前修改分支，或代码未 push。
 ```
 
+## 41. 本轮实践记录：Step 23 Job DSL 脚本名不能包含 hyphen
+
+本节解决的问题：
+
+```text
+关闭 Job DSL sandbox 后，seed job 继续运行，但在加载 Job DSL 文件时失败。
+```
+
+用户提供的 Console Output 关键错误：
+
+```text
+ERROR: invalid script name 'kpi-runner-job.groovy; script names may only contain letters, digits and underscores, but may not start with a digit
+Finished: FAILURE
+```
+
+当前判断：
+
+```text
+当前 Job DSL 插件会把 DSL 文件名当成脚本名处理。
+脚本名只允许 letters / digits / underscores，且不能以数字开头。
+
+因此：
+kpi-runner-job.groovy
+robot-execution-job.groovy
+
+这类带 hyphen 的文件名在当前插件版本下不安全。
+```
+
+本次代码修复：
+
+```text
+新增下划线版本 Job DSL 文件：
+jenkins-integration/jobs/robot_execution_job.groovy
+jenkins-integration/jobs/kpi_runner_job.groovy
+
+保留旧文件：
+jenkins-integration/jobs/robot-execution-job.groovy
+jenkins-integration/jobs/kpi-runner-job.groovy
+
+原因：
+旧文件先不删除，避免破坏历史文档和引用；
+seed job 默认 targets 改为只加载 *_job.groovy，避免扫到旧 hyphen 文件。
+```
+
+同步修改：
+
+```text
+jenkins-integration/pipelines/seed-jobs.Jenkinsfile
+  JOB_DSL_TARGETS 默认值：
+  jenkins-integration/jobs/*.groovy
+  -> jenkins-integration/jobs/*_job.groovy
+
+  archiveArtifacts:
+  jenkins-integration/jobs/*.groovy
+  -> jenkins-integration/jobs/*_job.groovy
+
+jenkins-integration/jcasc/jenkins.yaml
+  seed job JOB_DSL_TARGETS 默认值：
+  jenkins-integration/jobs/*.groovy
+  -> jenkins-integration/jobs/*_job.groovy
+```
+
+相关文档同步：
+
+```text
+jenkins-integration/README.md
+jenkins-integration/jobs/README.md
+jenkins-integration/pipelines/README.md
+jenkins-integration/jcasc/README.md
+```
+
+下一步验证：
+
+```text
+1. 把本次修改推到 seed job 使用的 REPOSITORY_REF。
+2. 重新运行 seed/jenkins-robotframework-seed。
+3. Build with Parameters 时确认 JOB_DSL_TARGETS 为：
+   jenkins-integration/jobs/*_job.groovy
+4. Console Output 应处理：
+   jenkins-integration/jobs/robot_execution_job.groovy
+   jenkins-integration/jobs/kpi_runner_job.groovy
+5. 预期生成：
+   robot/robot-execution
+   CIT/KPI_Testing/SBTS26R1/7_5_UTE5G402T813
+   CRT/KPI_Testing/SBTS26R1/7_5_UTE5G402T813
+```
+
+常见失败：
+
+```text
+仍然报 kpi-runner-job.groovy invalid script name
+  -> seed job 仍使用旧 JOB_DSL_TARGETS=jenkins-integration/jobs/*.groovy；
+     手工把参数改成 jenkins-integration/jobs/*_job.groovy 后再跑。
+
+seed job 仍使用旧 Jenkinsfile
+  -> 本地修改未 push，或 REPOSITORY_REF 指向旧分支 / 旧 commit。
+
+只处理一个 DSL 文件
+  -> 检查服务器 checkout 后 jobs 目录是否同时有 robot_execution_job.groovy 和 kpi_runner_job.groovy。
+```
+

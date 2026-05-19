@@ -53,7 +53,7 @@ automation-portal / caller
 	- 覆盖 request 物化、源码 checkout、Python 环境准备和 callback 回传
 - `pipelines/robot-execution.Jenkinsfile`
   - 提供最小 Robot 执行 Pipeline 模板
-- `jobs/robot-execution-job.groovy`
+- `jobs/robot_execution_job.groovy`
 	- 提供实际 Job DSL 文件
 - `jcasc/jenkins.yaml`
 	- 提供 controller / node / credentials 级别的 JCasC 示例
@@ -62,9 +62,9 @@ automation-portal / caller
 
 - seed job 已由 JCasC 代码化：
   - `jcasc/jenkins.yaml` 会创建 `seed/jenkins-robotframework-seed`
-  - `pipelines/seed-jobs.Jenkinsfile` 会 checkout 本仓库并执行 `jenkins-integration/jobs/*.groovy`
+  - `pipelines/seed-jobs.Jenkinsfile` 会 checkout 本仓库并执行 `jenkins-integration/jobs/*_job.groovy`
 - `python_orchestrator` 路径已经补第一版 Jenkins 入口：
-  - `jobs/kpi-runner-job.groovy`
+  - `jobs/kpi_runner_job.groovy`
   - `pipelines/kpi-runner.Jenkinsfile`
   - `scripts/materialize_python_orchestrator_request.py`
 - 后续仍需在服务器重载 JCasC、运行 seed job，实际生成 `CIT/KPI_Testing/<SBTS>/<testline>` / `CRT/KPI_Testing/<SBTS>/<testline>` job 并做 Jenkins smoke 验证

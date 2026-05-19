@@ -2759,3 +2759,37 @@ JCasC rendered YAML 中存在顶层 jobs:，
 当前阻塞点已经不是 SSH agent，而是缺 Job DSL 插件。
 ```
 
+## 36. 本轮实践记录：Step 19 Job DSL 插件已安装
+
+用户确认：
+
+```text
+Job DSL 插件安装完毕。
+```
+
+当前状态：
+
+```text
+Jenkins controller 已能进入页面。
+nodes: 仍保持注释，避免启动阶段自动连接 t813-agent。
+jobs: 当前临时注释，等待恢复。
+Job DSL 插件已安装，理论上 JCasC 顶层 jobs: 可以重新生效。
+```
+
+下一步：
+
+```text
+恢复 jenkins.yaml 中顶层 jobs: 块；
+继续保持 nodes: 注释；
+重启 Jenkins 或 reload JCasC；
+确认 rendered YAML 中包含 seed/jenkins-robotframework-seed；
+确认 Jenkins 页面出现 seed/jenkins-robotframework-seed。
+```
+
+注意：
+
+```text
+这一步只恢复 jobs:，不要恢复 nodes:。
+SSH agent / trilead 插件问题后续单独处理。
+```
+

@@ -2793,3 +2793,102 @@ Job DSL 插件已安装，理论上 JCasC 顶层 jobs: 可以重新生效。
 SSH agent / trilead 插件问题后续单独处理。
 ```
 
+## 37. 本轮实践记录：Step 20 seed job 已由 JCasC 创建成功
+
+本节解决的问题：
+
+```text
+确认安装 Job DSL 插件并恢复 jobs: 后，JCasC 是否已经成功创建 seed/jenkins-robotframework-seed。
+```
+
+用户验证 rendered YAML：
+
+```text
+132: jobs:
+142: pipelineJob('seed/jenkins-robotframework-seed') {
+166: scriptPath('jenkins-integration/pipelines/seed-jobs.Jenkinsfile')
+```
+
+Jenkins 日志：
+
+```text
+createOrUpdateConfig for seed
+createOrUpdateConfig for seed/jenkins-robotframework-seed
+```
+
+服务器文件验证：
+
+```text
+/var/lib/jenkins/jobs/seed/config.xml 存在。
+/var/lib/jenkins/jobs/seed/jobs/jenkins-robotframework-seed/config.xml 存在。
+seed job config.xml 中包含：
+<scriptPath>jenkins-integration/pipelines/seed-jobs.Jenkinsfile</scriptPath>
+```
+
+当前结论：
+
+```text
+JCasC -> Job DSL plugin -> jobs: root element 已经打通。
+seed/jenkins-robotframework-seed 已经由 JCasC 创建成功。
+seed job 的 Pipeline script path 正确。
+```
+
+下一步：
+
+```text
+在 Jenkins 页面打开 seed/jenkins-robotframework-seed；
+确认参数默认值；
+先不要马上 Build，先确认 seed job 需要跑在哪个 agent。
+```
+
+注意：
+
+```text
+当前 nodes: 仍然注释，t813-agent node 也被临时移走。
+而 seed-jobs.Jenkinsfile 里写的是 agent { label 't813 && robot' }。
+
+因此如果现在直接 Build seed job，可能会卡在等待 t813/robot agent。
+下一步需要先决定：
+1. 临时把 seed job Jenkinsfile 改成 agent any / built-in；
+2. 或先恢复一个可用 agent；
+3. 或手工临时运行 Job DSL。
+```
+
+## 38. 本轮实践记录：Step 21 更新 SSH 插件后准备恢复 JCasC nodes
+
+用户确认：
+
+```text
+SSH 相关插件已经更新。
+当前没有 job 在跑。
+希望尝试恢复 JCasC nodes。
+```
+
+当前恢复原则：
+
+```text
+可以恢复 nodes:，但必须保留可回滚路径。
+因为一旦 SSH launcher / trilead 问题仍存在，Jenkins controller 可能再次启动失败。
+```
+
+建议操作顺序：
+
+```text
+1. 备份当前能启动 Jenkins controller 的 jenkins.yaml。
+2. 只恢复 nodes: 配置块。
+3. 保持 jobs: 配置块不变。
+4. 先离线 render 到 /tmp，确认 YAML 可生成。
+5. restart Jenkins。
+6. 如果失败，立即恢复备份版本并重新 start。
+```
+
+验证重点：
+
+```text
+Jenkins controller 是否 active/running。
+Jenkins 页面是否可访问。
+t813-agent 是否被 JCasC 创建。
+t813-agent 是否能 online。
+日志中是否还出现 PacketChannelOpenConfirmation / PacketDisconnect。
+```
+

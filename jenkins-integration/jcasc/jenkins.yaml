@@ -30,35 +30,35 @@ jenkins:
             value: "${PIP_EXTRA_INDEX_URL}"
           - key: PIP_TRUSTED_HOST
             value: "${PIP_TRUSTED_HOST}"
-  # nodes:
-  #   - permanent:
-  #       name: "t813-agent"
-  #       nodeDescription: "T813 Linux robot executor for robotws and testline_configuration jobs."
-  #       remoteFS: "/automation/workspace"
-  #       labelString: "t813 robot"
-  #       numExecutors: 1
-  #       mode: EXCLUSIVE
-  #       launcher:
-  #         ssh:
-  #           host: "10.57.159.149"
-  #           port: 22
-  #           credentialsId: "t813-agent-ssh"
-  #           javaPath: "/usr/bin/java"
-  #           launchTimeoutSeconds: 60
-  #           maxNumRetries: 10
-  #           retryWaitTime: 15
-  #           sshHostKeyVerificationStrategy: "nonVerifyingKeyVerificationStrategy"
-  #       nodeProperties:
-  #         - envVars:
-  #             env:
-  #               - key: ROBOT_AGENT_HOME
-  #                 value: "/home/ute"
-  #               - key: PYTHON_BIN
-  #                 value: "/usr/bin/python3"
-  #               - key: ROBOTWS_GIT_SSH_KEY_PATH
-  #                 value: "${ROBOTWS_GIT_SSH_KEY_PATH}"
-  #               - key: TESTLINE_CONFIGURATION_GIT_SSH_KEY_PATH
-  #                 value: "${TESTLINE_CONFIGURATION_GIT_SSH_KEY_PATH}"
+  nodes:
+    - permanent:
+        name: "t813-agent"
+        nodeDescription: "T813 Linux robot executor for robotws and testline_configuration jobs."
+        remoteFS: "/automation/workspace"
+        labelString: "t813 robot"
+        numExecutors: 1
+        mode: EXCLUSIVE
+        launcher:
+          ssh:
+            host: "10.57.159.149"
+            port: 22
+            credentialsId: "t813-agent-ssh"
+            javaPath: "/usr/bin/java"
+            launchTimeoutSeconds: 60
+            maxNumRetries: 10
+            retryWaitTime: 15
+            sshHostKeyVerificationStrategy: "nonVerifyingKeyVerificationStrategy"
+        nodeProperties:
+          - envVars:
+              env:
+                - key: ROBOT_AGENT_HOME
+                  value: "/home/ute"
+                - key: PYTHON_BIN
+                  value: "/usr/bin/python3"
+                - key: ROBOTWS_GIT_SSH_KEY_PATH
+                  value: "${ROBOTWS_GIT_SSH_KEY_PATH}"
+                - key: TESTLINE_CONFIGURATION_GIT_SSH_KEY_PATH
+                  value: "${TESTLINE_CONFIGURATION_GIT_SSH_KEY_PATH}"
 
 unclassified:
   location:

@@ -1,9 +1,22 @@
-// Seed job should checkout the repository root so readFileFromWorkspace can load the pipeline script.
+// Business jobs use cpsScm so Jenkinsfile changes take effect on the next build.
 
 def pipelinePath = 'jenkins-integration/pipelines/kpi-runner.Jenkinsfile'
+def pipelineRepoUrl = System.getenv('JENKINS_ROBOTFRAMEWORK_REPO_URL') ?: 'https://github.com/stella555359/jenkins_robotframework.git'
+def pipelineRepoRef = System.getenv('JENKINS_ROBOTFRAMEWORK_GIT_REF') ?: 'main'
+def pipelineCredentialsId = System.getenv('JENKINS_ROBOTFRAMEWORK_CREDENTIALS_ID') ?: ''
 def sbtsRelease = 'SBTS26R1'
 def defaultTestline = '7_5_UTE5G402T813'
 def domains = ['CIT', 'CRT']
+
+if (pipelineRepoUrl.startsWith('${')) {
+    pipelineRepoUrl = 'https://github.com/stella555359/jenkins_robotframework.git'
+}
+if (pipelineRepoRef.startsWith('${')) {
+    pipelineRepoRef = 'main'
+}
+if (pipelineCredentialsId.startsWith('${')) {
+    pipelineCredentialsId = ''
+}
 
 domains.each { domainName ->
     folder(domainName) {
@@ -59,9 +72,19 @@ domains.each { domainName ->
         }
 
         definition {
-            cps {
-                script(readFileFromWorkspace(pipelinePath))
-                sandbox(true)
+            cpsScm {
+                scm {
+                    git {
+                        remote {
+                            url(pipelineRepoUrl)
+                            if (pipelineCredentialsId?.trim()) {
+                                credentials(pipelineCredentialsId)
+                            }
+                        }
+                        branches(pipelineRepoRef)
+                    }
+                }
+                scriptPath(pipelinePath)
             }
         }
     }

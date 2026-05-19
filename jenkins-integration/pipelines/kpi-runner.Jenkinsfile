@@ -45,6 +45,38 @@ pipeline {
     }
 
     stages {
+        stage('Checkout Pipeline Source') {
+            steps {
+                script {
+                    def repositoryUrl = env.JENKINS_ROBOTFRAMEWORK_REPO_URL?.trim()
+                    if (!repositoryUrl || repositoryUrl.startsWith('${')) {
+                        repositoryUrl = 'https://github.com/stella555359/jenkins_robotframework.git'
+                    }
+
+                    def repositoryRef = env.JENKINS_ROBOTFRAMEWORK_GIT_REF?.trim()
+                    if (!repositoryRef || repositoryRef.startsWith('${')) {
+                        repositoryRef = 'main'
+                    }
+
+                    def credentialsId = env.JENKINS_ROBOTFRAMEWORK_CREDENTIALS_ID?.trim()
+                    if (credentialsId?.startsWith('${')) {
+                        credentialsId = ''
+                    }
+
+                    def checkoutArgs = [
+                        url: repositoryUrl,
+                        branch: repositoryRef,
+                    ]
+                    if (credentialsId) {
+                        checkoutArgs.credentialsId = credentialsId
+                    }
+
+                    deleteDir()
+                    git checkoutArgs
+                }
+            }
+        }
+
         stage('Materialize Workflow Request') {
             steps {
                 sh 'mkdir -p artifacts'

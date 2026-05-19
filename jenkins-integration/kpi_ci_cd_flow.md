@@ -3296,3 +3296,757 @@ seed job 仍使用旧 Jenkinsfile
   -> 检查服务器 checkout 后 jobs 目录是否同时有 robot_execution_job.groovy 和 kpi_runner_job.groovy。
 ```
 
+## 42. 本轮实践记录：Step 24 Job DSL 脚本需要管理员审批
+
+本节解决的问题：
+
+```text
+修复 Job DSL 文件名后，seed job 能够 checkout 最新 main 并进入 Job DSL 处理阶段。
+```
+
+用户提供的 Console Output 关键信息：
+
+```text
+Checking out Revision 017482ab5542671221c39f69bbf91980afbf081f (origin/main)
+Commit message: "modify"
+
+Processing DSL script jenkins-integration/jobs/kpi_runner_job.groovy
+
+ERROR: script not yet approved for use
+Finished: FAILURE
+```
+
+当前判断：
+
+```text
+文件名问题已经解决。
+seed job 已经开始处理 kpi_runner_job.groovy。
+
+当前失败是 Jenkins Script Security 审批机制。
+因为 seed-jobs.Jenkinsfile 中 Job DSL 使用 sandbox: false，
+所以 Jenkins 要求管理员显式 approve 这段 DSL 脚本。
+```
+
+处理方法：
+
+```text
+进入 Jenkins 页面：
+Manage Jenkins -> In-process Script Approval
+
+找到待审批的 Job DSL script，点击 Approve。
+```
+
+审批后重新运行：
+
+```text
+seed/jenkins-robotframework-seed -> Build with Parameters
+```
+
+预期：
+
+```text
+Processing DSL script jenkins-integration/jobs/kpi_runner_job.groovy
+Processing DSL script jenkins-integration/jobs/robot_execution_job.groovy
+GeneratedJob / UpdatedJob ...
+Finished: SUCCESS
+```
+
+注意：
+
+```text
+如果只看到 kpi_runner_job.groovy，没看到 robot_execution_job.groovy，
+需要确认 JOB_DSL_TARGETS 是否为 jenkins-integration/jobs/*_job.groovy，
+以及 checkout 的 main 分支是否已经包含两个下划线 Job DSL 文件。
+```
+
+## 43. 本轮实践记录：Step 25 seed job 已成功生成业务 jobs
+
+本节解决的问题：
+
+```text
+确认 seed/jenkins-robotframework-seed 已完成 Job DSL 处理，
+并已经在 Jenkins 首页生成 / 更新业务 job folder。
+```
+
+用户验证结果：
+
+```text
+Jenkins 首页已经出现：
+- CIT
+- CRT
+- robot
+- seed
+```
+
+当前判断：
+
+```text
+seed job 已经成功执行 Job DSL。
+robot_execution_job.groovy 已生成 / 更新 robot folder。
+kpi_runner_job.groovy 已生成 / 更新 CIT / CRT folder。
+```
+
+当前完成的 CI/CD 调用链：
+
+```text
+JCasC
+  -> seed/jenkins-robotframework-seed
+  -> seed-jobs.Jenkinsfile
+  -> Job DSL
+  -> robot / CIT / CRT folders
+```
+
+关键字段：
+
+```text
+JOB_DSL_TARGETS:
+  控制 seed job 扫描哪些 Job DSL 文件。
+  当前应为 jenkins-integration/jobs/*_job.groovy。
+
+robot/robot-execution:
+  Robot Framework 真实执行 job。
+
+CIT/KPI_Testing/SBTS26R1/7_5_UTE5G402T813:
+  CIT 场景下的 Python KPI Runner job。
+
+CRT/KPI_Testing/SBTS26R1/7_5_UTE5G402T813:
+  CRT 场景下的 Python KPI Runner job。
+```
+
+下一步验证目标：
+
+```text
+先检查生成出来的 Job 参数和 Pipeline script 是否正确，
+暂时不直接触发真实 Robot / KPI 执行。
+```
+
+服务器验证命令：
+
+```bash
+sudo grep -n "script" /var/lib/jenkins/jobs/robot/jobs/robot-execution/config.xml | head
+sudo grep -n "ROBOTCASE_PATH\|TESTLINE\|RUN_ID\|TAF_MODE" /var/lib/jenkins/jobs/robot/jobs/robot-execution/config.xml
+
+sudo grep -n "script" /var/lib/jenkins/jobs/CIT/jobs/KPI_Testing/jobs/SBTS26R1/jobs/7_5_UTE5G402T813/config.xml | head
+sudo grep -n "WORKFLOW_SPEC_JSON\|BUILD\|TESTLINE\|DRY_RUN\|RUN_ID" /var/lib/jenkins/jobs/CIT/jobs/KPI_Testing/jobs/SBTS26R1/jobs/7_5_UTE5G402T813/config.xml
+
+sudo ls -l /var/lib/jenkins/jobs/CRT/jobs/KPI_Testing/jobs/SBTS26R1/jobs/7_5_UTE5G402T813/config.xml
+```
+
+预期结果：
+
+```text
+robot job config 中能看到 Robot 参数和 Pipeline script。
+CIT KPI job config 中能看到 WORKFLOW_SPEC_JSON / BUILD / TESTLINE / DRY_RUN / RUN_ID 等参数。
+CRT KPI job config.xml 存在。
+```
+
+常见失败判断：
+
+```text
+No such file or directory:
+  说明 folder/job 路径和 Job DSL 生成名称不一致，需要回 Jenkins UI 确认实际 job 路径。
+
+grep 没有任何输出:
+  说明 config.xml 存在，但参数名或 Pipeline 配置没有按预期生成，需要检查对应 *_job.groovy。
+
+只生成 CIT 没有 CRT，或只生成 robot 没有 KPI:
+  说明 seed job 可能没有完整处理两个 Job DSL 文件，需要回看 seed job Console Output。
+```
+
+复盘问题：
+
+```text
+1. 为什么 JCasC 只负责创建 seed job，而不是直接维护所有业务 job？
+2. Job DSL 和 Jenkinsfile 的职责有什么区别？
+3. 为什么生成业务 job 后，第一步应该先检查 config.xml，而不是马上 Build？
+```
+
+## 44. 本轮实践记录：Step 26 业务 job 配置检查通过，准备跑 KPI dry-run
+
+本节解决的问题：
+
+```text
+确认 Job DSL 生成的业务 job config.xml 没有明显路径错误，
+并且 robot / CIT / CRT 的关键配置能被读取到。
+```
+
+用户验证结果：
+
+```text
+执行 Step 25 中的 config.xml 检查命令后没有报错。
+```
+
+当前判断：
+
+```text
+robot/robot-execution config.xml 存在。
+CIT/KPI_Testing/SBTS26R1/7_5_UTE5G402T813 config.xml 存在。
+CRT/KPI_Testing/SBTS26R1/7_5_UTE5G402T813 config.xml 存在。
+
+下一步可以先跑 CIT KPI Runner 的 DRY_RUN=true，
+验证 Jenkins Pipeline 编排、参数物化、runner dry-run、artifact 归档。
+```
+
+当前需要注意的 agent 条件：
+
+```text
+kpi-runner.Jenkinsfile 使用：
+agent { label 't813 && robot' }
+
+所以 dry-run 虽然不触发真实 KPI / TAF 操作，
+但 Jenkins 仍然需要有一个在线节点匹配 t813 和 robot 标签。
+如果没有匹配节点，Build 会停在队列里，提示等待 t813 && robot executor。
+```
+
+推荐下一步 UI 操作：
+
+```text
+Jenkins 首页
+  -> CIT
+  -> KPI_Testing
+  -> SBTS26R1
+  -> 7_5_UTE5G402T813
+  -> Build with Parameters
+```
+
+本次 dry-run 建议参数：
+
+```json
+{
+  "RUN_REQUEST_JSON": "",
+  "RUN_ID": "",
+  "TESTLINE": "7_5_UTE5G402T813",
+  "WORKFLOW_NAME": "Python KPI Runner Dry Run",
+  "WORKFLOW_SPEC_JSON": {
+    "name": "Python KPI Runner Dry Run",
+    "stages": [
+      {
+        "stage_id": 1,
+        "stage_name": "gnb-webui-operation",
+        "execution_mode": "serial",
+        "items": [
+          {
+            "item_id": "ru-reset-dry-run",
+            "model": "ru_reset",
+            "enabled": true,
+            "order": 10,
+            "execution_mode": "serial",
+            "continue_on_failure": false,
+            "ue_scope": {
+              "mode": "none"
+            },
+            "params": {
+              "gnb_id": "gnb-1",
+              "ru_id": "ru-1",
+              "repeat_count": 1,
+              "timeout_seconds": 60
+            }
+          }
+        ]
+      },
+      {
+        "stage_id": 2,
+        "stage_name": "post-operation-observation",
+        "execution_mode": "serial",
+        "items": [
+          {
+            "item_id": "alarm-check-dry-run",
+            "model": "alarm_check",
+            "enabled": true,
+            "order": 10,
+            "execution_mode": "serial",
+            "continue_on_failure": false,
+            "ue_scope": {
+              "mode": "none"
+            },
+            "params": {
+              "window_source": "workflow",
+              "severity": "major"
+            }
+          }
+        ]
+      }
+    ],
+    "runtime_options": {
+      "dry_run": true,
+      "stop_on_failure": true,
+      "max_parallel_workers": 2,
+      "log_level": "INFO"
+    }
+  },
+  "BUILD": "SBTS26R1.DRYRUN.001",
+  "DRY_RUN": true,
+  "TAF_MODE": "skip-install",
+  "PLATFORM_API_BASE_URL": "",
+  "CALLBACK_IGNORE_FAILURE": true,
+  "CALLBACK_INSECURE_TLS": true
+}
+```
+
+页面参数填写说明：
+
+```text
+WORKFLOW_SPEC_JSON 只粘贴上面 JSON 中 WORKFLOW_SPEC_JSON 对应的对象内容。
+不要把整个外层 JSON 一起粘进去。
+
+DRY_RUN 保持勾选 true。
+TAF_MODE 选择 skip-install，避免本次 dry-run 做 Python 环境安装。
+PLATFORM_API_BASE_URL 先留空，这样 callback / notify-stage 会跳过。
+```
+
+预期 Console Output 关键字：
+
+```text
+[notify-stage] Skipped: RUN_ID or PLATFORM_API_BASE_URL not set.
+Materialize Workflow Request
+Prepare Workspace
+Run Test Workflow Runner
+[runner] start testline=7_5_UTE5G402T813
+dry_run=True 或 dry_run=true
+Collect Runner Metadata
+Archiving artifacts
+Finished: SUCCESS
+```
+
+常见失败判断：
+
+```text
+Still waiting to schedule task / Waiting for next available executor on 't813 && robot':
+  说明没有在线节点匹配 t813 和 robot 标签，需要先恢复 Jenkins agent。
+
+No such file or directory: jenkins-integration/scripts/materialize_python_orchestrator_request.py:
+  说明 workspace 没有 checkout 当前仓库，或 job 使用的 Pipeline script 不完整。
+
+checkout_sources.py 阶段失败:
+  通常是 robotws / testline_configuration 仓库 URL 或 credentials 没配置好。
+
+python -m test_workflow_runner.cli 失败:
+  需要看 artifacts/python-orchestrator-request.json 是否生成正确，以及 test-workflow-runner 是否 checkout 到 workspace。
+```
+
+复盘问题：
+
+```text
+1. 为什么 dry-run 仍然需要 Jenkins agent？
+2. WORKFLOW_SPEC_JSON 到 python-orchestrator-request.json 中间经历了哪一步转换？
+3. 为什么本次 PLATFORM_API_BASE_URL 先留空？
+```
+
+## 45. 本轮实践记录：Step 27 KPI dry-run 首次失败，业务 job 缺少当前仓库 checkout
+
+本节解决的问题：
+
+```text
+定位 CIT KPI Runner dry-run 首次失败原因：
+业务 job 的 Pipeline 已启动，但 workspace 中没有 jenkins_robotframework 仓库源码，
+因此找不到 jenkins-integration/scripts/materialize_python_orchestrator_request.py。
+```
+
+用户提供的 Console Output 关键信息：
+
+```text
++ python3 jenkins-integration/scripts/materialize_python_orchestrator_request.py ...
+python3: can't open file '/automation/workspace/workspace/CIT/KPI_Testing/SBTS26R1/7_5_UTE5G402T813/jenkins-integration/scripts/materialize_python_orchestrator_request.py': [Errno 2] No such file or directory
+
+Stage "Prepare Workspace" skipped due to earlier failure(s)
+Stage "Run Test Workflow Runner" skipped due to earlier failure(s)
+Stage "Collect Runner Metadata" skipped due to earlier failure(s)
+Finished: FAILURE
+```
+
+根因判断：
+
+```text
+seed/jenkins-robotframework-seed 使用 cpsScm，
+所以 seed job 自己运行时会自动 checkout jenkins_robotframework 仓库。
+
+但是 seed job 生成的业务 job 使用 cps { script(readFileFromWorkspace(...)) }，
+Pipeline 脚本被内嵌到 job config.xml 中。
+
+业务 job 启动后不会自动 checkout 当前仓库，
+所以 workspace 里没有 jenkins-integration/scripts/，
+第一步 Materialize Workflow Request 就失败。
+```
+
+本次修改文件：
+
+```text
+jenkins-integration/pipelines/kpi-runner.Jenkinsfile
+  新增 Checkout Pipeline Source stage。
+
+jenkins-integration/pipelines/robot-execution.Jenkinsfile
+  同步新增 Checkout Pipeline Source stage，避免后续 Robot job 遇到同类问题。
+```
+
+新增调用链：
+
+```text
+CIT/KPI_Testing/SBTS26R1/7_5_UTE5G402T813
+  -> Checkout Pipeline Source
+  -> checkout jenkins_robotframework
+  -> Materialize Workflow Request
+  -> Prepare Workspace
+  -> Run Test Workflow Runner
+  -> Collect Runner Metadata
+  -> archive artifacts
+```
+
+关键字段来源：
+
+```text
+JENKINS_ROBOTFRAMEWORK_REPO_URL:
+  来自 Jenkins global env / JCasC。
+  如果为空，Pipeline 回退到 https://github.com/stella555359/jenkins_robotframework.git。
+
+JENKINS_ROBOTFRAMEWORK_GIT_REF:
+  来自 Jenkins global env / JCasC。
+  如果为空，Pipeline 回退到 main。
+
+JENKINS_ROBOTFRAMEWORK_CREDENTIALS_ID:
+  来自 Jenkins global env / JCasC。
+  如果为空，按公开仓库无 credentials checkout。
+```
+
+为什么需要重新跑 seed job：
+
+```text
+业务 job 不是 cpsScm 动态引用 Jenkinsfile。
+业务 job 的 Pipeline script 是 seed job 通过 readFileFromWorkspace 读出后写进 config.xml。
+
+因此修改 kpi-runner.Jenkinsfile / robot-execution.Jenkinsfile 后，
+必须让 seed job 重新生成业务 job，
+Jenkins 上的 config.xml 才会拿到新的 Checkout Pipeline Source stage。
+```
+
+下一步验证步骤：
+
+```text
+1. 确认本地修改已经同步到 seed job checkout 的代码源。
+   如果 seed job 从 GitHub main checkout，需要先把本次修改推到 main。
+
+2. 重新运行：
+   seed/jenkins-robotframework-seed -> Build with Parameters
+
+3. 预期 seed job 成功后，重新运行：
+   CIT -> KPI_Testing -> SBTS26R1 -> 7_5_UTE5G402T813 -> Build with Parameters
+```
+
+预期 Console Output 新增关键字：
+
+```text
+Checkout Pipeline Source
+Cloning the remote Git repository
+Checking out Revision ...
+Materialize Workflow Request
++ python3 jenkins-integration/scripts/materialize_python_orchestrator_request.py ...
+```
+
+常见失败判断：
+
+```text
+仍然一开始就找不到 jenkins-integration/scripts/materialize_python_orchestrator_request.py:
+  说明 seed job 没有重新生成业务 job，或 seed job checkout 的分支还没有包含本次 Jenkinsfile 修改。
+
+Checkout Pipeline Source 阶段 git clone 失败:
+  说明 JENKINS_ROBOTFRAMEWORK_REPO_URL / credentials / 网络访问有问题。
+
+进入 Prepare Workspace 后失败:
+  说明当前问题已过，下一层需要继续检查 robotws / testline_configuration checkout 或 TAF 环境准备。
+```
+
+复盘问题：
+
+```text
+1. 为什么 seed job 能 checkout 仓库，但业务 job 不会自动继承 seed job 的 workspace？
+2. cpsScm 和 cps 内嵌 Pipeline script 对后续 Jenkinsfile 修改有什么区别？
+3. 为什么这次要同时修复 kpi-runner 和 robot-execution 两个 Jenkinsfile？
+```
+
+## 46. Jenkins CI/CD 常见设计模式与本项目 cpsScm 改造
+
+本节解决的问题：
+
+```text
+解释一般 Jenkins CI/CD 项目的成熟分层设计，
+并把当前项目的业务 job 从 cps 内嵌 Pipeline script 改为 cpsScm。
+```
+
+### 46.1 常见 Jenkins CI/CD 设计模式
+
+一般这类 Jenkins CI/CD 项目，比较成熟的设计会分成 4 层，
+不要把所有逻辑都塞进 Jenkins UI 或一个 Job 里。
+
+#### 1. JCasC 负责 Jenkins 基础设施
+
+JCasC 通常只管 Jenkins 自身的基础配置，例如：
+
+```text
+Jenkins URL
+全局环境变量
+credentials
+agent/node
+权限
+插件基础配置
+seed job
+```
+
+它不太适合频繁维护所有业务 Pipeline 细节。
+因为 JCasC 改动通常意味着 Jenkins 配置重载或重启，成本较高。
+
+本项目对应文件：
+
+```text
+jenkins-integration/jcasc/jenkins.yaml
+```
+
+#### 2. Seed Job / Job DSL 负责创建 Job 骨架
+
+seed job 通常负责创建：
+
+```text
+folder 结构
+job 名称
+job 参数
+job SCM 指向
+Jenkinsfile 路径
+触发器
+保留策略
+权限
+```
+
+它适合管理 Jenkins 上有哪些 job、这些 job 怎么组织。
+但 seed job 不应该频繁承载业务执行逻辑。
+业务逻辑最好放在 Git 仓库里的 Jenkinsfile。
+
+本项目对应文件：
+
+```text
+jenkins-integration/jobs/kpi_runner_job.groovy
+jenkins-integration/jobs/robot_execution_job.groovy
+jenkins-integration/pipelines/seed-jobs.Jenkinsfile
+```
+
+#### 3. Business Job 用 cpsScm 读取 Jenkinsfile
+
+比较推荐的模式是：
+
+```text
+业务 job 每次 build
+  -> 从 Git checkout Jenkinsfile
+  -> 执行最新 Pipeline
+```
+
+也就是 Job DSL 里面用 cpsScm，
+而不是把 Jenkinsfile 内容内嵌进 config.xml。
+
+这样以后：
+
+```text
+改 Jenkinsfile
+  -> push Git
+  -> 下一次 build 自动生效
+```
+
+不需要每次手动跑 seed job。
+
+seed job 只在这些情况才需要跑：
+
+```text
+新增 job
+删除 job
+改 folder
+改参数
+改 job 名称
+改 Jenkinsfile 路径
+改触发器
+改保留策略
+```
+
+#### 4. Jenkinsfile 负责真正 CI/CD 编排
+
+Jenkinsfile 负责一次构建里面的执行流程，例如：
+
+```text
+checkout source
+materialize request
+prepare workspace
+prepare python env
+run robot / runner
+collect artifacts
+publish reports
+callback platform-api
+archive logs
+```
+
+本项目对应文件：
+
+```text
+jenkins-integration/pipelines/kpi-runner.Jenkinsfile
+jenkins-integration/pipelines/robot-execution.Jenkinsfile
+```
+
+推荐给本项目的目标形态：
+
+```text
+JCasC
+  -> 创建 seed/jenkins-robotframework-seed
+
+seed job
+  -> 执行 Job DSL
+  -> 创建 robot / CIT / CRT job
+  -> 每个业务 job 指向 Git 仓库里的 Jenkinsfile
+
+业务 job build
+  -> checkout jenkins_robotframework
+  -> 读取最新 Jenkinsfile
+  -> checkout robotws / testline_configuration
+  -> 执行 dry-run / real-run
+  -> archive artifacts / callback
+```
+
+职责边界：
+
+```text
+JCasC 管 Jenkins 基础设施
+Job DSL 管 Job 结构
+Jenkinsfile 管执行流程
+Python scripts 管具体转换和业务脚本
+Git 管版本
+Jenkins UI 只负责触发和查看结果
+```
+
+一句话总结：
+
+```text
+一般 CI/CD 项目不会让用户每次改 Pipeline 都手动重跑 seed job。
+更常见的生产设计是：
+
+seed job 只生成 job 壳子；
+业务 job 通过 cpsScm 每次从 Git 读取 Jenkinsfile；
+Jenkinsfile 的修改通过 Git push 后在下一次 build 自动生效。
+```
+
+### 46.2 本项目从 cps 改为 cpsScm
+
+原来的业务 Job DSL：
+
+```groovy
+definition {
+    cps {
+        script(readFileFromWorkspace(pipelinePath))
+        sandbox(true)
+    }
+}
+```
+
+这个模式的问题：
+
+```text
+seed job 会把 Jenkinsfile 内容读出来并写进业务 job 的 config.xml。
+后续只改 Git 里的 Jenkinsfile，不会自动影响已生成的业务 job。
+每次改 Pipeline 都必须重新跑 seed job，业务 job 的 config.xml 才会更新。
+```
+
+现在改为：
+
+```groovy
+definition {
+    cpsScm {
+        scm {
+            git {
+                remote {
+                    url(pipelineRepoUrl)
+                    if (pipelineCredentialsId?.trim()) {
+                        credentials(pipelineCredentialsId)
+                    }
+                }
+                branches(pipelineRepoRef)
+            }
+        }
+        scriptPath(pipelinePath)
+    }
+}
+```
+
+本次修改文件：
+
+```text
+jenkins-integration/jobs/kpi_runner_job.groovy
+  CIT / CRT KPI Runner job 改为 cpsScm。
+
+jenkins-integration/jobs/robot_execution_job.groovy
+  robot/robot-execution job 改为 cpsScm。
+```
+
+关键字段来源：
+
+```text
+pipelineRepoUrl:
+  优先读取 Jenkins 进程环境变量 JENKINS_ROBOTFRAMEWORK_REPO_URL。
+  为空时回退到 https://github.com/stella555359/jenkins_robotframework.git。
+
+pipelineRepoRef:
+  优先读取 Jenkins 进程环境变量 JENKINS_ROBOTFRAMEWORK_GIT_REF。
+  为空时回退到 main。
+
+pipelineCredentialsId:
+  优先读取 Jenkins 进程环境变量 JENKINS_ROBOTFRAMEWORK_CREDENTIALS_ID。
+  为空时按公开仓库 checkout。
+```
+
+改造后的生效规则：
+
+```text
+新增 / 删除 / 改 job 结构：
+  仍然需要重新运行 seed job。
+
+只改 kpi-runner.Jenkinsfile 或 robot-execution.Jenkinsfile：
+  push 到 cpsScm 指向的 Git 分支后，
+  下一次业务 job build 会自动读取最新 Jenkinsfile。
+```
+
+本次仍然需要重新跑 seed job 的原因：
+
+```text
+当前 Jenkins 上已经存在的业务 job 还是旧的 cps 内嵌模式。
+要把 job definition 从 cps 切换成 cpsScm，
+必须让 seed job 重新执行一次 Job DSL。
+
+这次 seed 成功后，后续普通 Pipeline 内容修改才不需要再手动 seed。
+```
+
+下一步验证命令：
+
+```bash
+sudo grep -n "cpsScm\|scriptPath\|kpi-runner.Jenkinsfile" /var/lib/jenkins/jobs/CIT/jobs/KPI_Testing/jobs/SBTS26R1/jobs/7_5_UTE5G402T813/config.xml
+sudo grep -n "cpsScm\|scriptPath\|robot-execution.Jenkinsfile" /var/lib/jenkins/jobs/robot/jobs/robot-execution/config.xml
+```
+
+预期结果：
+
+```text
+CIT KPI job config.xml 中能看到 cpsScm / scriptPath / kpi-runner.Jenkinsfile。
+robot job config.xml 中能看到 cpsScm / scriptPath / robot-execution.Jenkinsfile。
+```
+
+常见失败判断：
+
+```text
+grep 仍然只能看到 script/readFileFromWorkspace:
+  说明 seed job 还没有重新生成业务 job，或 seed job checkout 的分支还没有包含本次 Job DSL 修改。
+
+cpsScm 存在，但业务 job build 时 Git checkout 失败:
+  说明 JENKINS_ROBOTFRAMEWORK_REPO_URL / credentials / 网络访问需要继续检查。
+
+业务 job build 仍然使用旧 Jenkinsfile:
+  需要确认 cpsScm 指向的分支是否已经包含最新提交。
+```
+
+复盘问题：
+
+```text
+1. seed job 以后什么时候还需要手动跑？
+2. 为什么 cpsScm 比 cps 内嵌模式更适合频繁修改 Jenkinsfile 的项目？
+3. 如果 GitHub main 没有最新 Jenkinsfile，业务 job 会运行哪个版本？
+```
+

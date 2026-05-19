@@ -1,8 +1,21 @@
-// Seed job should checkout the repository root so readFileFromWorkspace can load the pipeline script.
+// Business jobs use cpsScm so Jenkinsfile changes take effect on the next build.
 
 def jobFolder = 'robot'
 def jobName = "${jobFolder}/robot-execution"
 def pipelinePath = 'jenkins-integration/pipelines/robot-execution.Jenkinsfile'
+def pipelineRepoUrl = System.getenv('JENKINS_ROBOTFRAMEWORK_REPO_URL') ?: 'https://github.com/stella555359/jenkins_robotframework.git'
+def pipelineRepoRef = System.getenv('JENKINS_ROBOTFRAMEWORK_GIT_REF') ?: 'main'
+def pipelineCredentialsId = System.getenv('JENKINS_ROBOTFRAMEWORK_CREDENTIALS_ID') ?: ''
+
+if (pipelineRepoUrl.startsWith('${')) {
+    pipelineRepoUrl = 'https://github.com/stella555359/jenkins_robotframework.git'
+}
+if (pipelineRepoRef.startsWith('${')) {
+    pipelineRepoRef = 'main'
+}
+if (pipelineCredentialsId.startsWith('${')) {
+    pipelineCredentialsId = ''
+}
 
 folder(jobFolder) {
     description('Robot executor jobs managed from jenkins-integration/jobs.')
@@ -46,9 +59,19 @@ pipelineJob(jobName) {
     }
 
     definition {
-        cps {
-            script(readFileFromWorkspace(pipelinePath))
-            sandbox(true)
+        cpsScm {
+            scm {
+                git {
+                    remote {
+                        url(pipelineRepoUrl)
+                        if (pipelineCredentialsId?.trim()) {
+                            credentials(pipelineCredentialsId)
+                        }
+                    }
+                    branches(pipelineRepoRef)
+                }
+            }
+            scriptPath(pipelinePath)
         }
     }
 }

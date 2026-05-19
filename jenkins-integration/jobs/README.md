@@ -23,6 +23,8 @@ Jenkins job 需要的参数、标签、凭据和执行模式
 
 这里先不写死所有 job 名，但 `robot` 路径已经补了“模板文档 + 实际 Job DSL 文件”两层入口，`python_orchestrator` 路径也已补 KPI runner Job DSL：
 
+这些 Job DSL 文件由 `seed/jenkins-robotframework-seed` 执行。该 seed job 由 `jcasc/jenkins.yaml` 自动创建，执行逻辑在 `pipelines/seed-jobs.Jenkinsfile`。
+
 - [robot-execution-job-template.md](robot-execution-job-template.md)
 	- 固定 seed job / job 参数模板思路
 	- 固定 `ROBOTWS_GIT_REF` 和 `TESTLINE_CONFIGURATION_GIT_REF` 的默认值策略

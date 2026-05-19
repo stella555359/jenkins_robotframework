@@ -23,6 +23,10 @@
 
 当前已落地：
 
+- `seed-jobs.Jenkinsfile`
+	- JCasC 创建的 seed job 使用的 Pipeline
+	- checkout `jenkins_robotframework` 仓库
+	- 执行 `jobDsl targets: jenkins-integration/jobs/*.groovy`
 - `robot-execution.Jenkinsfile`
 	- 最小 Robot 执行 Pipeline 模板
 - `kpi-runner.Jenkinsfile`

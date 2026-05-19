@@ -24,6 +24,7 @@
 	- 包含 controller 基础项，例如 system message、controller executor 策略、location
 	- 包含一个静态 inbound node 示例，固定 `robot linux ute` 这类 agent label 约定写法
 	- 直接固定真实 Robot 主线需要的 `ROBOTWS_REPO_URL` / `TESTLINE_CONFIGURATION_REPO_URL`
+	- 创建 `seed/jenkins-robotframework-seed`，用于执行 `jenkins-integration/jobs/*.groovy`
 	- checkout 默认改为 agent-local key，不再要求 controller 维护 `robotws-ssh` / `testline-config-ssh`
 	- 通过 controller 环境变量注入 pip token，以及 agent launcher 所需的 SSH private key path
 
@@ -39,6 +40,9 @@ Manage Jenkins -> System -> Global properties -> Environment variables
 
 - `ROBOTWS_REPO_URL`
 - `TESTLINE_CONFIGURATION_REPO_URL`
+- `JENKINS_ROBOTFRAMEWORK_REPO_URL`
+- `JENKINS_ROBOTFRAMEWORK_GIT_REF`
+- `JENKINS_ROBOTFRAMEWORK_CREDENTIALS_ID`
 - `ROBOTWS_CREDENTIALS_ID`
 - `TESTLINE_CONFIGURATION_CREDENTIALS_ID`
 - `PIP_INDEX_URL`

@@ -34,17 +34,20 @@
 - [x] `robot` 路径的 checkout / request materialize / callback helper 已落地
 - [x] 已补 controller / node / credentials 级别的 `jenkins.yaml` 示例，以及 `robot` job 参数模板文档和实际 Job DSL 文件
 - [x] 已补 `python_orchestrator` 的 KPI runner Job DSL、Jenkinsfile 和 `workflow_spec -> request.json` 物化脚本
+- [x] 已通过 JCasC + `seed-jobs.Jenkinsfile` 代码化 `seed/jenkins-robotframework-seed`
 
 ## 目录入口
 
 - [顶层模块 README](../../../jenkins-integration/README.md)
 - [jcasc 目录说明](../../../jenkins-integration/jcasc/README.md)
 - [JCasC 示例](../../../jenkins-integration/jcasc/jenkins.yaml)
+- [KPI CI/CD Flow](../../../jenkins-integration/kpi_ci_cd_flow.md)
 - [jobs 目录说明](../../../jenkins-integration/jobs/README.md)
 - [Robot Job 模板文档](../../../jenkins-integration/jobs/robot-execution-job-template.md)
 - [Robot Job DSL](../../../jenkins-integration/jobs/robot-execution-job.groovy)
 - [KPI Runner Job DSL](../../../jenkins-integration/jobs/kpi-runner-job.groovy)
 - [pipelines 目录说明](../../../jenkins-integration/pipelines/README.md)
+- [Seed Jobs Jenkinsfile](../../../jenkins-integration/pipelines/seed-jobs.Jenkinsfile)
 - [KPI Runner Jenkinsfile](../../../jenkins-integration/pipelines/kpi-runner.Jenkinsfile)
 - [scripts 目录说明](../../../jenkins-integration/scripts/README.md)
 - [Jenkins Integration Layer 与执行流程](guides/jenkins-integration-layer-and-flow.md)

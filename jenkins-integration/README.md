@@ -30,6 +30,8 @@
   - 通用 Pipeline / Jenkinsfile 骨架
 - `scripts/`
   - 被 Pipeline 调用的 Python / shell helper 骨架
+- [KPI CI/CD Flow](kpi_ci_cd_flow.md)
+  - 解释 KPI Runner Job DSL、seed job、目录生成方式和多 SBTS / testline 扩展策略
 
 ## 当前推荐调用链
 
@@ -58,8 +60,11 @@ automation-portal / caller
 
 当前仍待继续补：
 
+- seed job 已由 JCasC 代码化：
+  - `jcasc/jenkins.yaml` 会创建 `seed/jenkins-robotframework-seed`
+  - `pipelines/seed-jobs.Jenkinsfile` 会 checkout 本仓库并执行 `jenkins-integration/jobs/*.groovy`
 - `python_orchestrator` 路径已经补第一版 Jenkins 入口：
   - `jobs/kpi-runner-job.groovy`
   - `pipelines/kpi-runner.Jenkinsfile`
   - `scripts/materialize_python_orchestrator_request.py`
-- 后续仍需在服务器 seed job 中实际生成 `CIT/KPI_Testing/<SBTS>/<testline>` / `CRT/KPI_Testing/<SBTS>/<testline>` job 并做 Jenkins smoke 验证
+- 后续仍需在服务器重载 JCasC、运行 seed job，实际生成 `CIT/KPI_Testing/<SBTS>/<testline>` / `CRT/KPI_Testing/<SBTS>/<testline>` job 并做 Jenkins smoke 验证

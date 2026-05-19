@@ -2892,3 +2892,306 @@ t813-agent 是否能 online。
 日志中是否还出现 PacketChannelOpenConfirmation / PacketDisconnect。
 ```
 
+## 39. 故障复盘 Tips：JCasC、seed job、SSH agent 插件联动排查
+
+### 39.1 本次问题现象
+
+本次实践原本目标是验证 Jenkins KPI CI/CD flow：
+
+```text
+JCasC -> seed job -> Job DSL -> robot / KPI runner jobs -> Jenkinsfile 执行
+```
+
+但在更新 JCasC 后遇到两个连续问题：
+
+```text
+问题一：Jenkins 启动失败，日志出现 t813-agent / trilead-api 相关 NoClassDefFoundError。
+
+问题二：绕开 nodes 后，Jenkins 仍启动失败，日志出现：
+No configurator for the following root elements: jobs
+```
+
+### 39.2 最终结论
+
+这次不是单一问题，而是两个问题叠加：
+
+```text
+第一层问题：JCasC 恢复 nodes 后，Jenkins 启动阶段会自动创建 / 启动 t813-agent。
+当 SSH Build Agents / trilead-api 插件组合异常时，controller 启动阶段就可能失败。
+
+第二层问题：JCasC 使用了顶层 jobs: 来创建 seed job。
+这个能力依赖 Job DSL 插件；如果 Job DSL 插件未安装，JCasC 会报 UnknownConfiguratorException: jobs。
+```
+
+最后处理结果：
+
+```text
+1. 先注释 nodes:，避免启动阶段自动连接 t813-agent。
+2. 移走旧 /var/lib/jenkins/nodes/t813-agent，排除持久化 node 自动启动影响。
+3. 确认 Jenkins 启动失败点转为 jobs: configurator 缺失。
+4. 安装 Job DSL 插件。
+5. 恢复 jobs:，JCasC 成功创建 seed/jenkins-robotframework-seed。
+6. 更新 SSH 相关插件后，恢复 JCasC nodes:，t813-agent 创建成功。
+```
+
+### 39.3 排查时的关键判断点
+
+#### 判断 1：先区分 render 失败还是 Jenkins 启动失败
+
+命令：
+
+```bash
+sudo systemctl status jenkins --no-pager -l
+```
+
+关键字段：
+
+```text
+ExecStartPre=...render_jcasc.py... status=0/SUCCESS
+```
+
+如果 `ExecStartPre` 成功，说明：
+
+```text
+JCasC 文件已经成功 render。
+问题不在 env 文件或私钥读取。
+```
+
+如果 `ExecStartPre` 失败，优先查：
+
+```text
+/etc/default/jenkins-jcasc
+T813_AGENT_SSH_PRIVATE_KEY_PATH
+私钥文件是否存在、是否对 Jenkins 用户可读
+```
+
+#### 判断 2：确认 Jenkins 实际加载的是哪份 JCasC
+
+命令：
+
+```bash
+sudo systemctl show jenkins --property=Environment --no-pager
+```
+
+关键字段：
+
+```text
+CASC_JENKINS_CONFIG=/var/lib/jenkins/casc_configs/jenkins.rendered.yaml
+```
+
+不要只看仓库里的：
+
+```text
+/opt/jenkins_robotframework/jenkins-integration/jcasc/jenkins.yaml
+```
+
+真正被 Jenkins 加载的是 rendered 文件。
+
+#### 判断 3：确认 rendered YAML 是否包含目标配置
+
+命令：
+
+```bash
+grep -n "jenkins-robotframework-seed" /var/lib/jenkins/casc_configs/jenkins.rendered.yaml || true
+grep -n "seed-jobs.Jenkinsfile" /var/lib/jenkins/casc_configs/jenkins.rendered.yaml || true
+grep -n "^[[:space:]]*nodes:" /var/lib/jenkins/casc_configs/jenkins.rendered.yaml || true
+grep -n "t813-agent" /var/lib/jenkins/casc_configs/jenkins.rendered.yaml || true
+```
+
+判断：
+
+```text
+如果 rendered YAML 没有 seed job，说明还没重新 render / restart。
+如果 rendered YAML 有 seed job 但页面没有，要看 JCasC 是否加载失败。
+如果 nodes: 存在，Jenkins 启动阶段可能自动创建 / 启动 agent。
+```
+
+#### 判断 4：`jobs:` 报错优先查 Job DSL 插件
+
+典型日志：
+
+```text
+UnknownConfiguratorException: No configurator for the following root elements: jobs
+```
+
+含义：
+
+```text
+JCasC 不认识顶层 jobs:。
+通常是 Job DSL 插件未安装、未启用或版本不兼容。
+```
+
+检查：
+
+```bash
+sudo ls -l /var/lib/jenkins/plugins | grep -E "job-dsl|script-security|structs" || true
+sudo find /var/lib/jenkins/plugins -maxdepth 2 -iname "*job*dsl*" -o -iname "*job-dsl*"
+```
+
+修复：
+
+```text
+Manage Jenkins -> Plugins -> Available plugins -> 安装 Job DSL
+```
+
+#### 判断 5：`t813-agent / trilead` 报错优先隔离 node，再修插件
+
+典型日志：
+
+```text
+SSH Launch of t813-agent on 10.57.159.149 failed
+NoClassDefFoundError: com/trilead/ssh2/packets/PacketChannelOpenConfirmation
+NoClassDefFoundError: com/trilead/ssh2/packets/PacketDisconnect
+```
+
+排查顺序：
+
+```text
+1. 先确认是否 JCasC nodes: 在启动阶段创建 / 启动 t813-agent。
+2. 注释 nodes:，让 controller 先恢复。
+3. 检查 /var/lib/jenkins/nodes/t813-agent 是否存在旧持久化配置。
+4. 如存在，备份并临时移走。
+5. Jenkins controller 恢复后，再更新 SSH Build Agents / trilead-api / ssh-credentials 相关插件。
+6. 插件更新后，再恢复 nodes:。
+```
+
+### 39.4 不要被历史 build 记录误导
+
+搜索：
+
+```bash
+sudo grep -R --line-number -E "t813-agent|10.57.159.149|SSHLauncher" /var/lib/jenkins 2>/dev/null || true
+```
+
+可能会搜到大量历史记录，例如：
+
+```text
+/var/lib/jenkins/jobs/robot/jobs/robot-execution/builds/<n>/log
+/var/lib/jenkins/jobs/robot/jobs/robot-execution/builds/<n>/build.xml
+/var/lib/jenkins/jobs/.../workflow-completed/flowNodeStore.xml
+```
+
+这些通常只是历史构建记录，不一定代表当前启动问题。
+
+更可靠的方式是：
+
+```bash
+START_TS=$(date --iso-8601=seconds)
+sudo systemctl start jenkins || true
+sudo journalctl -u jenkins --since "$START_TS" -l --no-pager
+```
+
+只看本次启动的最新日志，避免被历史 build log 带偏。
+
+### 39.5 本次推荐的安全调试顺序
+
+以后遇到 Jenkins JCasC 启动失败，可以按这个顺序走：
+
+```text
+1. 看 systemctl status，确认 ExecStartPre 是否成功。
+2. 如果 render 失败，查 env 文件和私钥路径。
+3. 如果 render 成功，查最新 journal。
+4. 如果报 nodes / SSH / trilead，先临时禁用 nodes，让 controller 先起来。
+5. 如果报 jobs configurator，先安装 / 启用 Job DSL 插件。
+6. controller 恢复后，再逐个恢复 jobs 和 nodes。
+7. 恢复 nodes 前，先确认 SSH 相关插件已更新。
+8. 每恢复一块，就 restart / reload 一次并记录结果。
+```
+
+### 39.6 本次学习重点
+
+这次最大的经验是：
+
+```text
+JCasC 不是“只生成配置文件”那么简单。
+如果 JCasC 中包含 nodes:，Jenkins 启动时可能立刻创建并启动 agent；
+如果对应 SSH 插件有问题，controller 可能直接启动失败。
+
+如果 JCasC 中包含 jobs:，它依赖 Job DSL 插件；
+如果 Job DSL 插件缺失，controller 也可能启动失败。
+```
+
+所以后续改 JCasC 时要分阶段：
+
+```text
+先 global env / credentials
+再 jobs / seed job
+最后 nodes / agent
+```
+
+不要一次性把 `credentials + jobs + nodes` 全部打开，否则失败时很难判断是哪一层。
+
+## 40. 本轮实践记录：Step 22 seed job 运行到 Job DSL 阶段后 sandbox 失败
+
+本节解决的问题：
+
+```text
+运行 seed/jenkins-robotframework-seed 后，seed job 已经进入 Job DSL 阶段，但最终失败。
+```
+
+用户提供的 Console Output 关键错误：
+
+```text
+ERROR: You must configure the DSL job to run as a specific user in order to use the Groovy sandbox.
+Finished: FAILURE
+```
+
+当前判断：
+
+```text
+这不是 Job DSL Groovy 文件内容错误。
+这是 Jenkins Job DSL sandbox 安全策略问题。
+
+当前 seed-jobs.Jenkinsfile 中 jobDsl 使用了：
+sandbox: true
+
+而当前 Jenkins 未配置“以特定用户运行 DSL job”，因此 Job DSL 插件拒绝在 sandbox 模式下执行。
+```
+
+本次代码修复：
+
+```text
+文件：
+jenkins-integration/pipelines/seed-jobs.Jenkinsfile
+
+修改：
+jobDsl(..., sandbox: true)
+改为：
+jobDsl(..., sandbox: false)
+```
+
+修复理由：
+
+```text
+seed job 是受控的管理员入口；
+它只 checkout 本仓库中已经 review 的 jenkins-integration/jobs/*.groovy；
+当前目标是先打通 JCasC -> seed job -> Job DSL -> 业务 Job 生成链路。
+
+如果后续要强制 sandbox，需要额外配置 Job DSL 的运行用户 / 认证策略，再把 sandbox 打开。
+```
+
+下一步验证：
+
+```text
+1. 把修改后的 seed-jobs.Jenkinsfile 提交 / 推送到 seed job 当前使用的 REPOSITORY_REF。
+2. 重新运行 seed/jenkins-robotframework-seed。
+3. Console Output 应进入 Processing DSL script。
+4. Jenkins 应生成 / 更新：
+   - robot/robot-execution
+   - CIT/KPI_Testing/SBTS26R1/7_5_UTE5G402T813
+   - CRT/KPI_Testing/SBTS26R1/7_5_UTE5G402T813
+```
+
+常见后续失败：
+
+```text
+No such DSL method pipelineJob
+  -> Pipeline / Job DSL 相关插件不完整。
+
+Scripts not permitted
+  -> 说明仍然走了 sandbox 或脚本安全审批路径。
+
+seed job 仍使用旧 Jenkinsfile
+  -> seed job checkout 的分支不是当前修改分支，或代码未 push。
+```
+

@@ -33,7 +33,8 @@ pipeline {
                         lookupStrategy: 'JENKINS_ROOT',
                         removedJobAction: params.IGNORE_REMOVED_JOBS ? 'IGNORE' : 'DISABLE',
                         removedViewAction: 'IGNORE',
-                        sandbox: true,
+                        // This controlled seed job is run by an administrator to apply reviewed Job DSL from this repository.
+                        sandbox: false,
                     )
                 }
             }

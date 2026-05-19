@@ -2326,3 +2326,436 @@ rendered YAML 仍包含 seed/jenkins-robotframework-seed。
 3. 修复后再把 nodes: 配置重新纳入 JCasC，或者改用 UI 手工 node / inbound node 方式。
 ```
 
+## 29. 本轮实践记录：Step 12 注释 JCasC nodes 后仍触发 t813-agent
+
+用户操作：
+
+```text
+已在 /opt/jenkins_robotframework/jenkins-integration/jcasc/jenkins.yaml 中注释 nodes: 配置块。
+随后执行 sudo systemctl start jenkins。
+```
+
+结果：
+
+```text
+ExecStartPre render_jcasc.py 成功。
+Jenkins 仍然启动失败。
+日志仍然出现 t813-agent / trilead 相关错误：
+
+NoClassDefFoundError: com/trilead/ssh2/packets/PacketChannelOpenConfirmation
+PluginClassLoader for trilead-api
+```
+
+当前判断：
+
+```text
+如果 rendered YAML 中已经没有 nodes: / t813-agent，
+但 Jenkins 启动时仍然尝试 SSH launch t813-agent，
+说明触发来源很可能不是当前 JCasC 模板，而是 Jenkins home 中已经持久化的旧 node 配置：
+
+/var/lib/jenkins/nodes/t813-agent
+```
+
+下一步：
+
+```text
+先确认 rendered YAML 是否确实不包含 nodes / t813-agent；
+再确认 Jenkins home 是否存在旧 node 目录；
+如果存在，先备份并临时移走 t813-agent node 目录，让 Jenkins controller 先恢复启动。
+```
+
+验证命令：
+
+```bash
+grep -n "nodes:" /var/lib/jenkins/casc_configs/jenkins.rendered.yaml || true
+grep -n "t813-agent" /var/lib/jenkins/casc_configs/jenkins.rendered.yaml || true
+sudo ls -l /var/lib/jenkins/nodes || true
+sudo ls -l /var/lib/jenkins/nodes/t813-agent || true
+```
+
+临时隔离旧 node 配置的命令：
+
+```bash
+sudo systemctl stop jenkins || true
+sudo systemctl reset-failed jenkins
+
+sudo mkdir -p /var/lib/jenkins/nodes-backup
+sudo mv /var/lib/jenkins/nodes/t813-agent \
+  /var/lib/jenkins/nodes-backup/t813-agent.$(date +%Y%m%d%H%M%S)
+
+sudo systemctl start jenkins
+sudo systemctl status jenkins --no-pager
+```
+
+预期结果：
+
+```text
+Jenkins controller 不再启动时自动 launch t813-agent。
+Jenkins service 能进入 active/running。
+/jenkins/ 页面可访问。
+```
+
+后续处理：
+
+```text
+等 Jenkins controller 恢复后，再在插件管理器中修复 SSH Build Agents / trilead-api 插件组合，
+然后再恢复 t813-agent node。
+```
+
+## 30. 本轮实践记录：Step 13 移走旧 t813-agent node 后 Jenkins 仍未启动
+
+用户验证结果：
+
+```text
+rendered YAML 中 nodes: 已经是注释。
+/var/lib/jenkins/nodes/t813-agent/config.xml 存在，说明旧 node 配置已经持久化在 Jenkins home。
+
+用户已执行：
+sudo systemctl stop jenkins || true
+sudo systemctl reset-failed jenkins
+sudo mkdir -p /var/lib/jenkins/nodes-backup
+sudo mv /var/lib/jenkins/nodes/t813-agent /var/lib/jenkins/nodes-backup/t813-agent.<timestamp>
+sudo systemctl start jenkins
+
+结果：
+Jenkins 仍启动失败。
+```
+
+当前判断：
+
+```text
+旧 t813-agent node 已经不是当前唯一阻塞点。
+下一步必须重新抓取最新 journal，确认失败是否仍然是 trilead / SSH launcher，
+还是已经变成新的 JCasC 配置、Job DSL、credentials 或插件依赖错误。
+```
+
+下一步诊断命令：
+
+```bash
+sudo systemctl status jenkins --no-pager -l
+sudo journalctl -u jenkins -n 220 -l --no-pager
+
+sudo journalctl -u jenkins -n 220 -l --no-pager | grep -E "NoClassDefFoundError|ClassNotFoundException|trilead|t813-agent|ssh|SSH|ConfigurationAsCode|BootFailure|SEVERE|ERROR|Failed|Caused|ConfiguratorException|UnknownAttributesException|jobs|credentials" || true
+
+sudo ls -l /var/lib/jenkins/nodes || true
+grep -n "nodes:" /var/lib/jenkins/casc_configs/jenkins.rendered.yaml || true
+grep -n "t813-agent" /var/lib/jenkins/casc_configs/jenkins.rendered.yaml || true
+grep -n "jenkins-robotframework-seed" /var/lib/jenkins/casc_configs/jenkins.rendered.yaml || true
+```
+
+判断标准：
+
+```text
+如果日志仍出现 Trilead_TransportManager / 10.57.159.149：
+  -> 还有其他地方在启动 t813-agent，需要继续找持久化 node 或 cloud/queue 配置。
+
+如果不再出现 trilead，而出现 ConfigurationAsCode 的 YAML / jobs / credentials 错误：
+  -> 说明 agent 问题已绕开，下一步修 JCasC seed job 或 credentials 配置。
+
+如果 Jenkins 已经启动但 systemd 判断失败：
+  -> 需要看 Jenkins URL 和主进程退出原因。
+```
+
+## 31. 本轮实践记录：Step 14 rendered JCasC 已无有效 nodes 配置
+
+本节解决的问题：
+
+```text
+确认当前 /var/lib/jenkins/casc_configs/jenkins.rendered.yaml 是否仍会通过 JCasC 创建 t813-agent node。
+```
+
+用户执行：
+
+```bash
+grep -n "^[[:space:]]*nodes:" /var/lib/jenkins/casc_configs/jenkins.rendered.yaml || true
+grep -n "^[^#]*t813-agent" /var/lib/jenkins/casc_configs/jenkins.rendered.yaml || true
+grep -n "jenkins-robotframework-seed" /var/lib/jenkins/casc_configs/jenkins.rendered.yaml || true
+```
+
+用户验证结果：
+
+```text
+nodes: 无有效输出。
+
+t813-agent 只出现在：
+74: id: "t813-agent-ssh"
+76: description: "SSH key for t813-agent"
+
+seed job 存在：
+142: pipelineJob('seed/jenkins-robotframework-seed') {
+```
+
+当前判断：
+
+```text
+当前 rendered JCasC 已经不会创建 / 启动 t813-agent node。
+t813-agent-ssh 只是 credentials id / description，不会主动发起 SSH launch。
+seed job 定义存在，但 seed job 不会在 Jenkins 启动时自动运行。
+
+因此，如果后续日志仍出现 t813-agent / 10.57.159.149 / SSHLauncher，
+来源应继续从 Jenkins home 持久化配置、残留 Java 进程、旧 node / job 配置中排查。
+```
+
+下一步：
+
+```text
+确认 Jenkins 没有旧 java 进程残留；
+搜索 /var/lib/jenkins 中所有 t813-agent / 10.57.159.149 / SSHLauncher 引用；
+确认 /var/lib/jenkins/nodes 当前已经没有 t813-agent。
+```
+
+## 32. 本轮实践记录：Step 15 t813-agent 只存在于备份目录和 job 凭据引用
+
+用户执行：
+
+```bash
+sudo grep -R --line-number --include="config.xml" -E "t813-agent|10.57.159.149|SSHLauncher" /var/lib/jenkins 2>/dev/null || true
+```
+
+用户验证结果：
+
+```text
+/var/lib/jenkins/nodes-backup/t813-agent.20260519112928/config.xml:
+  存在 t813-agent / SSHLauncher / 10.57.159.149 / t813-agent-ssh
+
+/var/lib/jenkins/jobs/robot/jobs/robot-execution/config.xml:
+  存在 credentialsId t813-agent-ssh
+```
+
+当前判断：
+
+```text
+1. t813-agent 的旧 node 配置已经被移到 nodes-backup，不在活动 nodes 目录下。
+2. nodes-backup 只是备份目录，正常不应被 Jenkins 当成 node 加载。
+3. robot-execution job config 里的 t813-agent-ssh 只是 Pipeline 里的凭据引用，不会在 Jenkins controller 启动时主动 SSH launch agent。
+```
+
+因此，如果 Jenkins 最新启动日志仍出现：
+
+```text
+Trilead_TransportManager_receiveThread_10.57.159.149
+SSH Launch of t813-agent
+```
+
+下一步应继续排查：
+
+```text
+1. 是否还有旧 Jenkins Java 进程残留；
+2. 是否 Jenkins 正在恢复未完成的 build / queue；
+3. 是否有 queue.xml / builds / workflow resume 触发 t813-agent；
+4. 是否还有非 config.xml 文件中保存了 t813-agent / 10.57.159.149。
+```
+
+下一步诊断命令：
+
+```bash
+sudo systemctl stop jenkins || true
+sudo systemctl reset-failed jenkins
+pgrep -a -f 'jenkins.war|executable-war|winstone' || true
+
+sudo ls -la /var/lib/jenkins/nodes || true
+sudo ls -la /var/lib/jenkins/queue.xml /var/lib/jenkins/queue.xml.bak 2>/dev/null || true
+
+sudo grep -R --line-number -E "t813-agent|10.57.159.149|SSHLauncher" \
+  /var/lib/jenkins/config.xml \
+  /var/lib/jenkins/queue.xml \
+  /var/lib/jenkins/jobs \
+  /var/lib/jenkins/workflow-libs \
+  2>/dev/null || true
+```
+
+## 33. 本轮实践记录：Step 16 当前 Jenkins 已停止且 queue 为空
+
+用户验证结果：
+
+```text
+date
+Tuesday, May 19, 2026 PM01:27:07 CST
+
+sudo systemctl status jenkins --no-pager -l
+Active: inactive (dead) since Tue 2026-05-19 11:29:55 CST
+ExecStartPre render_jcasc.py: status=0/SUCCESS
+ExecStart=/usr/bin/jenkins: status=5
+Status: "Jenkins stopped"
+
+sudo journalctl -u jenkins --since "5 minutes ago" -l --no-pager
+-- No entries --
+```
+
+queue 状态：
+
+```xml
+<hudson.model.Queue_-State>
+  <items/>
+  <properties>
+    <entry>
+      <string>jenkins.model.queue.QueueIdStrategy$DefaultStrategy</string>
+      <long>0</long>
+    </entry>
+  </properties>
+</hudson.model.Queue_-State>
+```
+
+当前判断：
+
+```text
+1. Jenkins 当前没有运行。
+2. 最近 5 分钟没有新启动日志，说明当前没有新的 start 尝试。
+3. queue.xml 为空，没有 pending queue item 触发 t813-agent。
+4. 下一步需要做一次干净的单次 start，并立刻抓这一次 start 的完整日志。
+```
+
+下一步命令：
+
+```bash
+sudo systemctl reset-failed jenkins
+START_TS=$(date --iso-8601=seconds)
+echo "START_TS=$START_TS"
+sudo systemctl start jenkins || true
+sudo systemctl status jenkins --no-pager -l
+sudo journalctl -u jenkins --since "$START_TS" -l --no-pager
+```
+
+如果完整日志太长，再过滤：
+
+```bash
+sudo journalctl -u jenkins --since "$START_TS" -l --no-pager | grep -E "NoClassDefFoundError|ClassNotFoundException|trilead|t813-agent|10.57.159.149|SSHLauncher|ConfigurationAsCode|BootFailure|SEVERE|ERROR|Failed|Caused|ConfiguratorException|UnknownAttributesException|credentials|jobs" || true
+```
+
+判断标准：
+
+```text
+如果仍出现 10.57.159.149 / t813-agent：
+  -> 继续找启动阶段还有哪里触发 SSH agent。
+
+如果不再出现 t813-agent：
+  -> 当前失败点已转移到其他 JCasC / credentials / jobs 配置。
+```
+
+## 34. 本轮实践记录：Step 17 当前失败点转为 JCasC `jobs:` configurator 缺失
+
+本节解决的问题：
+
+```text
+在注释 JCasC nodes、移走旧 t813-agent node、确认 queue 为空后，
+重新执行一次干净启动，确认最新失败点是否仍然是 SSH agent / trilead。
+```
+
+用户验证结果：
+
+```text
+ExecStartPre render_jcasc.py 成功。
+Jenkins 启动过程中不再出现 t813-agent / 10.57.159.149 / trilead NoClassDefFoundError。
+```
+
+新的关键错误：
+
+```text
+Failed ConfigurationAsCode.init
+io.jenkins.plugins.casc.UnknownConfiguratorException: No configurator for the following root elements: jobs
+```
+
+同时出现非致命 warning：
+
+```text
+Found unresolved variable 'JENKINS_ROBOTFRAMEWORK_REPO_URL'. Will default to empty string
+Found unresolved variable 'JENKINS_ROBOTFRAMEWORK_GIT_REF'. Will default to empty string
+Found unresolved variable 'JENKINS_ROBOTFRAMEWORK_CREDENTIALS_ID'. Will default to empty string
+Found unresolved variable 'PIP_INDEX_URL'. Will default to empty string
+Found unresolved variable 'PIP_EXTRA_INDEX_URL'. Will default to empty string
+Found unresolved variable 'PIP_TRUSTED_HOST'. Will default to empty string
+```
+
+当前判断：
+
+```text
+1. SSH agent / trilead 问题已经被绕开，不是当前启动失败原因。
+2. 当前启动失败原因是 JCasC 不认识顶层 jobs:。
+3. JCasC 顶层 jobs: 通常需要 Job DSL 插件提供 configurator。
+4. 因此当前重点应检查 Job DSL 插件是否安装、是否启用、版本是否兼容。
+```
+
+下一步诊断命令：
+
+```bash
+sudo ls -l /var/lib/jenkins/plugins | grep -E "job-dsl|script-security|structs" || true
+sudo find /var/lib/jenkins/plugins -maxdepth 2 -iname "*job*dsl*" -o -iname "*job-dsl*"
+
+sudo grep -R "Short-Name\|Plugin-Version\|Jenkins-Version" \
+  /var/lib/jenkins/plugins/job-dsl*/META-INF/MANIFEST.MF \
+  2>/dev/null || true
+
+sudo ls -l /var/lib/jenkins/plugins/job-dsl.* 2>/dev/null || true
+sudo ls -l /var/lib/jenkins/plugins/*.disabled 2>/dev/null || true
+```
+
+判断标准：
+
+```text
+如果没有 job-dsl 插件：
+  -> 需要先安装 Job DSL 插件，JCasC 顶层 jobs: 才能生效。
+
+如果 job-dsl 存在但 disabled：
+  -> 需要启用插件。
+
+如果 job-dsl 存在但版本旧或不兼容：
+  -> 需要升级 Job DSL 及其依赖插件。
+
+如果暂时不想处理插件：
+  -> 可临时注释 JCasC 顶层 jobs:，先让 Jenkins controller 启动；
+     seed job 后续手工创建或等 Job DSL 插件修复后再恢复 JCasC jobs:。
+```
+
+## 35. 本轮实践记录：Step 18 确认 Job DSL 插件缺失
+
+本节解决的问题：
+
+```text
+确认 JCasC 报错 No configurator for root element: jobs 的原因是否为 Job DSL 插件缺失。
+```
+
+用户执行：
+
+```bash
+sudo ls -l /var/lib/jenkins/plugins | grep -E "job-dsl|script-security|structs" || true
+sudo find /var/lib/jenkins/plugins -maxdepth 2 -iname "*job*dsl*" -o -iname "*job-dsl*"
+sudo grep -R "Short-Name\|Plugin-Version\|Jenkins-Version" \
+  /var/lib/jenkins/plugins/job-dsl*/META-INF/MANIFEST.MF \
+  2>/dev/null || true
+```
+
+用户验证结果：
+
+```text
+script-security 插件存在。
+structs 插件存在。
+job-dsl 插件没有找到。
+没有 job-dsl.jpi。
+没有 job-dsl exploded plugin 目录。
+```
+
+当前判断：
+
+```text
+当前 Jenkins 启动失败的直接原因已经明确：
+JCasC rendered YAML 中存在顶层 jobs:，
+但 Jenkins 没有安装 Job DSL 插件，
+所以 Configuration as Code 不知道如何处理 jobs: root element。
+```
+
+恢复策略：
+
+```text
+先临时注释 jenkins.yaml 顶层 jobs: 块，让 Jenkins controller 启动；
+进入 Jenkins 页面后安装 Job DSL 插件；
+再恢复 jobs: 块，重新启动 / reload JCasC；
+最后确认 seed/jenkins-robotframework-seed 被 JCasC 创建。
+```
+
+注意：
+
+```text
+当前 t813-agent / trilead 问题已经通过注释 nodes: 和移走旧 node 配置绕开。
+当前阻塞点已经不是 SSH agent，而是缺 Job DSL 插件。
+```
+

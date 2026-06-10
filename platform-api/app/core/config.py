@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     jenkins_timeout_seconds: int = 30
     jenkins_insecure_tls: bool = False
     jenkins_callback_insecure_tls: bool = True
+    ai_analysis_enabled: bool = True
+    ai_analysis_model: str = "auto"
+    ai_analysis_workspace: str = "."
+    ai_analysis_max_evidence_bytes: int = 20000
+    ai_analysis_worker_poll_seconds: int = 5
 
     model_config = SettingsConfigDict(
         env_file=".env",

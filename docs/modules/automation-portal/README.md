@@ -17,6 +17,7 @@
 1. [模块总索引](index.md)
 2. overview 中的系统级架构文档
 3. [Step 1：Robot Portal B1 MVP](steps/step-01-robot-portal-b1-mvp.md)
+4. [Step 2：AI Run Detail Experience](steps/step-02-ai-run-detail-experience.md)
 
 优先回看的 overview 文档：
 

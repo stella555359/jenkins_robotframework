@@ -30,6 +30,7 @@ archive = 历史 / 参考材料
 - [项目路线图](overview/roadmap.md)
 - [GNB KPI Regression Architecture](overview/gnb-kpi-regression-architecture.md)
 - [GNB KPI System Runtime](overview/gnb-kpi-system-runtime.md)
+- [AI-Driven Intelligent Testing Platform](overview/ai-driven-intelligent-testing-platform.md)
 
 这部分负责回答：
 

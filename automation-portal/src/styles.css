@@ -317,6 +317,17 @@ tbody tr:hover {
   color: #806000;
 }
 
+.status-queued,
+.status-not-generated {
+  background: #edf2ff;
+  color: #1e3f9f;
+}
+
+.status-completed {
+  background: #e2f7e8;
+  color: #127a33;
+}
+
 .summary-grid {
   display: grid;
   gap: 14px;
@@ -389,6 +400,67 @@ tbody tr:hover {
 
 .artifact-chip a:hover {
   text-decoration: underline;
+}
+
+/* AI insight panel */
+
+.ai-insight-panel {
+  background: #f8fbff;
+}
+
+.ai-disclaimer {
+  font-size: 12px;
+  margin: 4px 0 0;
+}
+
+.ai-card-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ai-card {
+  background: #fff;
+  border: 1px solid #dfe7f3;
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.ai-card h4 {
+  margin: 0 0 8px;
+}
+
+.ai-card p {
+  margin-top: 0;
+}
+
+.ai-list {
+  margin-top: 10px;
+}
+
+.ai-list ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.ai-evidence-available {
+  border-color: #b7dfc2;
+}
+
+.ai-evidence-missing {
+  border-color: #ffd2d2;
+  color: #9f1d1d;
+}
+
+.ai-report-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.ai-report-preview {
+  max-height: 320px;
 }
 
 /* ── Workflow builder ─────────────────────────────────── */
@@ -785,7 +857,8 @@ tbody tr:hover {
   }
 
   .form-grid,
-  .summary-grid {
+  .summary-grid,
+  .ai-card-grid {
     grid-template-columns: 1fr;
   }
 

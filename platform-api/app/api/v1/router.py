@@ -3,6 +3,11 @@ from pathlib import Path
 
 from app.schemas.health import HealthResponse
 from app.core.config import settings
+from app.services.ai_analysis_service import (
+    create_ai_analysis,
+    get_ai_analysis,
+    get_ai_report,
+)
 from app.services.run_service import (
     apply_run_callback,
     delete_run,
@@ -22,6 +27,12 @@ from app.services.run_service import (
     update_run_stage,
 )
 from app.services.health_service import get_health_payload
+from app.schemas.ai_analysis import (
+    AIAnalysisCreateResponse,
+    AIAnalysisRequest,
+    AIAnalysisResult,
+    AIReportResponse,
+)
 from app.schemas.run import (
     ProgressUpdateRequest,
     ProgressUpdateResponse,
@@ -104,6 +115,21 @@ def list_run_artifacts(run_id: str) -> RunArtifactsResponse:
 @router.get("/runs/{run_id}/kpi", response_model=RunKpiResponse, tags=["run"])
 def get_run_kpi_summary(run_id: str) -> RunKpiResponse:
     return get_run_kpi(run_id)
+
+
+@router.post("/runs/{run_id}/ai-analysis", response_model=AIAnalysisCreateResponse, tags=["ai"])
+def generate_run_ai_analysis(run_id: str, request: AIAnalysisRequest) -> AIAnalysisCreateResponse:
+    return create_ai_analysis(run_id, request)
+
+
+@router.get("/runs/{run_id}/ai-analysis", response_model=AIAnalysisResult, tags=["ai"])
+def get_run_ai_analysis(run_id: str) -> AIAnalysisResult:
+    return get_ai_analysis(run_id)
+
+
+@router.get("/runs/{run_id}/ai-report", response_model=AIReportResponse, tags=["ai"])
+def get_run_ai_report(run_id: str) -> AIReportResponse:
+    return get_ai_report(run_id)
 
 
 @router.post("/runs/{run_id}/callbacks/jenkins", response_model=RunCallbackResponse, tags=["run"])

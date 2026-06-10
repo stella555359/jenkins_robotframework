@@ -25,6 +25,7 @@
 - [四模块边界与最终流程图](four-module-boundaries-and-flow.md)
 - [GNB KPI Regression Architecture](gnb-kpi-regression-architecture.md)
 - [GNB KPI System Runtime](gnb-kpi-system-runtime.md)
+- [AI-Driven Intelligent Testing Platform](ai-driven-intelligent-testing-platform.md)
 - [Automation Portal 触发真实 Robot Case 流程](automation-portal-robot-case-flow.md)
 - [Jenkins CI/CD Flow](Jenkins_ci_cd_flow.md)
 

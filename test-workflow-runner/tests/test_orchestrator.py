@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import builtins
 import json
 import sys
 from pathlib import Path
@@ -365,7 +366,7 @@ def test_orchestrator_runner_executes_dry_run_workflow(orchestrator_repo: Path) 
     assert ul_result.summary["cwd"] == str(orchestrator_repo)
 
 
-def test_orchestrator_runner_supports_internal_followup_handlers_in_dry_run(orchestrator_repo: Path) -> None:
+def test_orchestrator_runner_supports_internal_followup_handlers_in_dry_run(monkeypatch, orchestrator_repo: Path) -> None:
     loader = RequestLoader(orchestrator_repo)
     payload = build_request_payload()
     payload["traffic_plan"]["stages"].append(
@@ -410,6 +411,18 @@ def test_orchestrator_runner_supports_internal_followup_handlers_in_dry_run(orch
     resolver = EnvConfigResolver(orchestrator_repo)
     context = resolver.load_testline_context(request.testline)
     runner = OrchestratorRunner()
+    original_import = builtins.__import__
+
+    def fail_on_internal_tool_import(name, *args, **kwargs):
+        blocked_modules = (
+            "internal_tools.kpi_detector.service",
+            "internal_tools.kpi_generator.service",
+        )
+        if name.startswith(blocked_modules):
+            raise AssertionError(f"dry-run must not import real internal tool service: {name}")
+        return original_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", fail_on_internal_tool_import)
 
     state = runner.execute(request, context, OrchestratorState())
 

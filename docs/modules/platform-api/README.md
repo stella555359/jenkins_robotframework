@@ -11,8 +11,9 @@
 1. [模块总索引](index.md)
 2. [Testing Workflow](guides/testing-workflow.md)
 3. [API 设计与调用链](guides/api-design-and-flow.md)
-4. `steps/` 下当前正在推进的 step
-5. `testing-training/` 和 `testing-automation/` 下对应 step 的测试文档
+4. [Step 16：AI Analysis Contract](steps/step-16-ai-analysis-contract.md)
+5. `steps/` 下当前正在推进的 step
+6. `testing-training/` 和 `testing-automation/` 下对应 step 的测试文档
 
 如果你要看跨模块的 GNB KPI 系统方案，请转到：
 

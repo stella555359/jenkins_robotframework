@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from internal_tools.kpi_generator import run_generator_from_payload
-
 from .base import BaseHandler, HandlerContext
 
 
@@ -31,6 +29,8 @@ class KpiGeneratorHandler(BaseHandler):
             )
 
         try:
+            from internal_tools.kpi_generator.service import run_generator_from_payload
+
             result = run_generator_from_payload(payload=params, item_id=context.item.item_id)
         except Exception as exc:  # noqa: BLE001
             return self.build_failure(

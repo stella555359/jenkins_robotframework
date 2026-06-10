@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from internal_tools.kpi_detector import run_detector_from_payload
-
 from .base import BaseHandler, HandlerContext
 
 
@@ -34,6 +32,8 @@ class KpiDetectorHandler(BaseHandler):
             )
 
         try:
+            from internal_tools.kpi_detector.service import run_detector_from_payload
+
             result = run_detector_from_payload(payload=params, item_id=context.item.item_id)
         except Exception as exc:  # noqa: BLE001
             return self.build_failure(

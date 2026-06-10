@@ -48,6 +48,80 @@ export type RunKpi = {
   artifact_manifest: ArtifactDescriptor[];
 };
 
+export type AIConfidence = "high" | "medium" | "low";
+
+export type AIAnalysisStatus = "queued" | "running" | "completed" | "failed";
+
+export type AIEvidenceRef = {
+  kind: string;
+  label: string;
+  path?: string | null;
+  url?: string | null;
+  available: boolean;
+  metadata?: Record<string, unknown>;
+};
+
+export type AILogSummary = {
+  one_line_summary: string;
+  failed_stage?: string | null;
+  failed_command?: string | null;
+  key_errors: string[];
+  impact?: string | null;
+  next_step?: string | null;
+};
+
+export type AIRootCause = {
+  category: string;
+  confidence: AIConfidence;
+  symptom: string;
+  evidence: Array<{
+    source: string;
+    excerpt: string;
+    stage?: string | null;
+    artifact_path?: string | null;
+  }>;
+  recommended_actions: string[];
+  needs_human_confirmation: boolean;
+};
+
+export type AITestReport = {
+  title: string;
+  status: string;
+  summary_markdown: string;
+  sections: Array<{
+    title: string;
+    content_markdown: string;
+  }>;
+};
+
+export type AIAnalysisResult = {
+  run_id: string;
+  analysis_id: string;
+  analysis_status: AIAnalysisStatus;
+  analysis_version: string;
+  generated_at: string;
+  input_refs: AIEvidenceRef[];
+  log_summary: AILogSummary;
+  root_cause: AIRootCause;
+  test_report: AITestReport;
+  quality_signals: Record<string, unknown>;
+  message?: string | null;
+};
+
+export type AIAnalysisCreateResponse = {
+  run_id: string;
+  analysis_id: string;
+  analysis_status: AIAnalysisStatus;
+  message: string;
+};
+
+export type AIReportResponse = {
+  run_id: string;
+  report_format: "markdown";
+  content: string;
+  generated_at: string;
+};
+
 export type RunCreatePayload = {
   testline: string;
   robotcase_path?: string;
@@ -219,6 +293,30 @@ export const api = {
   },
   getKpi(runId: string) {
     return requestJson<RunKpi>(`/runs/${encodeURIComponent(runId)}/kpi`);
+  },
+  async getAiAnalysis(runId: string) {
+    try {
+      return await requestJson<AIAnalysisResult>(`/runs/${encodeURIComponent(runId)}/ai-analysis`);
+    } catch (err) {
+      if (err instanceof Error && err.message === "AI analysis not generated.") {
+        return null;
+      }
+      throw err;
+    }
+  },
+  generateAiAnalysis(runId: string) {
+    return requestJson<AIAnalysisCreateResponse>(`/runs/${encodeURIComponent(runId)}/ai-analysis`, {
+      method: "POST",
+      body: JSON.stringify({
+        refresh: true,
+        analysis_mode: "cursor_sdk",
+        include_console: true,
+        include_artifacts: true,
+      }),
+    });
+  },
+  getAiReport(runId: string) {
+    return requestJson<AIReportResponse>(`/runs/${encodeURIComponent(runId)}/ai-report`);
   },
   getOperationCatalog() {
     return requestJson<{ items: OperationDescriptor[] }>("/workflow/operation-catalog");

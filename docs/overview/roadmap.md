@@ -17,6 +17,7 @@
 - `test-workflow-runner`：Jenkins 配置、Pipeline、部署编排
 - `platform-api`：FastAPI 后端，统一 API、任务记录、结果聚合
 - `automation-portal`：React 门户层，负责触发、查看、分析
+- `AI analysis layer`：基于 Jenkins artifacts、runner result、Robot report、KPI summary 生成日志摘要、RCA 建议和测试报告
 
 前端构建策略统一采用：
 
@@ -65,6 +66,10 @@
    - 单独承接 runner、generator、detector 的执行层 step
 3. 最后再推进 `automation-portal`
    - 在 backend 和 execution 主线稳定后，再展开 workflow builder 和结果展示
+4. AI 化演进作为跨模块增强线推进
+   - 第一阶段只做 AI Log Summary、AI RCA Assistant、AI Test Report Generator
+   - 先沉淀证据采集、结构化 schema、后端 API 契约和 Run Detail 展示体验
+   - 详细蓝图见 `docs/overview/ai-driven-intelligent-testing-platform.md`
 
 一句话记忆：
 

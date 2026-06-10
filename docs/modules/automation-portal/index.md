@@ -20,6 +20,7 @@
 ## 当前进度看板
 
 - [x] Step 1：Robot Portal B1 MVP
+- [ ] Step 2：AI Run Detail Experience
 
 ## 预留的后续 step 方向
 
@@ -29,12 +30,14 @@
 2. 最小 workflow builder（先结构化表单，不急着拖拽）
 3. KPI followup 配置页面
 4. artifact / detector 报告增强展示
+5. AI Run Insight：AI Summary / RCA / Evidence / Report
 
 ## 当前入口建议
 
 如果你现在只是想确认这条模块线未来要做什么，优先看：
 
 - `docs/modules/automation-portal/steps/step-01-robot-portal-b1-mvp.md`
+- `docs/modules/automation-portal/steps/step-02-ai-run-detail-experience.md`
 - `docs/overview/gnb-kpi-regression-architecture.md`
 - `docs/overview/gnb-kpi-system-runtime.md`
 

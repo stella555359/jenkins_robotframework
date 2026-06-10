@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { api, ArtifactDescriptor, jenkinsArtifactUrl, jenkinsJobUrl, RunDetail as RunDetailModel, RunKpi } from "../api";
+import {
+  api,
+  AIAnalysisResult,
+  AIReportResponse,
+  ArtifactDescriptor,
+  jenkinsArtifactUrl,
+  jenkinsJobUrl,
+  RunDetail as RunDetailModel,
+  RunKpi,
+} from "../api";
 
 type LocationState = {
   triggerError?: string;
@@ -102,6 +111,145 @@ function InfoTable({ items }: { items: [string, string | null | undefined][] }) 
   );
 }
 
+function AIInsightPanel({
+  analysis,
+  report,
+  isLoading,
+  isGenerating,
+  error,
+  onGenerate,
+  onRefresh,
+}: {
+  analysis: AIAnalysisResult | null;
+  report: AIReportResponse | null;
+  isLoading: boolean;
+  isGenerating: boolean;
+  error: string | null;
+  onGenerate: () => void;
+  onRefresh: () => void;
+}) {
+  const status = analysis?.analysis_status || "not_generated";
+  const reportContent = report?.content || analysis?.test_report.summary_markdown || "";
+
+  async function handleCopyReport() {
+    if (!reportContent) {
+      return;
+    }
+    await navigator.clipboard.writeText(reportContent);
+  }
+
+  return (
+    <div className="detail-section ai-insight-panel">
+      <div className="detail-section-header">
+        <div>
+          <h3>AI Run Insight</h3>
+          <p className="muted ai-disclaimer">
+            AI suggestions are generated from Jenkins artifacts and run metadata. Confirm before changing environment or rerunning jobs.
+          </p>
+        </div>
+        <div className="actions">
+          <span className={`badge status-${status.replace(/_/g, "-")}`}>{status}</span>
+          <button type="button" className="small secondary" onClick={onRefresh} disabled={isLoading || isGenerating}>
+            Refresh
+          </button>
+          <button type="button" className="small" onClick={onGenerate} disabled={isGenerating}>
+            {isGenerating ? "Generating..." : analysis ? "Regenerate" : "Generate AI Analysis"}
+          </button>
+        </div>
+      </div>
+
+      {isLoading ? <p className="muted">Loading AI analysis...</p> : null}
+      {error ? <p className="error">{error}</p> : null}
+
+      {!analysis && !isLoading ? (
+        <p className="muted">No AI analysis has been generated for this run yet.</p>
+      ) : null}
+
+      {analysis && ["queued", "running"].includes(analysis.analysis_status) ? (
+        <p className="muted">AI analysis is {analysis.analysis_status}. This page will refresh while the worker processes it.</p>
+      ) : null}
+
+      {analysis ? (
+        <div className="ai-card-grid">
+          <div className="ai-card">
+            <h4>Summary</h4>
+            <p>{analysis.log_summary.one_line_summary || "No summary generated yet."}</p>
+            <InfoTable
+              items={[
+                ["Failed stage", analysis.log_summary.failed_stage],
+                ["Failed command", analysis.log_summary.failed_command],
+                ["Impact", analysis.log_summary.impact],
+                ["Next step", analysis.log_summary.next_step],
+              ]}
+            />
+            {analysis.log_summary.key_errors.length > 0 ? (
+              <div className="ai-list">
+                <strong>Key errors</strong>
+                <ul>
+                  {analysis.log_summary.key_errors.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="ai-card">
+            <h4>RCA</h4>
+            <InfoTable
+              items={[
+                ["Category", analysis.root_cause.category],
+                ["Confidence", analysis.root_cause.confidence],
+                ["Symptom", analysis.root_cause.symptom],
+                ["Human confirm", analysis.root_cause.needs_human_confirmation ? "required" : "not required"],
+              ]}
+            />
+            {analysis.root_cause.recommended_actions.length > 0 ? (
+              <div className="ai-list">
+                <strong>Recommended actions</strong>
+                <ul>
+                  {analysis.root_cause.recommended_actions.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="ai-card">
+            <h4>Evidence</h4>
+            {analysis.input_refs.length === 0 ? (
+              <p className="muted">No evidence references recorded.</p>
+            ) : (
+              <div className="artifact-compact">
+                {analysis.input_refs.map((ref, index) => (
+                  <span key={`${ref.kind}-${index}`} className={`artifact-chip ai-evidence-${ref.available ? "available" : "missing"}`}>
+                    {ref.url ? (
+                      <a href={ref.url} target="_blank" rel="noreferrer">{ref.label}</a>
+                    ) : (
+                      ref.label
+                    )}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="ai-card">
+            <div className="ai-report-header">
+              <h4>Report Preview</h4>
+              <button type="button" className="small secondary" onClick={() => void handleCopyReport()} disabled={!reportContent}>
+                Copy Report
+              </button>
+            </div>
+            <pre className="json-compact ai-report-preview">{reportContent || "No report content generated yet."}</pre>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 /* ── Main component ───────────────────────────────────── */
 
 export function RunDetail() {
@@ -112,6 +260,11 @@ export function RunDetail() {
   const [detail, setDetail] = useState<RunDetailModel | null>(null);
   const [artifacts, setArtifacts] = useState<ArtifactDescriptor[]>([]);
   const [kpi, setKpi] = useState<RunKpi | null>(null);
+  const [aiAnalysis, setAiAnalysis] = useState<AIAnalysisResult | null>(null);
+  const [aiReport, setAiReport] = useState<AIReportResponse | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [isAiGenerating, setIsAiGenerating] = useState(false);
   const [error, setError] = useState<string | null>(triggerError || null);
   const [isLoading, setIsLoading] = useState(true);
   const [isTriggering, setIsTriggering] = useState(false);
@@ -123,17 +276,32 @@ export function RunDetail() {
     }
     setError(triggerError || null);
     try {
-      const [detailResponse, artifactsResponse, kpiResponse] = await Promise.all([
+      setIsAiLoading(true);
+      const [detailResponse, artifactsResponse, kpiResponse, aiResponse] = await Promise.all([
         api.getRun(runId),
         api.getArtifacts(runId),
-        api.getKpi(runId)
+        api.getKpi(runId),
+        api.getAiAnalysis(runId)
       ]);
       setDetail(detailResponse);
       setArtifacts(artifactsResponse.items);
       setKpi(kpiResponse);
+      setAiAnalysis(aiResponse);
+      setAiError(null);
+      if (aiResponse?.analysis_status === "completed") {
+        try {
+          setAiReport(await api.getAiReport(runId));
+        } catch (err) {
+          setAiReport(null);
+          setAiError(err instanceof Error ? err.message : "Failed to load AI report.");
+        }
+      } else {
+        setAiReport(null);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load run.");
     } finally {
+      setIsAiLoading(false);
       setIsLoading(false);
     }
   }, [runId, triggerError]);
@@ -143,14 +311,15 @@ export function RunDetail() {
   }, [load]);
 
   useEffect(() => {
-    if (!detail || ["passed", "failed"].includes(detail.status)) {
+    const aiIsActive = aiAnalysis && ["queued", "running"].includes(aiAnalysis.analysis_status);
+    if (!detail || (["passed", "failed"].includes(detail.status) && !aiIsActive)) {
       return;
     }
     const timer = window.setInterval(() => {
       void load();
     }, 5000);
     return () => window.clearInterval(timer);
-  }, [detail, load]);
+  }, [aiAnalysis, detail, load]);
 
   async function handleRetryTrigger() {
     if (!runId) {
@@ -166,6 +335,22 @@ export function RunDetail() {
       await load();
     } finally {
       setIsTriggering(false);
+    }
+  }
+
+  async function handleGenerateAiAnalysis() {
+    if (!runId) {
+      return;
+    }
+    setIsAiGenerating(true);
+    setAiError(null);
+    try {
+      await api.generateAiAnalysis(runId);
+      await load();
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : "Failed to generate AI analysis.");
+    } finally {
+      setIsAiGenerating(false);
     }
   }
 
@@ -283,6 +468,16 @@ export function RunDetail() {
               <strong>{detail.message}</strong>
             </div>
           </div>
+
+          <AIInsightPanel
+            analysis={aiAnalysis}
+            report={aiReport}
+            isLoading={isAiLoading}
+            isGenerating={isAiGenerating}
+            error={aiError}
+            onGenerate={() => void handleGenerateAiAnalysis()}
+            onRefresh={() => void load()}
+          />
 
           {/* ── Artifacts (single zip download) ── */}
           <div className="detail-section">

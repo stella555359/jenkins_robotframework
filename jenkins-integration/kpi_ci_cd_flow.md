@@ -3622,6 +3622,12 @@ checkout_sources.py 阶段失败:
 
 python -m test_workflow_runner.cli 失败:
   需要看 artifacts/python-orchestrator-request.json 是否生成正确，以及 test-workflow-runner 是否 checkout 到 workspace。
+
+ModuleNotFoundError: No module named 'scipy':
+  如果出现在 dry-run 启动阶段，说明 KPI generator / detector 的真实 internal tool 依赖被过早导入。
+  dry-run 只应返回 handler summary，不应要求 scipy。
+  如果出现在真实 KPI detector 执行阶段，说明当前 /home/ute/CIENV/<TESTLINE> 缺少 test-workflow-runner/requirements.txt 里的依赖。
+  真实 run 前需要在对应 CIENV 中执行 python -m pip install -r test-workflow-runner/requirements.txt。
 ```
 
 复盘问题：

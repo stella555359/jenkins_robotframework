@@ -51,6 +51,7 @@
 - [KPI Runner Jenkinsfile](../../../jenkins-integration/pipelines/kpi-runner.Jenkinsfile)
 - [scripts 目录说明](../../../jenkins-integration/scripts/README.md)
 - [Jenkins Integration Layer 与执行流程](guides/jenkins-integration-layer-and-flow.md)
+- [AI Evidence Collection for Jenkins Runs](guides/ai-evidence-collection.md)
 - [Robot 最小执行路径](guides/robot-minimal-execution-path.md)
 
 ## 这条模块线的边界

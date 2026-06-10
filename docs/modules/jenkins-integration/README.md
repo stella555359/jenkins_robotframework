@@ -23,8 +23,9 @@
 
 1. [模块总索引](index.md)
 2. [Jenkins Integration Layer 与执行流程](guides/jenkins-integration-layer-and-flow.md)
-3. [Robot 最小执行路径](guides/robot-minimal-execution-path.md)
-4. 再回到具体执行器模块
+3. [AI Evidence Collection for Jenkins Runs](guides/ai-evidence-collection.md)
+4. [Robot 最小执行路径](guides/robot-minimal-execution-path.md)
+5. 再回到具体执行器模块
 
 ## 当前目录怎么理解
 

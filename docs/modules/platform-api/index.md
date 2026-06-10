@@ -69,6 +69,7 @@
 - [ ] Step 13：把 run detail 升级为 execution-ready 详情入口
 - [x] Step 14：新增 internal_tool standalone KPI 工具 run contract
 - [x] Step 15：新增 Robot run trigger contract（B1 create/trigger 分离）
+- [ ] Step 16：AI Analysis Contract
 
 ## 最近 4 个 step
 
@@ -85,6 +86,7 @@
 - [Step 13：把 run detail 升级为 execution-ready 详情入口](steps/step-13-execution-ready-run-detail.md)
 - [Step 14：internal tool run contract](steps/step-14-internal-tool-run-contract.md)
 - [Step 15：Robot run trigger contract](steps/step-15-robot-trigger-contract.md)
+- [Step 16：AI Analysis Contract](steps/step-16-ai-analysis-contract.md)
 
 ## 早期步骤简表
 
@@ -104,6 +106,7 @@
 3. [Step 10：executor-agnostic run contract](steps/step-10-executor-agnostic-run-contract.md)
 4. [Step 11：Jenkins handoff / callback](steps/step-11-jenkins-trigger-and-callback.md)
 5. [Step 12：artifact / KPI metadata](steps/step-12-artifact-and-kpi-metadata-query-surface.md)
+6. [Step 16：AI Analysis Contract](steps/step-16-ai-analysis-contract.md)
 
 ## 当前协作约定
 

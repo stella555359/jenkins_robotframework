@@ -12,7 +12,7 @@ class AIAnalysisRequest(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     refresh: bool = False
-    analysis_mode: AIAnalysisMode = "cursor_sdk"
+    analysis_mode: AIAnalysisMode = "rules_first"
     include_console: bool = True
     include_artifacts: bool = True
 

@@ -75,6 +75,25 @@ def test_create_ai_analysis_queues_record(client, create_run_via_api, tmp_path) 
 
 @allure.feature("AI Analysis")
 @allure.story("AI analysis contract")
+@allure.title("POST /api/runs/{run_id}/ai-analysis defaults to rules-first mode")
+def test_create_ai_analysis_defaults_to_rules_first(client, create_run_via_api) -> None:
+    run = create_run_via_api()
+    run_id = run["run_id"]
+
+    response = client.post(
+        f"/api/runs/{run_id}/ai-analysis",
+        json={"refresh": True, "include_console": True, "include_artifacts": True},
+    )
+
+    assert response.status_code == 200
+    record = get_latest_ai_analysis_record(run_id)
+    assert record is not None
+    assert record["analysis_mode"] == "rules_first"
+    assert record["request_json"]["analysis_mode"] == "rules_first"
+
+
+@allure.feature("AI Analysis")
+@allure.story("AI analysis contract")
 @allure.title("GET /api/runs/{run_id}/ai-analysis returns queued analysis result")
 def test_get_ai_analysis_returns_queued_result(client, create_run_via_api) -> None:
     run = create_run_via_api()

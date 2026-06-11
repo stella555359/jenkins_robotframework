@@ -1,5 +1,4 @@
 import json
-import os
 import re
 import ssl
 import time
@@ -269,32 +268,19 @@ def _rules_first_payload(run_record: dict[str, Any], evidence_texts: list[dict[s
     }
 
 
-def _invoke_cursor_sdk(prompt: str) -> dict[str, Any]:
-    api_key = os.environ.get("CURSOR_API_KEY", "").strip()
-    if not api_key:
-        raise RuntimeError("CURSOR_API_KEY is not configured for AI analysis worker.")
-    try:
-        from cursor_sdk import Agent, AgentOptions, CursorAgentError, LocalAgentOptions
-    except ImportError as exc:
-        raise RuntimeError("cursor-sdk package is not installed in the platform-api environment.") from exc
+def _invoke_cursor_rest(prompt: str) -> dict[str, Any]:
+    from app.services.cursor_rest_client import CursorApiError, prompt_cloud_no_repo
 
     try:
-        result = Agent.prompt(
-            prompt,
-            AgentOptions(
-                api_key=api_key,
-                model=settings.ai_analysis_model,
-                local=LocalAgentOptions(cwd=settings.ai_analysis_workspace),
-            ),
-        )
-    except CursorAgentError as exc:
-        raise RuntimeError(f"Cursor SDK startup failed: {exc}") from exc
-
-    if getattr(result, "status", "") == "error":
-        raise RuntimeError(f"Cursor SDK run failed: {getattr(result, 'result', '')}")
-    raw_result = getattr(result, "result", "")
-    if not isinstance(raw_result, str):
-        raw_result = str(raw_result)
+        raw_result = prompt_cloud_no_repo(prompt, model_id=settings.ai_analysis_model)
+    except CursorApiError as exc:
+        if exc.status_code == 403:
+            raise RuntimeError(
+                "Cursor Cloud Agent API returned 403 feature_unavailable. "
+                "Confirm Cloud Agents is enabled for this account/key in Cursor Dashboard, "
+                "or run platform-api/scripts/cursor_api_smoke.py for details."
+            ) from exc
+        raise RuntimeError(f"Cursor REST API failed: {exc}") from exc
     return _extract_json_object(raw_result)
 
 
@@ -338,7 +324,7 @@ def process_ai_analysis_record(analysis_record: dict[str, Any]) -> AIAnalysisRes
         payload = _rules_first_payload(normalized_run, evidence_texts)
     else:
         prompt = _build_prompt(normalized_run, input_refs, evidence_texts)
-        payload = _invoke_cursor_sdk(prompt)
+        payload = _invoke_cursor_rest(prompt)
 
     return _result_from_payload(
         run_record=normalized_run,
@@ -380,7 +366,7 @@ def process_next_ai_analysis() -> bool:
                 category="ai_worker_error",
                 confidence="low",
                 symptom=str(exc),
-                recommended_actions=["Check AI worker logs, CURSOR_API_KEY, Cursor SDK package, and Jenkins evidence access."],
+                recommended_actions=["Check AI worker logs, CURSOR_API_KEY, Cursor REST API access, and Jenkins evidence access."],
                 needs_human_confirmation=True,
             ),
             test_report=AITestReport(

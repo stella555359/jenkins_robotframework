@@ -3,6 +3,5 @@ uvicorn[standard]>=0.30.0
 pydantic>=2.8.0
 pydantic-settings>=2.3.0
 python-multipart>=0.0.9
-cursor-sdk
 pytest>=8.0.0
 allure-pytest>=2.13.5

@@ -144,7 +144,7 @@ function AIInsightPanel({
         <div>
           <h3>AI Run Insight</h3>
           <p className="muted ai-disclaimer">
-            AI suggestions are generated from Jenkins artifacts and run metadata. Confirm before changing environment or rerunning jobs.
+            Rules-first analysis is generated from Jenkins artifacts and run metadata. Confirm before changing environment or rerunning jobs.
           </p>
         </div>
         <div className="actions">
@@ -153,7 +153,7 @@ function AIInsightPanel({
             Refresh
           </button>
           <button type="button" className="small" onClick={onGenerate} disabled={isGenerating}>
-            {isGenerating ? "Generating..." : analysis ? "Regenerate" : "Generate AI Analysis"}
+            {isGenerating ? "Generating..." : analysis ? "Regenerate" : "Generate Rules Analysis"}
           </button>
         </div>
       </div>

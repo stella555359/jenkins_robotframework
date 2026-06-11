@@ -25,7 +25,7 @@ Copy Report
 2. 失败时的 RCA 分类、confidence、证据片段和建议动作。
 3. 本次 AI 使用了哪些 evidence。
 4. 可复制的 Markdown 测试报告。
-5. 如果 AI 分析还没生成，可以点击 Generate AI Analysis。
+5. 如果分析还没生成，可以点击 Generate Rules Analysis，先走 `rules_first` 可闭环路径。
 ```
 
 ## 页面信息架构
@@ -228,7 +228,7 @@ Copy Report 按钮
 
 ```text
 not_generated:
-  显示 Generate AI Analysis 按钮。
+  显示 Generate Rules Analysis 按钮。
 
 generating:
   按钮 disabled，显示 Generating...
@@ -299,7 +299,7 @@ flowchart TD
 
 ```text
 not_generated:
-  aiAnalysis=null，显示 Generate AI Analysis。
+  aiAnalysis=null，显示 Generate Rules Analysis。
 
 queued / running:
   显示当前状态 badge，并随页面定时刷新。
@@ -325,7 +325,7 @@ npm run build
 ```text
 1. TypeScript 编译通过。
 2. 打开 /runs/<RUN_ID> 能看到 AI Run Insight 区域。
-3. 没有分析结果时显示 Generate AI Analysis。
+3. 没有分析结果时显示 Generate Rules Analysis。
 4. 点击 Generate 后后端收到 POST /api/runs/{run_id}/ai-analysis。
 5. worker 完成后页面展示 Summary / RCA / Evidence / Report Preview。
 6. Copy Report 可以复制 Markdown 内容。
@@ -386,7 +386,7 @@ https://<server>/runs/<RUN_ID>
 
 ```text
 Run Detail 页面出现 AI Run Insight 区域。
-没有分析结果时能看到 Generate AI Analysis。
+没有分析结果时能看到 Generate Rules Analysis。
 生成后能看到 Summary / RCA / Evidence / Report。
 Copy Report 能复制 Markdown。
 ```

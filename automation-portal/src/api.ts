@@ -51,6 +51,7 @@ export type RunKpi = {
 export type AIConfidence = "high" | "medium" | "low";
 
 export type AIAnalysisStatus = "queued" | "running" | "completed" | "failed";
+export type AIAnalysisMode = "rules_first" | "cursor_sdk";
 
 export type AIEvidenceRef = {
   kind: string;
@@ -309,7 +310,7 @@ export const api = {
       method: "POST",
       body: JSON.stringify({
         refresh: true,
-        analysis_mode: "cursor_sdk",
+        analysis_mode: "rules_first" satisfies AIAnalysisMode,
         include_console: true,
         include_artifacts: true,
       }),

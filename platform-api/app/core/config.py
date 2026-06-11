@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     ai_analysis_workspace: str = "."
     ai_analysis_max_evidence_bytes: int = 20000
     ai_analysis_worker_poll_seconds: int = 5
+    cursor_api_base_url: str = "https://api.cursor.com"
+    cursor_api_timeout_seconds: int = 60
+    cursor_api_run_timeout_seconds: int = 600
+    cursor_api_poll_seconds: int = 5
+    cursor_api_use_proxy: bool = True
+    cursor_api_insecure_tls: bool = False
 
     model_config = SettingsConfigDict(
         env_file=".env",

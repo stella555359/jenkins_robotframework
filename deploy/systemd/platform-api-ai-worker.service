@@ -1,0 +1,15 @@
+[Unit]
+Description=Platform API AI Analysis Worker
+After=network.target platform-api.service
+
+[Service]
+Type=simple
+User=ute
+WorkingDirectory=/opt/jenkins_robotframework/platform-api
+Environment="PATH=/opt/jenkins_robotframework/platform-api/venv/bin"
+ExecStart=/opt/jenkins_robotframework/platform-api/venv/bin/python -m app.services.ai_analysis_worker
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

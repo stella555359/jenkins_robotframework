@@ -991,6 +991,72 @@ curl -k https://127.0.0.1/api/health
 2. `curl -k https://127.0.0.1/api/health` 成功，说明 Nginx 到 `platform-api` 的反代也已恢复。
 3. 如果本机 `8000` 不通，就不要继续看 Nginx，先修 `platform-api` 本身。
 
+### 9.5 AI analysis worker systemd 服务
+
+`AI Run Insight` 点击生成后，后端只会把任务写入 `ai_analysis` 队列表。真正把 queued 任务推进到 `completed` / `failed` 的是独立 worker：
+
+```text
+platform-api/app/services/ai_analysis_worker.py
+```
+
+当前生产默认使用 `rules_first`，不需要 `CURSOR_API_KEY`。只有显式请求 `analysis_mode=cursor_sdk` 时，才需要 Cursor Cloud Agents API 权限。
+
+仓库内 service 模板：
+
+```text
+/opt/jenkins_robotframework/deploy/systemd/platform-api-ai-worker.service
+```
+
+系统文件位置：
+
+```text
+/etc/systemd/system/platform-api-ai-worker.service
+```
+
+安装：
+
+```bash
+sudo cp /opt/jenkins_robotframework/deploy/systemd/platform-api-ai-worker.service \
+  /etc/systemd/system/platform-api-ai-worker.service
+
+sudo systemctl daemon-reload
+sudo systemctl enable platform-api-ai-worker
+sudo systemctl restart platform-api-ai-worker
+sudo systemctl status platform-api-ai-worker --no-pager
+```
+
+查看日志：
+
+```bash
+sudo journalctl -u platform-api-ai-worker -n 100 --no-pager
+sudo journalctl -u platform-api-ai-worker -f
+```
+
+服务通过标准：
+
+```text
+1. systemctl status platform-api-ai-worker 显示 active (running)。
+2. Portal 点击 Generate Rules Analysis 后，GET /ai-analysis 先看到 queued。
+3. 几秒后 GET /ai-analysis 变为 completed 或 failed。
+4. completed 时页面展示 Summary / RCA / Evidence / Report Preview。
+```
+
+常见失败判断：
+
+```text
+一直 queued:
+  platform-api-ai-worker 没启动，或 worker 没连到同一个 RUNS_DB_PATH。
+
+worker 启动后立刻退出:
+  查看 journalctl，优先确认 venv 路径、WorkingDirectory 和依赖安装。
+
+completed 但 RCA category=unknown:
+  rules_first 没命中当前内置规则，需要补规则或提供更完整 console/artifact evidence。
+
+failed 且提示 Cursor / 403:
+  说明请求走了 cursor_sdk，不是 rules_first。先确认 Portal 或 curl 请求体里的 analysis_mode。
+```
+
 ## 10. automation-portal 部署
 
 当前服务器排查结果如果是：

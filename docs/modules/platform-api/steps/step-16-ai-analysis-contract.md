@@ -421,11 +421,23 @@ curl -s http://127.0.0.1:8000/api/runs/<RUN_ID>/ai-report
 worker 验证命令：
 
 ```bash
-cd /path/to/jenkins_robotframework/platform-api
-python -m app.services.ai_analysis_worker
+sudo cp /opt/jenkins_robotframework/deploy/systemd/platform-api-ai-worker.service \
+  /etc/systemd/system/platform-api-ai-worker.service
+
+sudo systemctl daemon-reload
+sudo systemctl enable platform-api-ai-worker
+sudo systemctl restart platform-api-ai-worker
+sudo systemctl status platform-api-ai-worker --no-pager
 ```
 
 说明：`rules_first` 不需要 `CURSOR_API_KEY`。只有显式使用 `analysis_mode=cursor_sdk` 时才需要 Cursor Cloud Agents API 权限。
+
+worker 日志：
+
+```bash
+sudo journalctl -u platform-api-ai-worker -n 100 --no-pager
+sudo journalctl -u platform-api-ai-worker -f
+```
 
 预期结果：
 
@@ -445,11 +457,11 @@ GET /ai-analysis 返回 404:
 POST /ai-analysis 返回 404:
   run_id 不存在，先查 GET /api/runs/{run_id}。
 
-analysis_status=failed 且提示 CURSOR_API_KEY:
-  worker 环境没有配置 Cursor API Key。
+analysis_status 一直 queued:
+  platform-api-ai-worker 没启动，或 worker 没连到同一个 RUNS_DB_PATH。
 
-analysis_status=failed 且提示 cursor-sdk:
-  platform-api 虚拟环境未安装 cursor-sdk，重新 pip install -r requirements.txt。
+analysis_status=failed 且提示 Cursor / 403:
+  请求走了 cursor_sdk，不是当前默认 rules_first。先确认 Portal 或 curl 请求体里的 analysis_mode。
 
 RCA evidence 很少:
   Jenkins artifact manifest 没有可读 path/url，或 Jenkins consoleText 不能访问。

@@ -341,7 +341,8 @@ AI 区域显示 not generated:
   优先检查 platform-api 是否已经实现 POST /ai-analysis。
 
 AI 区域一直 queued:
-  后端已入队，但 ai_analysis_worker 没有运行或 worker 无法访问 Cursor SDK。
+  后端已入队，但 platform-api-ai-worker 服务没有运行，或 worker 没连到同一个 RUNS_DB_PATH。
+  先检查 sudo systemctl status platform-api-ai-worker --no-pager。
 
 Report Preview 为空:
   后端 /ai-report 未返回 content，或 worker 未生成 report_markdown。

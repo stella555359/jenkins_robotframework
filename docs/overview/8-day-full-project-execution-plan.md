@@ -19,7 +19,7 @@ Cursor 重启或新会话后，先按下面顺序恢复上下文：
 - 当前模块：`test-workflow-runner`
 - 当前小 step：Step 3：接入 testline_configuration / robotws / TAF gateway 的运行时契约
 - 当前状态：Day 1 / Step 13 已由用户验证通过；执行层模块已完成 Step 1 / 2 / 4 / 5 的代码与文档收口，当前开始收口 Step 3 的真实运行时契约。
-- AI Log Analysis 状态：第一期手动触发 MVP 已完成；worker 已改为 **Cursor REST API 直调**（`cursor_rest_client.py`），不再依赖 Python `cursor-sdk`。新增 `scripts/cursor_api_smoke.py` 与 `guides/cursor-background-api-inventory.md`。2026-06-11 已验证 TS `Cursor.models.list` 可用；`POST /v1/agents`（cloud / no-repo）仍可能 403 `feature_unavailable`。在权限解决前，生产默认已切到 `rules_first`；待用户在服务器跑 smoke 脚本确认 `/v1/me` 与 no-repo agent，若仍 403 则联系 Cursor 支持开通 Cloud Agents。
+- AI Log Analysis 状态：第一期手动触发 MVP 已完成；worker 已改为 **Cursor REST API 直调**（`cursor_rest_client.py`），不再依赖 Python `cursor-sdk`，并新增 `deploy/systemd/platform-api-ai-worker.service` 支持 systemd 常驻。在权限解决前，生产默认已切到 `rules_first`；待用户在服务器跑 smoke 脚本确认 `/v1/me` 与 no-repo agent，若仍 403 则联系 Cursor 支持开通 Cloud Agents。
 - 当前 CI/CD 口径：Python KPI Runner / `test-workflow-runner` 主线只考虑 Jenkins 调度，不再考虑 `automation-portal -> platform-api -> worker -> test-workflow-runner`；`robotws` 与 `testline_configuration` checkout 仍需在 Jenkins 前置步骤中复用或扩展现有脚本。
 - 当前重要约定：AI 不主动执行 pytest / Allure / Postman / JMeter / 前端测试等验证命令，只提供验证步骤和预期结果
 

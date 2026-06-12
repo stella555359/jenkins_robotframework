@@ -284,6 +284,9 @@ def get_ai_analysis(run_id: str) -> AIAnalysisResult:
 
 
 def build_markdown_report(result: AIAnalysisResult) -> str:
+    failure_layer = result.quality_signals.get("failure_layer") or "unknown"
+    matched_rule = result.quality_signals.get("matched_rule") or "unknown"
+    rerun_advice = result.quality_signals.get("rerun_advice") or "needs_human_check"
     lines = [
         f"# {result.test_report.title}",
         "",
@@ -298,10 +301,37 @@ def build_markdown_report(result: AIAnalysisResult) -> str:
         "## Root Cause",
         f"- Category: `{result.root_cause.category}`",
         f"- Confidence: `{result.root_cause.confidence}`",
+        f"- Failure Layer: `{failure_layer}`",
+        f"- Matched Rule: `{matched_rule}`",
+        f"- Rerun Advice: `{rerun_advice}`",
         f"- Symptom: {result.root_cause.symptom or 'Not available.'}",
         "",
-        "## Recommended Actions",
+        "## Primary Evidence",
     ]
+    if result.root_cause.evidence:
+        primary = result.root_cause.evidence[0]
+        lines.extend(
+            [
+                f"- Source: `{primary.source}`",
+                f"- Stage / Keyword: {primary.stage or 'Not available.'}",
+                f"- Artifact: {primary.artifact_path or 'Not available.'}",
+                f"- Excerpt: {primary.excerpt}",
+            ]
+        )
+    else:
+        lines.append("- No primary evidence was selected.")
+
+    if len(result.root_cause.evidence) > 1:
+        lines.extend(["", "## Secondary Evidence"])
+        for evidence in result.root_cause.evidence[1:]:
+            lines.append(f"- `{evidence.source}`: {evidence.excerpt}")
+
+    lines.extend(
+        [
+            "",
+            "## Recommended Actions",
+        ]
+    )
     actions = result.root_cause.recommended_actions or ["Review Jenkins artifacts and run metadata."]
     lines.extend(f"- {action}" for action in actions)
     lines.extend(["", "## Evidence"])

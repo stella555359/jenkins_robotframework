@@ -434,6 +434,33 @@ tbody tr:hover {
   margin-top: 0;
 }
 
+.ai-diagnosis-card {
+  border-color: #b9d7ff;
+}
+
+.ai-evidence-excerpt {
+  background: #f4f7fb;
+  border: 1px solid #dfe7f3;
+  border-radius: 8px;
+  color: #26364f;
+  font-size: 12px;
+  margin: 8px 0 0;
+  max-height: 120px;
+  overflow: auto;
+  padding: 8px;
+  white-space: pre-wrap;
+}
+
+.ai-secondary-evidence {
+  display: grid;
+  gap: 10px;
+}
+
+.ai-secondary-evidence-item strong {
+  color: #3c4d6b;
+  font-size: 12px;
+}
+
 .ai-list {
   margin-top: 10px;
 }

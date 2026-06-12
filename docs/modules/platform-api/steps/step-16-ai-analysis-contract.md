@@ -393,6 +393,25 @@ request_json:
 result_json:
   保存结构化 AIAnalysisResult。
 
+root_cause.category:
+  诊断类别，例如 scm_credentials、robot_case_failed、taf_import_or_library_error、timeout、assertion_failed、ue_reservation_or_device_pool、checkout_or_workspace_failed。
+
+root_cause.symptom:
+  面向人的失败症状。output.xml 可解析时包含 failed test / keyword / message。
+
+root_cause.evidence:
+  evidence[0] 为 primary evidence，优先来自 output.xml。
+  evidence[1..] 为 secondary evidence，可来自 debug.log、ute_ue.log、robot-command.json、callback-payload.json。
+
+quality_signals.failure_layer:
+  jenkins_pipeline / robot / taf / testline_ue / unknown。
+
+quality_signals.matched_rule:
+  命中的 rules_first v2 规则 ID，例如 robot_output_failed_test、robot_keyword_timeout、robot_taf_import_or_keyword_error。
+
+quality_signals.rerun_advice:
+  safe_to_rerun / fix_required / needs_human_check。当前规则默认偏保守，不能确认时使用 needs_human_check。
+
 report_markdown:
   保存可复制的 Markdown 报告。
 
@@ -445,7 +464,8 @@ sudo journalctl -u platform-api-ai-worker -f
 1. POST 返回 analysis_id 和 queued。
 2. worker 处理后 GET /ai-analysis 返回 completed 或 failed。
 3. completed 时能看到 input_refs / log_summary / root_cause / test_report / quality_signals。
-4. GET /ai-report 返回 Markdown content。
+4. output.xml 可解析时 root_cause.symptom 展示 failed test / keyword / message。
+5. GET /ai-report 返回包含 Diagnosis / Primary Evidence / Secondary Evidence 的 Markdown content。
 ```
 
 常见失败判断：
@@ -465,6 +485,9 @@ analysis_status=failed 且提示 Cursor / 403:
 
 RCA evidence 很少:
   Jenkins artifact manifest 没有可读 path/url，或 Jenkins consoleText 不能访问。
+
+category 仍然 unknown:
+  当前 artifact 没有 parseable output.xml，或日志里没有命中已实现规则。先确认 artifact manifest 是否包含 output.xml、debug.log、robot-command.json、callback-payload.json、ute_ue.log。
 ```
 
 ### Cursor SDK 验证进度（2026-06-10）

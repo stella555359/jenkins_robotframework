@@ -305,7 +305,7 @@ queued / running:
   显示当前状态 badge，并随页面定时刷新。
 
 completed:
-  展示 log_summary、root_cause、input_refs 和 Markdown report。
+  展示 Diagnosis、Primary Evidence、Secondary Evidence、Evidence Coverage 和 Markdown report。
 
 failed:
   展示后端或 worker 失败原因，允许 Regenerate。
@@ -327,7 +327,7 @@ npm run build
 2. 打开 /runs/<RUN_ID> 能看到 AI Run Insight 区域。
 3. 没有分析结果时显示 Generate Rules Analysis。
 4. 点击 Generate 后后端收到 POST /api/runs/{run_id}/ai-analysis。
-5. worker 完成后页面展示 Summary / RCA / Evidence / Report Preview。
+5. worker 完成后页面优先展示 failure layer、category、confidence、matched rule、rerun advice。
 6. Copy Report 可以复制 Markdown 内容。
 ```
 
@@ -346,6 +346,9 @@ AI 区域一直 queued:
 
 Report Preview 为空:
   后端 /ai-report 未返回 content，或 worker 未生成 report_markdown。
+
+Diagnosis 仍然 unknown:
+  后端已完成分析但没有命中 rules_first v2 规则。检查 Evidence Coverage 是否包含 output.xml、debug.log、robot-command.json、callback-payload.json、ute_ue.log。
 ```
 
 ## 页面文案建议

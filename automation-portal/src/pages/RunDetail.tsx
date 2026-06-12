@@ -130,6 +130,13 @@ function AIInsightPanel({
 }) {
   const status = analysis?.analysis_status || "not_generated";
   const reportContent = report?.content || analysis?.test_report.summary_markdown || "";
+  const qualitySignals = analysis?.quality_signals || {};
+  const signalText = (key: string, fallback = "-") => {
+    const value = qualitySignals[key];
+    return value === undefined || value === null || value === "" ? fallback : String(value);
+  };
+  const primaryEvidence = analysis?.root_cause.evidence[0];
+  const secondaryEvidence = analysis?.root_cause.evidence.slice(1) || [];
 
   async function handleCopyReport() {
     if (!reportContent) {
@@ -171,15 +178,17 @@ function AIInsightPanel({
 
       {analysis ? (
         <div className="ai-card-grid">
-          <div className="ai-card">
-            <h4>Summary</h4>
+          <div className="ai-card ai-diagnosis-card wide">
+            <h4>Diagnosis</h4>
             <p>{analysis.log_summary.one_line_summary || "No summary generated yet."}</p>
             <InfoTable
               items={[
-                ["Failed stage", analysis.log_summary.failed_stage],
-                ["Failed command", analysis.log_summary.failed_command],
-                ["Impact", analysis.log_summary.impact],
-                ["Next step", analysis.log_summary.next_step],
+                ["Failure layer", signalText("failure_layer", "unknown")],
+                ["Category", analysis.root_cause.category],
+                ["Confidence", analysis.root_cause.confidence],
+                ["Matched rule", signalText("matched_rule", "no_rule_matched")],
+                ["Rerun advice", signalText("rerun_advice", "needs_human_check")],
+                ["Human confirm", analysis.root_cause.needs_human_confirmation ? "required" : "not required"],
               ]}
             />
             {analysis.log_summary.key_errors.length > 0 ? (
@@ -195,15 +204,21 @@ function AIInsightPanel({
           </div>
 
           <div className="ai-card">
-            <h4>RCA</h4>
-            <InfoTable
-              items={[
-                ["Category", analysis.root_cause.category],
-                ["Confidence", analysis.root_cause.confidence],
-                ["Symptom", analysis.root_cause.symptom],
-                ["Human confirm", analysis.root_cause.needs_human_confirmation ? "required" : "not required"],
-              ]}
-            />
+            <h4>Primary Evidence</h4>
+            {primaryEvidence ? (
+              <>
+                <InfoTable
+                  items={[
+                    ["Source", primaryEvidence.source],
+                    ["Stage / Keyword", primaryEvidence.stage],
+                    ["Artifact", primaryEvidence.artifact_path],
+                  ]}
+                />
+                <pre className="ai-evidence-excerpt">{primaryEvidence.excerpt}</pre>
+              </>
+            ) : (
+              <p className="muted">No primary evidence selected yet.</p>
+            )}
             {analysis.root_cause.recommended_actions.length > 0 ? (
               <div className="ai-list">
                 <strong>Recommended actions</strong>
@@ -217,7 +232,23 @@ function AIInsightPanel({
           </div>
 
           <div className="ai-card">
-            <h4>Evidence</h4>
+            <h4>Secondary Evidence</h4>
+            {secondaryEvidence.length === 0 ? (
+              <p className="muted">No secondary evidence excerpts recorded.</p>
+            ) : (
+              <div className="ai-secondary-evidence">
+                {secondaryEvidence.map((item, index) => (
+                  <div key={`${item.source}-${index}`} className="ai-secondary-evidence-item">
+                    <strong>{item.source}</strong>
+                    <pre className="ai-evidence-excerpt">{item.excerpt}</pre>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="ai-card">
+            <h4>Evidence Coverage</h4>
             {analysis.input_refs.length === 0 ? (
               <p className="muted">No evidence references recorded.</p>
             ) : (

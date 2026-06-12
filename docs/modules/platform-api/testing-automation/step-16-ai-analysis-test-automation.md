@@ -11,6 +11,7 @@
 4. GET /api/runs/{run_id}/ai-report 能返回 Markdown 报告。
 5. rules_first worker 能把 queued 任务推进到 completed。
 6. 不传 analysis_mode 时默认使用 rules_first，避免误触发 Cursor Cloud Agent。
+7. rules_first v2 能从 output.xml 生成 failure_layer / matched_rule / rerun_advice / primary evidence。
 ```
 
 ## 涉及文件
@@ -47,6 +48,12 @@ test_get_ai_report_returns_markdown:
 
 test_ai_worker_processes_rules_first_analysis:
   验证 worker 可以 claim queued 任务，并基于本地 artifact 文本生成 completed 结果。
+
+test_ai_worker_rules_first_v2_extracts_robot_output_diagnosis:
+  验证 worker 解析 output.xml 里的 failed test / keyword / message，并把 output.xml 作为 primary evidence。
+
+test_ai_worker_rules_first_v2_classifies_taf_import_error:
+  验证 Robot library/import 类失败会归类到 taf_import_or_library_error 和 taf failure_layer。
 ```
 
 ## 核心调用流
@@ -89,6 +96,14 @@ result_json.input_refs:
 
 root_cause.category:
   worker rules_first 根据 Permission denied publickey 识别 scm_credentials。
+  rules_first v2 根据 output.xml 可识别 timeout、taf_import_or_library_error 等诊断类别。
+
+root_cause.evidence:
+  evidence[0] 是 primary evidence，优先来自 output.xml。
+  evidence[1..] 是 debug.log、ute_ue.log、robot-command.json、callback-payload.json 等 secondary evidence。
+
+quality_signals:
+  新增 failure_layer、matched_rule、rerun_advice、primary_evidence_source、analyzed_artifacts。
 ```
 
 ## 服务器验证命令
@@ -115,6 +130,7 @@ python -m pytest tests/test_ai_analysis.py --alluredir=allure-results
 4. rules_first worker 完成后返回 completed。
 5. root_cause.category 命中 scm_credentials。
 6. 默认请求不传 analysis_mode 时仍保存为 rules_first。
+7. output.xml 可解析时，quality_signals 包含 failure_layer / matched_rule / rerun_advice。
 ```
 
 ## Cursor SDK Smoke 验证记录（2026-06-10）

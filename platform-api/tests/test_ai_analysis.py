@@ -180,3 +180,117 @@ def test_ai_worker_processes_rules_first_analysis(client, create_run_via_api, tm
     assert payload["root_cause"]["category"] == "scm_credentials"
     assert payload["root_cause"]["confidence"] == "medium"
     assert payload["root_cause"]["recommended_actions"]
+
+
+@allure.feature("AI Analysis")
+@allure.story("AI worker")
+@allure.title("rules-first v2 uses output.xml as primary diagnostic evidence")
+def test_ai_worker_rules_first_v2_extracts_robot_output_diagnosis(client, create_run_via_api, tmp_path) -> None:
+    run = create_run_via_api()
+    run_id = run["run_id"]
+    output_xml = tmp_path / "output.xml"
+    debug_log = tmp_path / "debug.log"
+    robot_command = tmp_path / "robot-command.json"
+    callback_payload = tmp_path / "callback-payload.json"
+    output_xml.write_text(
+        """<?xml version="1.0" encoding="UTF-8"?>
+<robot>
+  <suite name="Smoke">
+    <test name="Attach UE">
+      <kw name="Wait Until UE Is Attached">
+        <status status="FAIL">Timeout waiting for UE attached state</status>
+      </kw>
+      <status status="FAIL">Timeout waiting for UE attached state</status>
+    </test>
+    <status status="FAIL"/>
+  </suite>
+</robot>
+""",
+        encoding="utf-8",
+    )
+    debug_log.write_text("ERROR Timeout waiting for UE attached state", encoding="utf-8")
+    robot_command.write_text('{"command": "python -m robot -t Attach UE tests.robot"}', encoding="utf-8")
+    callback_payload.write_text('{"status": "failed", "message": "Robot failed", "artifact_manifest": []}', encoding="utf-8")
+
+    callback_response = client.post(
+        f"/api/runs/{run_id}/callbacks/jenkins",
+        json={
+            "status": "failed",
+            "message": "Robot failed.",
+            "artifact_manifest": [
+                {"kind": "robot_output", "label": "output.xml", "path": str(output_xml)},
+                {"kind": "robot_debug", "label": "debug.log", "path": str(debug_log)},
+                {"kind": "robot_command", "label": "robot-command.json", "path": str(robot_command)},
+                {"kind": "callback_payload", "label": "callback-payload.json", "path": str(callback_payload)},
+            ],
+        },
+    )
+    assert callback_response.status_code == 200
+
+    create_response = client.post(
+        f"/api/runs/{run_id}/ai-analysis",
+        json={"refresh": True, "analysis_mode": "rules_first", "include_artifacts": True, "include_console": False},
+    )
+    assert create_response.status_code == 200
+
+    assert process_next_ai_analysis() is True
+
+    response = client.get(f"/api/runs/{run_id}/ai-analysis")
+    payload = response.json()
+    assert response.status_code == 200
+    assert payload["analysis_status"] == "completed"
+    assert payload["root_cause"]["category"] == "timeout"
+    assert payload["quality_signals"]["failure_layer"] == "robot"
+    assert payload["quality_signals"]["matched_rule"] == "robot_keyword_timeout"
+    assert payload["quality_signals"]["rerun_advice"] == "needs_human_check"
+    assert payload["root_cause"]["evidence"][0]["source"] == "output.xml"
+    assert "Attach UE" in payload["root_cause"]["symptom"]
+    assert "Wait Until UE Is Attached" in payload["root_cause"]["symptom"]
+
+
+@allure.feature("AI Analysis")
+@allure.story("AI worker")
+@allure.title("rules-first v2 classifies Robot library import failures")
+def test_ai_worker_rules_first_v2_classifies_taf_import_error(client, create_run_via_api, tmp_path) -> None:
+    run = create_run_via_api()
+    run_id = run["run_id"]
+    output_xml = tmp_path / "output.xml"
+    output_xml.write_text(
+        """<robot>
+  <suite name="Smoke">
+    <test name="Import resources">
+      <status status="FAIL">Importing library failed: No module named taf.namespaces.fake</status>
+    </test>
+  </suite>
+</robot>
+""",
+        encoding="utf-8",
+    )
+
+    callback_response = client.post(
+        f"/api/runs/{run_id}/callbacks/jenkins",
+        json={
+            "status": "failed",
+            "message": "Robot import failed.",
+            "artifact_manifest": [
+                {"kind": "robot_output", "label": "output.xml", "path": str(output_xml)},
+            ],
+        },
+    )
+    assert callback_response.status_code == 200
+
+    create_response = client.post(
+        f"/api/runs/{run_id}/ai-analysis",
+        json={"refresh": True, "analysis_mode": "rules_first", "include_artifacts": True, "include_console": False},
+    )
+    assert create_response.status_code == 200
+
+    assert process_next_ai_analysis() is True
+
+    response = client.get(f"/api/runs/{run_id}/ai-analysis")
+    payload = response.json()
+    assert response.status_code == 200
+    assert payload["analysis_status"] == "completed"
+    assert payload["root_cause"]["category"] == "taf_import_or_library_error"
+    assert payload["quality_signals"]["failure_layer"] == "taf"
+    assert payload["quality_signals"]["matched_rule"] == "robot_taf_import_or_keyword_error"
